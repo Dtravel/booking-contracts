@@ -21,7 +21,7 @@ contract DtravelProperty is Ownable {
   uint256 public cancelPeriod; // cancellation period
   Booking[] public bookings; // bookings array
   mapping(uint256 => bool) public filled; // timestamp => bool
-  mapping(uint256 => uint8) public bookingStatus; // booking id => 0, 1, 2
+  mapping(uint256 => uint8) public bookingStatus; // booking id => 0, 1, 2 0: open, 1: filled, 2: cancelled
 
   constructor(uint256 _id, uint256 _price, uint256 _cancelPeriod) {
     id = _id;
@@ -51,7 +51,7 @@ contract DtravelProperty is Ownable {
 
   function book(address _token, uint256 _checkInTimestamp, uint256 _checkOutTimestamp) external returns(bool, uint256) {
     require(_checkInTimestamp > block.timestamp, "Booking for past date is not allowed");
-    require(_checkOutTimestamp > _checkInTimestamp + 60 * 60 * 24, "Booking period should be at least one night");
+    require(_checkOutTimestamp >= _checkInTimestamp + 60 * 60 * 24, "Booking period should be at least one night");
     bool isPropertyAvailable = propertyAvailable(_checkInTimestamp, _checkOutTimestamp);
     require(isPropertyAvailable == true, "Property is not available");
     uint256 bookingAmount = price * (_checkOutTimestamp - _checkInTimestamp) / (60 * 60 * 24);
@@ -83,8 +83,6 @@ contract DtravelProperty is Ownable {
     
     bookingStatus[_bookingId] = _cancelType;
 
-    address guest = booking.guest;
-    uint256 paidAmount = booking.paidAmount;
     uint256 time = booking.checkInTimestamp;
     uint256 checkOutTimestamp = booking.checkOutTimestamp;
     while (time < checkOutTimestamp) {
@@ -94,7 +92,7 @@ contract DtravelProperty is Ownable {
 
     // Refund to the guest
 
-    bool isSuccess = _safeTransferFrom(IERC20(_token), address(this), guest, paidAmount);
+    bool isSuccess = IERC20(booking.token).transfer(booking.guest, booking.paidAmount);
     require(isSuccess == true, "Refund failed");
 
     return (isSuccess);
