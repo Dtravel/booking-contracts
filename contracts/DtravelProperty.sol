@@ -20,13 +20,18 @@ contract DtravelProperty is Ownable {
   uint256 public price; // property price
   uint256 public cancelPeriod; // cancellation period
   Booking[] public bookings; // bookings array
-  mapping(uint256 => bool) public filled; // timestamp => bool
+  mapping(uint256 => bool) public propertyFilled; // timestamp => bool, false: open, true: filled
   mapping(uint256 => uint8) public bookingStatus; // booking id => 0, 1, 2 0: open, 1: filled, 2: cancelled
+  DtravelConfig configContract;
 
-  constructor(uint256 _id, uint256 _price, uint256 _cancelPeriod) {
+
+  event FulFilled(address indexed host, address indexed vault, uint256 amountForHost, uint256 amountForDtravel, uint256 fulFilledTime);
+
+  constructor(uint256 _id, uint256 _price, uint256 _cancelPeriod, address _config) {
     id = _id;
     price = _price;
     cancelPeriod = _cancelPeriod;
+    configContract = DtravelConfig(_config);
   }
 
   function updatePrice(uint256 _price) onlyOwner external {
@@ -39,10 +44,16 @@ contract DtravelProperty is Ownable {
     cancelPeriod = _cancelPeriod;
   }
 
+  function updatePropertyFilled(uint256[] memory _dates, bool _status) onlyOwner external {
+    for(uint i = 0;i < _dates.length;i++) {
+      propertyFilled[_dates[i]] = _status;
+    }
+  }
+
   function propertyAvailable(uint256 _checkInTimestamp, uint256 _checkOutTimestamp ) view public returns(bool) {
     uint256 time = _checkInTimestamp;
     while (time < _checkOutTimestamp) {
-      if (filled[time] == true)
+      if (propertyFilled[time] == true)
         return false;
       time += 60 * 60 * 24;
     }
@@ -50,6 +61,7 @@ contract DtravelProperty is Ownable {
   }
 
   function book(address _token, uint256 _checkInTimestamp, uint256 _checkOutTimestamp) external returns(bool, uint256) {
+    require(configContract.supportedTokens(_token) == true, "Token is not whitelisted");
     require(_checkInTimestamp > block.timestamp, "Booking for past date is not allowed");
     require(_checkOutTimestamp >= _checkInTimestamp + 60 * 60 * 24, "Booking period should be at least one night");
     bool isPropertyAvailable = propertyAvailable(_checkInTimestamp, _checkOutTimestamp);
@@ -65,7 +77,7 @@ contract DtravelProperty is Ownable {
     uint256 bookingId = bookings.length;
     uint256 time = _checkInTimestamp;
     while (time < _checkOutTimestamp) {
-      filled[time] = true;
+      propertyFilled[time] = true;
       time += 60 * 60 * 24;
     }
     bookingStatus[bookingId] = 0;
@@ -86,7 +98,7 @@ contract DtravelProperty is Ownable {
     uint256 time = booking.checkInTimestamp;
     uint256 checkOutTimestamp = booking.checkOutTimestamp;
     while (time < checkOutTimestamp) {
-      filled[time] = false;
+      propertyFilled[time] = false;
       time += 60 * 60 * 24;
     }
 
@@ -96,6 +108,32 @@ contract DtravelProperty is Ownable {
     require(isSuccess == true, "Refund failed");
 
     return (isSuccess);
+  }
+
+  function fulfill(uint256 _bookingId) external {
+    require(_bookingId <= bookings.length, "Booking not found");
+    require(bookingStatus[_bookingId] == 0, "Booking is already cancelled or fulfilled");
+    Booking memory booking = bookings[_bookingId];
+    require(block.timestamp >= booking.checkOutTimestamp, "Booking can be filled only after the checkout date");
+
+    uint256 time = booking.checkInTimestamp;
+    uint256 checkOutTimestamp = booking.checkOutTimestamp;
+    while (time < checkOutTimestamp) {
+      propertyFilled[time] = false;
+      time += 60 * 60 * 24;
+    }
+
+    address host = owner();
+    address dtravelVault = configContract.dtravelVault();
+    uint256 paidAmount = booking.paidAmount;
+    uint256 fee = configContract.fee();
+    uint256 amountForHost = paidAmount * (100 - fee) / 100;
+    uint256 amountForDtravel = paidAmount - amountForHost;
+
+    IERC20(booking.token).transfer(host, amountForHost);
+    IERC20(booking.token).transfer(dtravelVault, amountForDtravel);
+
+    emit FulFilled(host, dtravelVault, amountForHost, amountForDtravel, block.timestamp);
   }
 
   function bookingHistory() external view returns(Booking[] memory) {
