@@ -20,12 +20,12 @@ contract DtravelProperty is Ownable {
   uint256 public price; // property price
   uint256 public cancelPeriod; // cancellation period
   Booking[] public bookings; // bookings array
-  mapping(uint256 => bool) public propertyFilled; // timestamp => bool, false: open, true: filled
-  mapping(uint256 => uint8) public bookingStatus; // booking id => 0, 1, 2 0: open, 1: filled, 2: cancelled
+  mapping(uint256 => bool) public propertyFilled; // timestamp => bool, false: vacant, true: filled
+  mapping(uint256 => uint8) public bookingStatus; // booking id => 0, 1, 2 0: in_progress, 1: fulfilled, 2: cancelled
   DtravelConfig configContract;
 
 
-  event FulFilled(address indexed host, address indexed vault, uint256 amountForHost, uint256 amountForDtravel, uint256 fulFilledTime);
+  event Fulfilled(address indexed host, address indexed vault, uint256 amountForHost, uint256 amountForDtravel, uint256 fulFilledTime);
 
   constructor(uint256 _id, uint256 _price, uint256 _cancelPeriod, address _config) {
     id = _id;
@@ -49,6 +49,8 @@ contract DtravelProperty is Ownable {
       propertyFilled[_dates[i]] = _status;
     }
   }
+
+  /* TODO: Add another method to update propertyFilled with start timestamp and number of days */
 
   function propertyAvailable(uint256 _checkInTimestamp, uint256 _checkOutTimestamp ) view public returns(bool) {
     uint256 time = _checkInTimestamp;
@@ -114,7 +116,7 @@ contract DtravelProperty is Ownable {
     require(_bookingId <= bookings.length, "Booking not found");
     require(bookingStatus[_bookingId] == 0, "Booking is already cancelled or fulfilled");
     Booking memory booking = bookings[_bookingId];
-    require(block.timestamp >= booking.checkOutTimestamp, "Booking can be filled only after the checkout date");
+    require(block.timestamp >= booking.checkOutTimestamp, "Booking can be fulfilled only after the checkout date");
 
     uint256 time = booking.checkInTimestamp;
     uint256 checkOutTimestamp = booking.checkOutTimestamp;
@@ -133,7 +135,7 @@ contract DtravelProperty is Ownable {
     IERC20(booking.token).transfer(host, amountForHost);
     IERC20(booking.token).transfer(dtravelVault, amountForDtravel);
 
-    emit FulFilled(host, dtravelVault, amountForHost, amountForDtravel, block.timestamp);
+    emit Fulfilled(host, dtravelVault, amountForHost, amountForDtravel, block.timestamp);
   }
 
   function bookingHistory() external view returns(Booking[] memory) {
