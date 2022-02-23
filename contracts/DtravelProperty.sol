@@ -92,7 +92,7 @@ contract DtravelProperty is Ownable {
     require(_bookingId <= bookings.length, "Booking not found");
     require(bookingStatus[_bookingId] == 0, "Booking is already cancelled or fulfilled");
     Booking memory booking = bookings[_bookingId];
-    require(block.timestamp < booking.checkInTimestamp + cancelPeriod, "Booking has already expired the cancellation period");
+    require(block.timestamp < booking.checkInTimestamp - cancelPeriod, "Booking has already expired the cancellation period");
     require(msg.sender == owner() || msg.sender == booking.guest, "You are not authorized to cancel this booking");
     
     bookingStatus[_bookingId] = _cancelType;
