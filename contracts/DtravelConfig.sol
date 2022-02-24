@@ -7,11 +7,13 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract DtravelConfig is Ownable {
     uint256 public fee; // fee percentage 5 -> 5%
     address public dtravelVault;
+    address public dtravelBackend;
     mapping(address => bool) public supportedTokens;
 
     constructor(uint256 _fee, address _vault, address[] memory _tokens) {
         fee = _fee;
         dtravelVault = _vault;
+        dtravelBackend = msg.sender;
         for(uint i = 0;i < _tokens.length;i++) {
             supportedTokens[_tokens[i]] = true;
         }
