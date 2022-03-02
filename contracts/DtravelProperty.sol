@@ -22,10 +22,10 @@ contract DtravelProperty is Ownable, ReentrancyGuard { // The contract deploymen
   uint256 public cancelPeriod; // cancellation period
   Booking[] public bookings; // bookings array
   mapping(uint256 => bool) public propertyFilled; // timestamp => bool, false: vacant, true: filled
-  mapping(uint256 => uint8) public bookingStatus; // booking id => 0, 1, 2 0: in_progress, 1: fulfilled, 2: cancelled, 3: emergency cancelled
+  mapping(uint256 => uint8) public bookingStatus; // booking id => 0, 1, 2, 3 0: in_progress, 1: fulfilled, 2: cancelled, 3: emergency cancelled
   DtravelConfig configContract;
 
-  event Fulfilled(uint256 bookingId, address indexed host, address indexed vault, uint256 amountForHost, uint256 amountForDtravel, uint256 fulFilledTime);
+  event Fulfilled(uint256 bookingId, address indexed host, address indexed dtravelTreasury, uint256 amountForHost, uint256 amountForDtravel, uint256 fulFilledTime);
   event Book(uint256 bookingId, uint256 bookedTimestamp);
   event Cancel(uint256 bookingId, bool isHost, uint256 cancelledTimestamp);
   event EmergencyCancel(uint256 bookingId, uint256 cancelledTimestamp);
@@ -66,7 +66,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard { // The contract deploymen
     while (time < _checkOutTimestamp) {
       if (propertyFilled[time] == true)
         return false;
-      time += 60 * 60 * 24;
+      time += 1 days;
     }
     return true;
   }
@@ -74,7 +74,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard { // The contract deploymen
   function book(address _token, uint256 _checkInTimestamp, uint256 _checkOutTimestamp, uint256 _bookingAmount) nonReentrant onlyBackend external {
     require(configContract.supportedTokens(_token) == true, "Token is not whitelisted");
     require(_checkInTimestamp > block.timestamp, "Booking for past date is not allowed");
-    require(_checkOutTimestamp >= _checkInTimestamp + 60 * 60 * 24, "Booking period should be at least one night");
+    require(_checkOutTimestamp >= _checkInTimestamp + 1 days, "Booking period should be at least one night");
     bool isPropertyAvailable = propertyAvailable(_checkInTimestamp, _checkOutTimestamp);
     require(isPropertyAvailable == true, "Property is not available");
     require(
@@ -85,32 +85,35 @@ contract DtravelProperty is Ownable, ReentrancyGuard { // The contract deploymen
     require(isSuccess == true, "Payment failed");
     
     uint256 bookingId = bookings.length;
-    uint256 time = _checkInTimestamp;
-    while (time < _checkOutTimestamp) {
-      propertyFilled[time] = true;
-      time += 60 * 60 * 24;
-    }
-    bookingStatus[bookingId] = 0;
     bookings.push(Booking(bookingId, _checkInTimestamp, _checkOutTimestamp, _bookingAmount, msg.sender, _token));
+    updateBookingStatus(bookingId, 0);
 
     emit Book(bookingId, block.timestamp);
   }
 
-  function cancel(uint256 _bookingId, uint8 _cancelType) nonReentrant external {
+  function updateBookingStatus(uint256 _bookingId, uint8 _status) internal {
+    require(_status <= 3, "Invalid booking status");
+    require(_bookingId >=0 && _bookingId < bookings.length, "Booking not found");
+    
+    Booking memory booking = bookings[_bookingId];
+    uint256 time = booking.checkInTimestamp;
+    uint256 checkoutTimestamp = booking.checkOutTimestamp;
+    while (time < checkoutTimestamp) {
+      propertyFilled[time] = true;
+      time += 1 days;
+    }
+
+    bookingStatus[_bookingId] = _status;
+  }
+
+  function cancel(uint256 _bookingId) nonReentrant external {
     require(_bookingId <= bookings.length, "Booking not found");
     require(bookingStatus[_bookingId] == 0, "Booking is already cancelled or fulfilled");
     Booking memory booking = bookings[_bookingId];
     require(msg.sender == owner() || msg.sender == booking.guest, "Only host or guest is authorized to call this action");
-    require(block.timestamp < booking.checkInTimestamp - cancelPeriod, "Booking has already expired the cancellation period");
+    require(block.timestamp < booking.checkInTimestamp - cancelPeriod, "Cancellation period is over");
     
-    bookingStatus[_bookingId] = _cancelType;
-
-    uint256 time = booking.checkInTimestamp;
-    uint256 checkOutTimestamp = booking.checkOutTimestamp;
-    while (time < checkOutTimestamp) {
-      propertyFilled[time] = false;
-      time += 60 * 60 * 24;
-    }
+    updateBookingStatus(_bookingId, 2);
 
     // Refund to the guest
 
@@ -125,14 +128,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard { // The contract deploymen
     require(bookingStatus[_bookingId] == 0, "Booking is already cancelled or fulfilled");
     Booking memory booking = bookings[_bookingId];
     
-    bookingStatus[_bookingId] = 3;
-
-    uint256 time = booking.checkInTimestamp;
-    uint256 checkOutTimestamp = booking.checkOutTimestamp;
-    while (time < checkOutTimestamp) {
-      propertyFilled[time] = false;
-      time += 60 * 60 * 24;
-    }
+    updateBookingStatus(_bookingId, 3);
 
     // Refund to the guest
 
@@ -148,24 +144,21 @@ contract DtravelProperty is Ownable, ReentrancyGuard { // The contract deploymen
     Booking memory booking = bookings[_bookingId];
     require(block.timestamp >= booking.checkOutTimestamp, "Booking can be fulfilled only after the checkout date");
 
-    uint256 time = booking.checkInTimestamp;
-    uint256 checkOutTimestamp = booking.checkOutTimestamp;
-    while (time < checkOutTimestamp) {
-      propertyFilled[time] = false;
-      time += 60 * 60 * 24;
-    }
+    updateBookingStatus(_bookingId, 1);
 
+    // Split the payment
+    
     address host = owner();
-    address dtravelVault = configContract.dtravelVault();
+    address dtravelTreasury = configContract.dtravelTreasury();
     uint256 paidAmount = booking.paidAmount;
     uint256 fee = configContract.fee();
     uint256 amountForHost = paidAmount * (100 - fee) / 100;
     uint256 amountForDtravel = paidAmount - amountForHost;
 
     IERC20(booking.token).transfer(host, amountForHost);
-    IERC20(booking.token).transfer(dtravelVault, amountForDtravel);
+    IERC20(booking.token).transfer(dtravelTreasury, amountForDtravel);
 
-    emit Fulfilled(_bookingId, host, dtravelVault, amountForHost, amountForDtravel, block.timestamp);
+    emit Fulfilled(_bookingId, host, dtravelTreasury, amountForHost, amountForDtravel, block.timestamp);
   }
 
   function bookingHistory() external view returns(Booking[] memory) {

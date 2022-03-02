@@ -5,14 +5,14 @@ pragma solidity >=0.8.0 <0.9.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract DtravelConfig is Ownable {
-    uint256 public fee; // fee percentage 5 -> 5%
-    address public dtravelVault;
+    uint256 public fee; // fee percentage 5% -> 500, 0.1% -> 10
+    address public dtravelTreasury;
     address public dtravelBackend;
     mapping(address => bool) public supportedTokens;
 
     constructor(uint256 _fee, address _vault, address[] memory _tokens) {
         fee = _fee;
-        dtravelVault = _vault;
+        dtravelTreasury = _vault;
         dtravelBackend = msg.sender;
         for(uint i = 0;i < _tokens.length;i++) {
             supportedTokens[_tokens[i]] = true;
@@ -20,7 +20,7 @@ contract DtravelConfig is Ownable {
     }
 
     function updateFee(uint256 _fee) public onlyOwner {
-        require(_fee >= 0 && _fee <= 100, "Fee must be between 0 and 100");
+        require(_fee >= 0 && _fee <= 10000, "Fee must be between 0 and 10000");
         fee = _fee;
     }
 
