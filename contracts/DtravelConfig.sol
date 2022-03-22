@@ -11,19 +11,7 @@ contract DtravelConfig is Ownable {
     address public dtravelBackend;
     mapping(address => bool) public supportedTokens;
 
-    event UpdatedFee(uint256 oldFee, uint256 newFee);
-    event UpdatedPayoutDelayTime(uint256 oldPayoutDelayTime, uint256 newPayoutDelayTime);
-    event UpdatedTreasury(address oldTreasury, address newTreasury);
-    event UpdatedBackend(address oldBackend, address newBackend);
-    event AddedSupportedToken(address token);
-    event RemovedSupportedToken(address token);
-
-    constructor(
-        uint256 _fee,
-        uint256 _payoutDelayTime,
-        address _treasury,
-        address[] memory _tokens
-    ) {
+    constructor(uint256 _fee, address _vault, address[] memory _tokens) {
         fee = _fee;
         payoutDelayTime = _payoutDelayTime;
         dtravelTreasury = _treasury;
@@ -70,5 +58,9 @@ contract DtravelConfig is Ownable {
         address oldBackend = dtravelBackend;
         dtravelBackend = _backend;
         emit UpdatedBackend(oldBackend, _backend);
+    }
+
+    function updateTreasury(address _treasury) public onlyOwner {
+        dtravelTreasury = _treasury;
     }
 }
