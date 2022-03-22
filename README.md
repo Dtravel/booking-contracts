@@ -1,7 +1,3 @@
-# Ethereum Solidity Starter
-
-This is a skeleton repository to work as a foundation for a smart contracts project using Solidity.
-
 ## Quickstart
 
 1. Clone the repo
