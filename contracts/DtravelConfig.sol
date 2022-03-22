@@ -10,11 +10,15 @@ contract DtravelConfig is Ownable {
     address public dtravelBackend;
     mapping(address => bool) public supportedTokens;
 
-    constructor(uint256 _fee, address _vault, address[] memory _tokens) {
+    constructor(
+        uint256 _fee,
+        address _treasury,
+        address[] memory _tokens
+    ) {
         fee = _fee;
-        dtravelTreasury = _vault;
+        dtravelTreasury = _treasury;
         dtravelBackend = msg.sender;
-        for(uint i = 0;i < _tokens.length;i++) {
+        for (uint256 i = 0; i < _tokens.length; i++) {
             supportedTokens[_tokens[i]] = true;
         }
     }
@@ -30,5 +34,9 @@ contract DtravelConfig is Ownable {
 
     function removeSupportedToken(address _token) public onlyOwner {
         supportedTokens[_token] = false;
+    }
+
+    function updateTreasury(address _treasury) public onlyOwner {
+        dtravelTreasury = _treasury;
     }
 }
