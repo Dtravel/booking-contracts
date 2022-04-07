@@ -19,12 +19,10 @@ struct Booking {
 
 contract DtravelProperty is Ownable, ReentrancyGuard {
     uint256 public id; // property id
-    uint256 public price; // property price
-    uint256 public cancelPeriod; // cancellation period
     Booking[] public bookings; // bookings array
-    mapping(uint256 => bool) public propertyFilled; // timestamp => bool, false: vacant, true: filled
     DtravelConfig configContract;
     address host;
+    uint256 private constant oneDay = 60 * 60 * 24;
 
     event Fulfilled(
         uint256 bookingId,
@@ -38,16 +36,16 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     event Cancel(uint256 bookingId, bool isHost, uint256 cancelledTimestamp);
     event EmergencyCancel(uint256 bookingId, uint256 cancelledTimestamp);
 
+    /**
+    @param _id Property Id
+
+    */
     constructor(
         uint256 _id,
-        uint256 _price,
-        uint256 _cancelPeriod,
         address _config,
         address _host
     ) {
         id = _id;
-        price = _price;
-        cancelPeriod = _cancelPeriod;
         configContract = DtravelConfig(_config);
         host = _host;
     }
@@ -64,46 +62,17 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         _;
     }
 
-    function updatePrice(uint256 _price) external onlyHost {
-        require(_price > 0, "Price must be over 0");
-        price = _price;
-    }
-
-    function updateCancelPeriod(uint256 _cancelPeriod) external onlyHost {
-        require(_cancelPeriod > 0, "Cancel Period must be over 0");
-        cancelPeriod = _cancelPeriod;
-    }
-
-    function updatePropertyFilled(uint256[] memory _dates, bool _status) external onlyOwner {
-        for (uint256 i = 0; i < _dates.length; i++) {
-            propertyFilled[_dates[i]] = _status;
-        }
-    }
-
-    /* @TODO: Add another method to update propertyFilled with start timestamp and number of days */
-
-    function propertyAvailable(uint256 _checkInTimestamp, uint256 _checkOutTimestamp) public view returns (bool) {
-        uint256 time = _checkInTimestamp;
-        while (time < _checkOutTimestamp) {
-            if (propertyFilled[time] == true) return false;
-            time += 1 days;
-        }
-        return true;
-    }
-
     function book(
         address _token,
         uint256 _checkInTimestamp,
         uint256 _checkOutTimestamp,
         uint256 _bookingAmount
-    ) external nonReentrant {
+    ) external onlyBackend nonReentrant {
         // Remove onlyBackend modifier for demo
         // ) external nonReentrant onlyBackend {
         require(configContract.supportedTokens(_token) == true, "Token is not whitelisted");
         require(_checkInTimestamp > block.timestamp, "Booking for past date is not allowed");
-        require(_checkOutTimestamp >= _checkInTimestamp + 1 days, "Booking period should be at least one night");
-        bool isPropertyAvailable = propertyAvailable(_checkInTimestamp, _checkOutTimestamp);
-        require(isPropertyAvailable == true, "Property is not available");
+        require(_checkOutTimestamp >= _checkInTimestamp + oneDay, "Booking period should be at least one night");
         require(IERC20(_token).allowance(msg.sender, address(this)) >= _bookingAmount, "Token allowance too low");
         bool isSuccess = _safeTransferFrom(IERC20(_token), msg.sender, address(this), _bookingAmount);
         require(isSuccess == true, "Payment failed");
@@ -116,22 +85,11 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     }
 
     function updateBookingStatus(uint256 _bookingId, uint8 _status) internal {
-        require(_status <= 3, "Invalid booking status");
-        require(_bookingId >= 0 && _bookingId < bookings.length, "Booking not found");
-
-        Booking memory booking = bookings[_bookingId];
-        uint256 time = booking.checkInTimestamp;
-        uint256 checkoutTimestamp = booking.checkOutTimestamp;
-        while (time < checkoutTimestamp) {
-            propertyFilled[time] = _status == 0;
-            time += 1 days;
-        }
-
         bookings[_bookingId].status = _status;
     }
 
     function cancel(uint256 _bookingId) external nonReentrant {
-        require(_bookingId <= bookings.length, "Booking not found");
+        require(_bookingId < bookings.length, "Booking not found");
         Booking memory booking = bookings[_bookingId];
         require(booking.status == 0, "Booking is already cancelled or fulfilled");
         require(
@@ -151,7 +109,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     }
 
     function emergencyCancel(uint256 _bookingId) external onlyBackend nonReentrant {
-        require(_bookingId <= bookings.length, "Booking not found");
+        require(_bookingId < bookings.length, "Booking not found");
         Booking memory booking = bookings[_bookingId];
         require(booking.status == 0, "Booking is already cancelled or fulfilled");
 
@@ -166,7 +124,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     }
 
     function fulfill(uint256 _bookingId) external nonReentrant {
-        require(_bookingId <= bookings.length, "Booking not found");
+        require(_bookingId < bookings.length, "Booking not found");
         Booking memory booking = bookings[_bookingId];
         require(booking.status == 0, "Booking is already cancelled or fulfilled");
         // require(block.timestamp >= booking.checkOutTimestamp, "Booking can be fulfilled only after the checkout date"); @TODO: Uncomment this after demo
