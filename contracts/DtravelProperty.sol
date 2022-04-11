@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./DtravelConfig.sol";
+import "./DtravelEventHandler.sol";
 
 struct Booking {
     uint256 id;
@@ -21,33 +22,26 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     uint256 public id; // property id
     Booking[] public bookings; // bookings array
     DtravelConfig configContract;
+    DtravelEventHandler eventHandler;
     address host;
     uint256 private constant oneDay = 60 * 60 * 24;
 
-    event Fulfilled(
-        uint256 bookingId,
-        address indexed host,
-        address indexed dtravelTreasury,
-        uint256 amountForHost,
-        uint256 amountForDtravel,
-        uint256 fulFilledTime
-    );
-    event Book(uint256 bookingId, uint256 bookedTimestamp);
-    event Cancel(uint256 bookingId, bool isHost, uint256 cancelledTimestamp);
-    event EmergencyCancel(uint256 bookingId, uint256 cancelledTimestamp);
-
     /**
     @param _id Property Id
-
+    @param _config Contract address of DtravelConfig
+    @param _host Wallet address of the owner of this property
+    @param _eventHandler Contract address of DtravelEventHandler
     */
     constructor(
         uint256 _id,
         address _config,
-        address _host
+        address _host,
+        address _eventHandler
     ) {
         id = _id;
         configContract = DtravelConfig(_config);
         host = _host;
+        eventHandler = DtravelEventHandler(_eventHandler);
     }
 
     modifier onlyBackend() {
@@ -81,7 +75,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         bookings.push(Booking(bookingId, _checkInTimestamp, _checkOutTimestamp, _bookingAmount, msg.sender, _token, 0));
         updateBookingStatus(bookingId, 0);
 
-        emit Book(bookingId, block.timestamp);
+        eventHandler.book(bookingId);
     }
 
     function updateBookingStatus(uint256 _bookingId, uint8 _status) internal {
@@ -105,7 +99,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         bool isSuccess = IERC20(booking.token).transfer(booking.guest, booking.paidAmount);
         require(isSuccess == true, "Refund failed");
 
-        emit Cancel(_bookingId, msg.sender == host, block.timestamp);
+        eventHandler.cancel(_bookingId);
     }
 
     function emergencyCancel(uint256 _bookingId) external onlyBackend nonReentrant {
@@ -119,8 +113,6 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
 
         bool isSuccess = IERC20(booking.token).transfer(booking.guest, booking.paidAmount);
         require(isSuccess == true, "Refund failed");
-
-        emit EmergencyCancel(_bookingId, block.timestamp);
     }
 
     function fulfill(uint256 _bookingId) external nonReentrant {
@@ -141,7 +133,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         IERC20(booking.token).transfer(host, amountForHost);
         IERC20(booking.token).transfer(dtravelTreasury, amountForDtravel);
 
-        emit Fulfilled(_bookingId, host, dtravelTreasury, amountForHost, amountForDtravel, block.timestamp);
+        eventHandler.payout(_bookingId);
     }
 
     function bookingHistory() external view returns (Booking[] memory) {

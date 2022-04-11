@@ -6,13 +6,18 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./DtravelProperty.sol";
 
 contract DtravelFactory is Ownable {
-  DtravelProperty[] private properties;
+    DtravelProperty[] private properties;
 
-  event PropertyCreated(uint256 _id, address _property);
+    event PropertyCreated(uint256 _id, address _property);
 
-  function deployProperty(uint256 _id, address _config, address _host) public onlyOwner {
-    DtravelProperty property = new DtravelProperty(_id, _config, _host);
-    properties.push(property);
-    emit PropertyCreated(_id, address(property));
-  }
+    function deployProperty(
+        uint256 _id,
+        address _config,
+        address _host,
+        address _eventHandler
+    ) public onlyOwner {
+        DtravelProperty property = new DtravelProperty(_id, _config, _host, _eventHandler);
+        properties.push(property);
+        emit PropertyCreated(_id, address(property));
+    }
 }
