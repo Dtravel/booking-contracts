@@ -8,27 +8,41 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./DtravelConfig.sol";
 import "./DtravelFactory.sol";
 
+enum BookingStatus {
+    InProgress,
+    Fulfilled,
+    Cancelled,
+    EmergencyCancelled
+}
+
+struct CancellationPolicy {
+    uint256 expiryTime;
+    uint256 refundAmount;
+}
+
 struct Booking {
     uint256 id;
     uint256 checkInTimestamp;
     uint256 checkOutTimestamp;
-    uint256 paidAmount;
+    uint256 balance;
     address guest;
     address token;
-    uint8 status; // 0: in_progress, 1: fulfilled, 2: cancelled, 3: emergency cancelled
+    BookingStatus status;
+    CancellationPolicy[] cancellationPolicies;
 }
 
 contract DtravelProperty is Ownable, ReentrancyGuard {
     uint256 public id; // property id
     Booking[] public bookings; // bookings array
-    DtravelConfig configContract;
-    DtravelFactory factoryContract;
-    address host;
-    uint256 private constant oneDay = 60 * 60 * 24;
+    DtravelConfig configContract; // config contract
+    DtravelFactory factoryContract; // factory contract
+    address host; // host address
+    uint256 private constant oneDay = 60 * 60 * 24; // one day in seconds
 
     /**
     @param _id Property Id
     @param _config Contract address of DtravelConfig
+    @param _factory Contract address of DtravelFactory
     @param _host Wallet address of the owner of this property
     */
     constructor(
@@ -43,107 +57,145 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         host = _host;
     }
 
+    /**
+    @notice Modifier to check if the caller is the Dtravel backend
+    */
     modifier onlyBackend() {
         require(msg.sender == configContract.dtravelBackend(), "Only Dtravel is authorized to call this action");
 
         _;
     }
 
+    /**
+    @notice Modifier to check if the caller is the host
+    */
     modifier onlyHost() {
         require(msg.sender == host, "Only Host is authorized to call this action");
 
         _;
     }
 
+    /**
+    @param _token Token address
+    @param _checkInTimestamp Timestamp when the booking starts
+    @param _checkOutTimestamp Timestamp when the booking ends
+    @param _bookingAmount Amount of tokens to be paid
+    @param _cancellationPolicies Cancellation policies
+    @param _signature Signature of the transaction
+    */
     function book(
         address _token,
-        address _guest,
         uint256 _checkInTimestamp,
         uint256 _checkOutTimestamp,
         uint256 _bookingAmount,
-        bytes memory signature
-    ) external onlyBackend nonReentrant {
+        CancellationPolicy[] memory _cancellationPolicies,
+        bytes memory _signature
+    ) external nonReentrant {
         require(configContract.supportedTokens(_token) == true, "Token is not whitelisted");
         require(_checkInTimestamp > block.timestamp, "Booking for past date is not allowed");
         require(_checkOutTimestamp >= _checkInTimestamp + oneDay, "Booking period should be at least one night");
+        require(_cancellationPolicies.length > 0, "Booking should have at least one cancellation policy");
 
+        // verify signature and parameters
         bytes32 messageHash = getBookingHash(
             configContract.dtravelBackend(),
-            _guest,
+            msg.sender,
             _checkInTimestamp,
             _checkOutTimestamp,
             _bookingAmount
         );
         bytes32 ethSignedMessageHash = getEthSignedMessageHash(messageHash);
 
-        require(verify(configContract.dtravelBackend(), ethSignedMessageHash, signature), "Invalid signature");
+        require(verify(configContract.dtravelBackend(), ethSignedMessageHash, _signature), "Invalid signature");
 
         require(IERC20(_token).allowance(msg.sender, address(this)) >= _bookingAmount, "Token allowance too low");
         bool isSuccess = _safeTransferFrom(IERC20(_token), msg.sender, address(this), _bookingAmount);
         require(isSuccess == true, "Payment failed");
 
-        uint256 bookingId = bookings.length;
-        bookings.push(Booking(bookingId, _checkInTimestamp, _checkOutTimestamp, _bookingAmount, msg.sender, _token, 0));
+        bookings.push();
+        uint256 bookingId = bookings.length - 1;
+        for (uint8 i = 0; i < _cancellationPolicies.length; i++) {
+            bookings[bookingId].cancellationPolicies.push(_cancellationPolicies[i]);
+        }
+        bookings[bookingId].id = bookingId;
+        bookings[bookingId].checkInTimestamp = _checkInTimestamp;
+        bookings[bookingId].checkOutTimestamp = _checkOutTimestamp;
+        bookings[bookingId].balance = _bookingAmount;
+        bookings[bookingId].guest = msg.sender;
+        bookings[bookingId].token = _token;
+        bookings[bookingId].status = BookingStatus.InProgress;
 
+        // emit Book event
         factoryContract.book(bookingId);
     }
 
-    function updateBookingStatus(uint256 _bookingId, uint8 _status) internal {
+    function updateBookingStatus(uint256 _bookingId, BookingStatus _status) internal {
+        if (
+            _status == BookingStatus.Cancelled ||
+            _status == BookingStatus.Fulfilled ||
+            _status == BookingStatus.EmergencyCancelled
+        ) {
+            bookings[_bookingId].balance = 0;
+        }
         bookings[_bookingId].status = _status;
     }
 
-    function cancel(uint256 _bookingId) external nonReentrant {
+    function cancel(uint256 _bookingId) public nonReentrant {
         require(_bookingId < bookings.length, "Booking not found");
         Booking memory booking = bookings[_bookingId];
-        require(booking.status == 0, "Booking is already cancelled or fulfilled");
-        require(
-            msg.sender == host || msg.sender == booking.guest,
-            "Only host or guest is authorized to call this action"
-        );
-        // require(block.timestamp < booking.checkInTimestamp - cancelPeriod, "Cancellation period is over"); @TODO: Uncomment this after demo
+        require(booking.status == BookingStatus.InProgress, "Booking is already cancelled or fulfilled");
 
-        updateBookingStatus(_bookingId, 2);
+        uint256 guestAmount = 0;
+
+        for (uint256 i = 0; i < booking.cancellationPolicies.length - 1; i++) {
+            if (
+                booking.cancellationPolicies[i].expiryTime <= block.timestamp &&
+                booking.cancellationPolicies[i + 1].expiryTime > block.timestamp
+            ) {
+                guestAmount = booking.cancellationPolicies[i].refundAmount;
+            }
+        }
+
+        updateBookingStatus(_bookingId, BookingStatus.Cancelled);
 
         // Refund to the guest
+        uint256 treasuryAmount = ((booking.balance - guestAmount) * configContract.fee()) / 10000;
+        uint256 hostAmount = booking.balance - guestAmount - treasuryAmount;
 
-        bool isSuccess = IERC20(booking.token).transfer(booking.guest, booking.paidAmount);
-        require(isSuccess == true, "Refund failed");
+        IERC20(booking.token).transfer(booking.guest, guestAmount);
+        IERC20(booking.token).transfer(host, hostAmount);
+        IERC20(booking.token).transfer(configContract.dtravelTreasury(), treasuryAmount);
 
-        factoryContract.cancel(_bookingId);
+        factoryContract.cancel(_bookingId, guestAmount, hostAmount, treasuryAmount, block.timestamp);
     }
 
     function emergencyCancel(uint256 _bookingId) external onlyBackend nonReentrant {
         require(_bookingId < bookings.length, "Booking not found");
         Booking memory booking = bookings[_bookingId];
-        require(booking.status == 0, "Booking is already cancelled or fulfilled");
+        require(booking.status == BookingStatus.InProgress, "Booking is already cancelled or fulfilled");
 
-        updateBookingStatus(_bookingId, 3);
+        updateBookingStatus(_bookingId, BookingStatus.EmergencyCancelled);
 
         // Refund to the guest
 
-        bool isSuccess = IERC20(booking.token).transfer(booking.guest, booking.paidAmount);
-        require(isSuccess == true, "Refund failed");
+        IERC20(booking.token).transfer(booking.guest, booking.balance);
     }
 
-    function fulfill(uint256 _bookingId) external nonReentrant {
+    function fulfill(uint256 _bookingId) external nonReentrant onlyBackend {
         require(_bookingId < bookings.length, "Booking not found");
         Booking memory booking = bookings[_bookingId];
-        require(booking.status == 0, "Booking is already cancelled or fulfilled");
-        // require(block.timestamp >= booking.checkOutTimestamp, "Booking can be fulfilled only after the checkout date"); @TODO: Uncomment this after demo
+        require(booking.status == BookingStatus.InProgress, "Booking is already cancelled or fulfilled");
 
-        updateBookingStatus(_bookingId, 1);
+        updateBookingStatus(_bookingId, BookingStatus.Fulfilled);
 
         // Split the payment
-        address dtravelTreasury = configContract.dtravelTreasury();
-        uint256 paidAmount = booking.paidAmount;
-        uint256 fee = configContract.fee();
-        uint256 amountForHost = (paidAmount * (10000 - fee)) / 10000;
-        uint256 amountForDtravel = paidAmount - amountForHost;
+        uint256 hostAmount = (booking.balance * (10000 - configContract.fee())) / 10000;
+        uint256 treasuryAmount = booking.balance - hostAmount;
 
-        IERC20(booking.token).transfer(host, amountForHost);
-        IERC20(booking.token).transfer(dtravelTreasury, amountForDtravel);
+        IERC20(booking.token).transfer(host, hostAmount);
+        IERC20(booking.token).transfer(configContract.dtravelTreasury(), treasuryAmount);
 
-        factoryContract.payout(_bookingId);
+        factoryContract.payout(_bookingId, hostAmount, treasuryAmount, block.timestamp);
     }
 
     function bookingHistory() external view returns (Booking[] memory) {

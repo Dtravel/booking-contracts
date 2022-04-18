@@ -6,7 +6,7 @@ async function main() {
   const configFactory = await ethers.getContractFactory('DtravelConfig')
 
   // If we had constructor arguments, they would be passed into deploy()
-  const configContract = await configFactory.deploy(500, '0x7c477A59578710eC7bfD2bf29D7a24F53A33979a', [
+  const configContract = await configFactory.deploy(500, '0xb20dFee3D9D719DDAFdd31Ca382479B0ADD0b9BD', [
     '0xc8A0dDCE71193D35a8adbE236EeED3ACd0B2c056',
     '0xc7AD46e0b8a400Bb3C915120d284AafbA8fc4735',
   ])
