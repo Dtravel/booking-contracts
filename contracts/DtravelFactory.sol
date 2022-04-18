@@ -10,15 +10,22 @@ contract DtravelFactory is Ownable {
     mapping(address => bool) private properties;
 
     event PropertyCreated(uint256 _id, address _property);
-    event Book(uint256 bookingId, uint256 bookedTimestamp);
+    event Book(address property, uint256 bookingId, uint256 bookedTimestamp);
     event Cancel(
+        address property,
         uint256 bookingId,
         uint256 guestAmount,
         uint256 hostAmount,
         uint256 treasuryAmount,
         uint256 cancelTimestamp
     );
-    event Payout(uint256 bookingId, uint256 hostAmount, uint256 treasuryAmount, uint256 payoutTimestamp);
+    event Payout(
+        address property,
+        uint256 bookingId,
+        uint256 hostAmount,
+        uint256 treasuryAmount,
+        uint256 payoutTimestamp
+    );
 
     constructor(address _config) {
         configContract = _config;
@@ -31,7 +38,8 @@ contract DtravelFactory is Ownable {
     }
 
     function book(uint256 _bookingId) external {
-        emit Book(_bookingId, block.timestamp);
+        require(properties[msg.sender] == true, "Property not found");
+        emit Book(msg.sender, _bookingId, block.timestamp);
     }
 
     function cancel(
@@ -41,7 +49,8 @@ contract DtravelFactory is Ownable {
         uint256 _treasuryAmount,
         uint256 _cancelTimestamp
     ) external {
-        emit Cancel(_bookingId, _guestAmount, _hostAmount, _treasuryAmount, _cancelTimestamp);
+        require(properties[msg.sender] == true, "Property not found");
+        emit Cancel(msg.sender, _bookingId, _guestAmount, _hostAmount, _treasuryAmount, _cancelTimestamp);
     }
 
     function payout(
@@ -50,6 +59,7 @@ contract DtravelFactory is Ownable {
         uint256 _treasuryAmount,
         uint256 _payoutTimestamp
     ) external {
-        emit Payout(_bookingId, _hostAmount, _treasuryAmount, _payoutTimestamp);
+        require(properties[msg.sender] == true, "Property not found");
+        emit Payout(msg.sender, _bookingId, _hostAmount, _treasuryAmount, _payoutTimestamp);
     }
 }
