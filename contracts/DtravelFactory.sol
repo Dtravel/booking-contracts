@@ -7,9 +7,9 @@ import "./DtravelProperty.sol";
 
 contract DtravelFactory is Ownable {
     address public configContract;
-    mapping(address => bool) private properties;
+    mapping(address => bool) private propertyMapping;
 
-    event PropertyCreated(uint256 _id, address _property);
+    event PropertyCreated(uint256[] ids, address[] properties, address host);
     event Book(address property, uint256 bookingId, uint256 bookedTimestamp);
     event Cancel(
         address property,
@@ -31,14 +31,20 @@ contract DtravelFactory is Ownable {
         configContract = _config;
     }
 
-    function deployProperty(uint256 _id, address _host) public onlyOwner {
-        DtravelProperty property = new DtravelProperty(_id, configContract, address(this), _host);
-        properties[address(property)] = true;
-        emit PropertyCreated(_id, address(property));
+    function deployProperty(uint256[] memory _ids, address _host) public onlyOwner {
+        require(_ids.length > 0, "Invalid property ids");
+        require(_host != address(0), "Host address is invalid");
+        address[] memory properties;
+        for (uint256 i = 0; i < _ids.length; i++) {
+            DtravelProperty property = new DtravelProperty(_ids[i], configContract, address(this), _host);
+            propertyMapping[address(property)] = true;
+            properties[i] = address(property);
+        }
+        emit PropertyCreated(_ids, properties, _host);
     }
 
     function book(uint256 _bookingId) external {
-        require(properties[msg.sender] == true, "Property not found");
+        require(propertyMapping[msg.sender] == true, "Property not found");
         emit Book(msg.sender, _bookingId, block.timestamp);
     }
 
@@ -49,7 +55,7 @@ contract DtravelFactory is Ownable {
         uint256 _treasuryAmount,
         uint256 _cancelTimestamp
     ) external {
-        require(properties[msg.sender] == true, "Property not found");
+        require(propertyMapping[msg.sender] == true, "Property not found");
         emit Cancel(msg.sender, _bookingId, _guestAmount, _hostAmount, _treasuryAmount, _cancelTimestamp);
     }
 
@@ -59,7 +65,7 @@ contract DtravelFactory is Ownable {
         uint256 _treasuryAmount,
         uint256 _payoutTimestamp
     ) external {
-        require(properties[msg.sender] == true, "Property not found");
+        require(propertyMapping[msg.sender] == true, "Property not found");
         emit Payout(msg.sender, _bookingId, _hostAmount, _treasuryAmount, _payoutTimestamp);
     }
 }
