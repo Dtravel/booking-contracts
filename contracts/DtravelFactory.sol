@@ -24,7 +24,8 @@ contract DtravelFactory is Ownable {
         bytes bookingId,
         uint256 hostAmount,
         uint256 treasuryAmount,
-        uint256 payoutTimestamp
+        uint256 payoutTimestamp,
+        uint8 payoutType // 1: full payout, 2: partial payout
     );
 
     constructor(address _config) {
@@ -63,9 +64,10 @@ contract DtravelFactory is Ownable {
         bytes memory _bookingId,
         uint256 _hostAmount,
         uint256 _treasuryAmount,
-        uint256 _payoutTimestamp
+        uint256 _payoutTimestamp,
+        uint8 _payoutType
     ) external {
         require(propertyMapping[msg.sender] == true, "Property not found");
-        emit Payout(msg.sender, _bookingId, _hostAmount, _treasuryAmount, _payoutTimestamp);
+        emit Payout(msg.sender, _bookingId, _hostAmount, _treasuryAmount, _payoutTimestamp, _payoutType);
     }
 }
