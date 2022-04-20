@@ -10,10 +10,10 @@ contract DtravelFactory is Ownable {
     mapping(address => bool) private propertyMapping;
 
     event PropertyCreated(uint256[] ids, address[] properties, address host);
-    event Book(address property, uint256 bookingId, uint256 bookedTimestamp);
+    event Book(address property, bytes bookingId, uint256 bookedTimestamp);
     event Cancel(
         address property,
-        uint256 bookingId,
+        bytes bookingId,
         uint256 guestAmount,
         uint256 hostAmount,
         uint256 treasuryAmount,
@@ -21,7 +21,7 @@ contract DtravelFactory is Ownable {
     );
     event Payout(
         address property,
-        uint256 bookingId,
+        bytes bookingId,
         uint256 hostAmount,
         uint256 treasuryAmount,
         uint256 payoutTimestamp
@@ -34,7 +34,7 @@ contract DtravelFactory is Ownable {
     function deployProperty(uint256[] memory _ids, address _host) public onlyOwner {
         require(_ids.length > 0, "Invalid property ids");
         require(_host != address(0), "Host address is invalid");
-        address[] memory properties;
+        address[] memory properties = new address[](_ids.length);
         for (uint256 i = 0; i < _ids.length; i++) {
             DtravelProperty property = new DtravelProperty(_ids[i], configContract, address(this), _host);
             propertyMapping[address(property)] = true;
@@ -43,13 +43,13 @@ contract DtravelFactory is Ownable {
         emit PropertyCreated(_ids, properties, _host);
     }
 
-    function book(uint256 _bookingId) external {
+    function book(bytes memory _bookingId) external {
         require(propertyMapping[msg.sender] == true, "Property not found");
         emit Book(msg.sender, _bookingId, block.timestamp);
     }
 
     function cancel(
-        uint256 _bookingId,
+        bytes memory _bookingId,
         uint256 _guestAmount,
         uint256 _hostAmount,
         uint256 _treasuryAmount,
@@ -60,7 +60,7 @@ contract DtravelFactory is Ownable {
     }
 
     function payout(
-        uint256 _bookingId,
+        bytes memory _bookingId,
         uint256 _hostAmount,
         uint256 _treasuryAmount,
         uint256 _payoutTimestamp
