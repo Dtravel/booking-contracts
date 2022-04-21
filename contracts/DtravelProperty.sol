@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./DtravelConfig.sol";
 import "./DtravelFactory.sol";
+import "./DtravelStructs.sol";
 
 enum BookingStatus {
     InProgress,
@@ -14,11 +15,6 @@ enum BookingStatus {
     PayOut,
     Cancelled,
     EmergencyCancelled
-}
-
-struct CancellationPolicy {
-    uint256 expiryTime;
-    uint256 refundAmount;
 }
 
 struct Booking {
@@ -82,62 +78,48 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     }
 
     /**
-    @param _token Token address
-    @param _checkInTimestamp Timestamp when the booking starts
-    @param _checkOutTimestamp Timestamp when the booking ends
-    @param _bookingAmount Amount of tokens to be paid
-    @param _cancellationPolicies Cancellation policies
+    @param _params Booking data provided by oracle backend
     @param _signature Signature of the transaction
     */
-    function book(
-        address _token,
-        bytes memory _bookingId,
-        uint256 _checkInTimestamp,
-        uint256 _checkOutTimestamp,
-        uint256 _bookingExpirationTimestamp,
-        uint256 _bookingAmount,
-        CancellationPolicy[] memory _cancellationPolicies,
-        bytes memory _signature
-    ) external nonReentrant {
-        require(block.timestamp < _bookingExpirationTimestamp, "Booking data is expired");
-        require(configContract.supportedTokens(_token) == true, "Token is not whitelisted");
-        require(_checkInTimestamp > block.timestamp, "Booking for past date is not allowed");
-        require(_checkOutTimestamp >= _checkInTimestamp + oneDay, "Booking period should be at least one night");
-        require(_cancellationPolicies.length > 0, "Booking should have at least one cancellation policy");
-
-        // verify signature and parameters
-        bytes32 messageHash = getBookingHash(
-            configContract.dtravelBackend(),
-            _bookingId,
-            msg.sender,
-            _checkInTimestamp,
-            _checkOutTimestamp,
-            _bookingAmount
+    function book(BookingParameters memory _params, bytes memory _signature) external nonReentrant {
+        require(block.timestamp < _params.bookingExpirationTimestamp, "Booking data is expired");
+        require(configContract.supportedTokens(_params.token) == true, "Token is not whitelisted");
+        require(_params.checkInTimestamp > block.timestamp, "Booking for past date is not allowed");
+        require(
+            _params.checkOutTimestamp >= _params.checkInTimestamp + oneDay,
+            "Booking period should be at least one night"
         );
-        bytes32 ethSignedMessageHash = getEthSignedMessageHash(messageHash);
+        require(_params.cancellationPolicies.length > 0, "Booking should have at least one cancellation policy");
 
-        require(verify(configContract.dtravelBackend(), ethSignedMessageHash, _signature), "Invalid signature");
+        require(factoryContract.verifyBookingData(_params, _signature), "Invalid signature");
 
-        require(IERC20(_token).allowance(msg.sender, address(this)) >= _bookingAmount, "Token allowance too low");
-        _safeTransferFrom(IERC20(_token), msg.sender, address(this), _bookingAmount);
+        require(
+            IERC20(_params.token).allowance(msg.sender, address(this)) >= _params.bookingAmount,
+            "Token allowance too low"
+        );
+        _safeTransferFrom(IERC20(_params.token), msg.sender, address(this), _params.bookingAmount);
 
         bookings.push();
         uint256 bookingIndex = bookings.length - 1;
-        for (uint8 i = 0; i < _cancellationPolicies.length; i++) {
-            bookings[bookingIndex].cancellationPolicies.push(_cancellationPolicies[i]);
+        for (uint8 i = 0; i < _params.cancellationPolicies.length; i++) {
+            bookings[bookingIndex].cancellationPolicies.push(_params.cancellationPolicies[i]);
         }
-        bookings[bookingIndex].id = _bookingId;
-        bookings[bookingIndex].checkInTimestamp = _checkInTimestamp;
-        bookings[bookingIndex].checkOutTimestamp = _checkOutTimestamp;
-        bookings[bookingIndex].balance = _bookingAmount;
+        bookings[bookingIndex].id = _params.bookingId;
+        bookings[bookingIndex].checkInTimestamp = _params.checkInTimestamp;
+        bookings[bookingIndex].checkOutTimestamp = _params.checkOutTimestamp;
+        bookings[bookingIndex].balance = _params.bookingAmount;
         bookings[bookingIndex].guest = msg.sender;
-        bookings[bookingIndex].token = _token;
+        bookings[bookingIndex].token = _params.token;
         bookings[bookingIndex].status = BookingStatus.InProgress;
 
-        bookingsMap[_bookingId] = bookingIndex;
+        bookingsMap[_params.bookingId] = bookingIndex;
 
         // emit Book event
-        factoryContract.book(_bookingId);
+        factoryContract.book(_params.bookingId);
+    }
+
+    function veriyBookingData(BookingParameters memory _params, bytes memory _signature) external view returns (bool) {
+        return factoryContract.verifyBookingData(_params, _signature);
     }
 
     function updateBookingStatus(bytes memory _bookingId, BookingStatus _status) internal {
@@ -245,61 +227,4 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         return sent;
     }
 
-    function getBookingHash(
-        address _signer,
-        bytes memory _bookingId,
-        address _guest,
-        uint256 _checkInTimestamp,
-        uint256 _checkOutTimestamp,
-        uint256 _bookingAmount
-    ) public pure returns (bytes32) {
-        return
-            keccak256(
-                abi.encodePacked(_signer, _bookingId, _guest, _checkInTimestamp, _checkOutTimestamp, _bookingAmount)
-            );
-    }
-
-    function getEthSignedMessageHash(bytes32 _messageHash) public pure returns (bytes32) {
-        return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", _messageHash));
-    }
-
-    function verify(
-        address _signer,
-        bytes32 ethSignedMessageHash,
-        bytes memory signature
-    ) public pure returns (bool) {
-        return recoverSigner(ethSignedMessageHash, signature) == _signer;
-    }
-
-    function recoverSigner(bytes32 _ethSignedMessageHash, bytes memory _signature) public pure returns (address) {
-        (bytes32 r, bytes32 s, uint8 v) = splitSignature(_signature);
-        return ecrecover(_ethSignedMessageHash, v, r, s);
-    }
-
-    function splitSignature(bytes memory sig)
-        public
-        pure
-        returns (
-            bytes32 r,
-            bytes32 s,
-            uint8 v
-        )
-    {
-        require(sig.length == 65, "invalid signature length");
-        assembly {
-            /*
-            First 32 bytes stores the length of the signature
-            add(sig, 32) = pointer of sig + 32
-            effectively, skips first 32 bytes of signature
-            mload(p) loads next 32 bytes starting at the memory address p into memory
-            */
-            // first 32 bytes, after the length prefix
-            r := mload(add(sig, 32))
-            // second 32 bytes
-            s := mload(add(sig, 64))
-            // final byte (first byte of the next 32 bytes)
-            v := byte(0, mload(add(sig, 96)))
-        }
-        return (r, s, v);
-    }
 }

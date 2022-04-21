@@ -4,6 +4,8 @@ pragma solidity >=0.8.0 <0.9.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./DtravelProperty.sol";
+import "./DtravelStructs.sol";
+import { DtravelEIP712 } from "./DtravelEIP712.sol";
 
 contract DtravelFactory is Ownable {
     address public configContract;
@@ -32,6 +34,11 @@ contract DtravelFactory is Ownable {
         configContract = _config;
     }
 
+    modifier onlyMatchingProperty() {
+        require(propertyMapping[msg.sender] == true, "Property not found");
+        _;
+    }
+
     function deployProperty(uint256[] memory _ids, address _host) public onlyOwner {
         require(_ids.length > 0, "Invalid property ids");
         require(_host != address(0), "Host address is invalid");
@@ -44,8 +51,16 @@ contract DtravelFactory is Ownable {
         emit PropertyCreated(_ids, properties, _host);
     }
 
-    function book(bytes memory _bookingId) external {
-        require(propertyMapping[msg.sender] == true, "Property not found");
+    function verifyBookingData(BookingParameters memory _params, bytes memory _signature) external view onlyMatchingProperty returns (bool) {
+        uint256 chainId;
+        assembly {
+            chainId := chainid()
+        }
+        require(_params.cancellationPolicies.length > 0, "Invalid cancellation policy array");
+        return DtravelEIP712.verify(_params, chainId, msg.sender, _signature);
+    }
+
+    function book(bytes memory _bookingId) external onlyMatchingProperty {
         emit Book(msg.sender, _bookingId, block.timestamp);
     }
 
@@ -55,8 +70,7 @@ contract DtravelFactory is Ownable {
         uint256 _hostAmount,
         uint256 _treasuryAmount,
         uint256 _cancelTimestamp
-    ) external {
-        require(propertyMapping[msg.sender] == true, "Property not found");
+    ) external onlyMatchingProperty {
         emit Cancel(msg.sender, _bookingId, _guestAmount, _hostAmount, _treasuryAmount, _cancelTimestamp);
     }
 
@@ -66,8 +80,7 @@ contract DtravelFactory is Ownable {
         uint256 _treasuryAmount,
         uint256 _payoutTimestamp,
         uint8 _payoutType
-    ) external {
-        require(propertyMapping[msg.sender] == true, "Property not found");
+    ) external  {
         emit Payout(msg.sender, _bookingId, _hostAmount, _treasuryAmount, _payoutTimestamp, _payoutType);
     }
 }
