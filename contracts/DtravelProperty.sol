@@ -147,5 +147,4 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     function getBooking(string memory _bookingId) external view returns (Booking memory) {
         return bookings[getBookingIndex(_bookingId)];
     }
-
 }
