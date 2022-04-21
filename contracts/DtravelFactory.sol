@@ -5,6 +5,8 @@ pragma solidity >=0.8.4 <0.9.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/IDtravelConfig.sol";
 import "./DtravelProperty.sol";
+import "./DtravelStructs.sol";
+import { DtravelEIP712 } from "./DtravelEIP712.sol";
 
 contract DtravelFactory is Ownable {
   DtravelProperty[] private properties;

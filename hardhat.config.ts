@@ -16,7 +16,6 @@ import 'hardhat-contract-sizer'
 import '@tenderly/hardhat-tenderly'
 import '@openzeppelin/hardhat-upgrades'
 import '@typechain/hardhat'
-import 'solidity-coverage'
 
 // Networks
 
@@ -60,10 +59,9 @@ function setupDefaultNetworkProviders(buidlerConfig) {
       url: getDefaultProviderURL(netConfig.network),
       gas: netConfig.gasPrice || 'auto',
       gasPrice: netConfig.gasPrice || 'auto',
-      // accounts: {
-      //   mnemonic: getAccountMnemonic(),
-      // },
-      accounts: [getAccountPrivateKey()],
+      accounts: {
+        mnemonic: getAccountMnemonic(),
+      },
     }
   }
 }
