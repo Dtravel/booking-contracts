@@ -26,7 +26,7 @@ describe("DtravelEIP712", function () {
         });
         let dtravelEIP712Test = await DtravelEIP712Test.deploy();
         await dtravelEIP712Test.deployed();
-      
+
         const domain = {
             name: 'Dtravel Booking',
             version: '1',
