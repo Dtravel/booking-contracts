@@ -1,7 +1,7 @@
-//SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
 
-import "hardhat/console.sol";
+import "./DtravelStructs.sol";
 
 struct EIP712Domain {
     string name;
@@ -10,57 +10,34 @@ struct EIP712Domain {
     address verifyingContract;
 }
 
-struct CancellationPolicy {
-    uint256 expiryTime;
-    uint256 refundAmount;
-}
-
-struct BookingParameters {
-    address signer;
-    address token;
-    uint256 bookingId;
-    uint256 checkInTimestamp;
-    uint256 checkOutTimestamp;
-    uint256 bookingAmount;
-    CancellationPolicy[] cancellationPolicies;
-}
-
-contract DtravelEIP712 {
+library DtravelEIP712 {
     bytes32 constant EIP712DOMAIN_TYPEHASH =
-        keccak256(
-            "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-        );
+        keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
     bytes32 constant CANCELLATION_POLICY_TYPEHASH =
-        keccak256(
-            "CancellationPolicy(uint256 expiryTime,uint256 refundAmount)"
-        );
+        keccak256("CancellationPolicy(uint256 expiryTime,uint256 refundAmount)");
     bytes32 constant BOOKING_PARAMETERS_TYPEHASH =
         keccak256(
-            "BookingParameters(address signer,address token,uint256 bookingId,uint256 checkInTimestamp,uint256 checkOutTimestamp,uint256 bookingAmount,CancellationPolicy[] cancellationPolicies)CancellationPolicy(uint256 expiryTime,uint256 refundAmount)"
+            "BookingParameters(address signer,address token,bytes bookingId,uint256 checkInTimestamp,uint256 checkOutTimestamp,uint256 bookingExpirationTimestamp,uint256 bookingAmount,CancellationPolicy[] cancellationPolicies)CancellationPolicy(uint256 expiryTime,uint256 refundAmount)"
         );
 
-    bytes32 DOMAIN_SEPARATOR;
-
-    constructor() {
-        uint256 chainId;
-        assembly {
-            chainId := chainid()
-        }
-        DOMAIN_SEPARATOR = hashDomain(
+    function verify(
+        BookingParameters memory parameters,
+        uint256 chainId,
+        address verifyingContract,
+        bytes memory signature
+    ) external pure returns (bool) {
+        bytes32 domainSeperator = hashDomain(
             EIP712Domain({
                 name: "Dtravel Booking",
                 version: "1",
-                chainId: 1,
-                verifyingContract: address(this)
+                chainId: chainId,
+                verifyingContract: verifyingContract
             })
         );
+        return recoverSigner(parameters, domainSeperator, signature) == parameters.signer;
     }
 
-    function hashDomain(EIP712Domain memory eip712Domain)
-        internal
-        pure
-        returns (bytes32)
-    {
+    function hashDomain(EIP712Domain memory eip712Domain) internal pure returns (bytes32) {
         return
             keccak256(
                 abi.encode(
@@ -73,35 +50,24 @@ contract DtravelEIP712 {
             );
     }
 
-    function hashCancellationPolicy(CancellationPolicy memory cancellationPolicy)
-        internal
-        pure
-        returns (bytes32)
-    {
+    function hashCancellationPolicy(CancellationPolicy memory cancellationPolicy) internal pure returns (bytes32) {
         return
             keccak256(
-                abi.encode(
-                    CANCELLATION_POLICY_TYPEHASH,
-                    cancellationPolicy.expiryTime,
-                    cancellationPolicy.refundAmount
-                )
+                abi.encode(CANCELLATION_POLICY_TYPEHASH, cancellationPolicy.expiryTime, cancellationPolicy.refundAmount)
             );
     }
 
-    function hashBookingParameters(BookingParameters memory bookingParameters)
-        internal
-        pure
-        returns (bytes32)
-    {
+    function hashBookingParameters(BookingParameters memory bookingParameters) internal pure returns (bytes32) {
         return
             keccak256(
                 abi.encode(
                     BOOKING_PARAMETERS_TYPEHASH,
                     bookingParameters.signer,
                     bookingParameters.token,
-                    bookingParameters.bookingId,
+                    keccak256(bookingParameters.bookingId),
                     bookingParameters.checkInTimestamp,
                     bookingParameters.checkOutTimestamp,
+                    bookingParameters.bookingExpirationTimestamp,
                     bookingParameters.bookingAmount,
                     hashCancellationPolicyArray(bookingParameters.cancellationPolicies)
                 )
@@ -116,27 +82,21 @@ contract DtravelEIP712 {
         return keccak256(concatedHashArray);
     }
 
-    function verify(
+    function digest(BookingParameters memory parameters, bytes32 domainSeparator) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked("\x19\x01", domainSeparator, hashBookingParameters(parameters)));
+    }
+
+    function recoverSigner(
         BookingParameters memory parameters,
+        bytes32 domainSeparator,
         bytes memory signature
-    ) external view returns (bool) {
+    ) internal pure returns (address) {
         (bytes32 r, bytes32 s, uint8 v) = splitSignature(signature);
-        return ecrecover(digest(parameters), v, r, s) == parameters.signer;
-    }
-
-    function digest(BookingParameters memory parameters) public view returns (bytes32) {
-        return keccak256(
-            abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, hashBookingParameters(parameters))
-        );
-    }
-
-    function recoverSigner(BookingParameters memory parameters, bytes memory signature) public view returns (address) {
-        (bytes32 r, bytes32 s, uint8 v) = splitSignature(signature);
-        return ecrecover(digest(parameters), v, r, s);
+        return ecrecover(digest(parameters, domainSeparator), v, r, s);
     }
 
     function splitSignature(bytes memory sig)
-        public
+        internal
         pure
         returns (
             bytes32 r,
