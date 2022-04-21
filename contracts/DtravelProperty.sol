@@ -144,18 +144,10 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
 
         uint256 guestAmount = 0;
 
-        if (booking.cancellationPolicies.length >= 2) {
-            for (uint256 i = 0; i < booking.cancellationPolicies.length - 1; i++) {
-                if (
-                    booking.cancellationPolicies[i].expiryTime <= block.timestamp &&
-                    booking.cancellationPolicies[i + 1].expiryTime > block.timestamp
-                ) {
-                    guestAmount = booking.cancellationPolicies[i].refundAmount;
-                }
-            }
-        } else if (booking.cancellationPolicies.length == 1) {
-            if (booking.cancellationPolicies[0].expiryTime > block.timestamp) {
-                guestAmount = booking.cancellationPolicies[0].refundAmount;
+        for (uint256 i = 0; i < booking.cancellationPolicies.length; i++) {
+            if (booking.cancellationPolicies[i].expiryTime >= block.timestamp) {
+                guestAmount = booking.cancellationPolicies[i].refundAmount;
+                break;
             }
         }
 
@@ -226,5 +218,4 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         bool sent = token.transferFrom(sender, recipient, amount);
         return sent;
     }
-
 }
