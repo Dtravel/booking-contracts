@@ -118,7 +118,8 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         factoryContract.book(_params.bookingId);
     }
 
-    function veriyBookingData(BookingParameters memory _params, bytes memory _signature) external view returns (bool) {
+    // TODO: testing only, remove it when contract goes live
+    function verifyBookingData(BookingParameters memory _params, bytes memory _signature) external view returns (bool) {
         return factoryContract.verifyBookingData(_params, _signature);
     }
 
