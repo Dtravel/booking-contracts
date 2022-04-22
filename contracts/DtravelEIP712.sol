@@ -24,6 +24,7 @@ library DtravelEIP712 {
         BookingParameters memory parameters,
         uint256 chainId,
         address verifyingContract,
+        address authorizedSigner,
         bytes memory signature
     ) external pure returns (bool) {
         bytes32 domainSeperator = hashDomain(
@@ -34,7 +35,7 @@ library DtravelEIP712 {
                 verifyingContract: verifyingContract
             })
         );
-        return recoverSigner(parameters, domainSeperator, signature) == parameters.signer;
+        return recoverSigner(parameters, domainSeperator, signature) == authorizedSigner;
     }
 
     function hashDomain(EIP712Domain memory eip712Domain) internal pure returns (bytes32) {

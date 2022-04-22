@@ -52,12 +52,13 @@ contract DtravelFactory is Ownable {
     }
 
     function verifyBookingData(BookingParameters memory _params, bytes memory _signature) external view onlyMatchingProperty returns (bool) {
+        require(_params.cancellationPolicies.length > 0, "Invalid cancellation policy array");
         uint256 chainId;
         assembly {
             chainId := chainid()
         }
-        require(_params.cancellationPolicies.length > 0, "Invalid cancellation policy array");
-        return DtravelEIP712.verify(_params, chainId, msg.sender, _signature);
+        DtravelConfig config = DtravelConfig(configContract);
+        return DtravelEIP712.verify(_params, chainId, msg.sender, config.dtravelBackend(),  _signature);
     }
 
     function book(bytes memory _bookingId) external onlyMatchingProperty {
