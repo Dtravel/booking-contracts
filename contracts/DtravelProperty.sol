@@ -37,10 +37,6 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     address host; // host address
     uint256 private constant oneDay = 60 * 60 * 24; // one day in seconds
 
-    string private constant CANCELLATIONPOLICY_TYPE = "CancellationPolicy(uint256 expiryTime,uint256 refundAmount)";
-    string private constant BOOKING_TYPE =
-        "uint256 id,uint256 checkInTimestamp,uint256 checkOutTimestamp,address guest,address token,Identity bidder)Identity(uint256 userId,address wallet)";
-
     /**
     @param _id Property Id
     @param _config Contract address of DtravelConfig
