@@ -81,7 +81,7 @@ contract DtravelFactory is Ownable {
         uint256 _treasuryAmount,
         uint256 _payoutTimestamp,
         uint8 _payoutType
-    ) external  {
+    ) external onlyMatchingProperty {
         emit Payout(msg.sender, _bookingId, _hostAmount, _treasuryAmount, _payoutTimestamp, _payoutType);
     }
 }
