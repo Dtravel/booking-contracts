@@ -114,11 +114,6 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         factoryContract.book(_params.bookingId);
     }
 
-    // TODO: testing only, remove it when contract goes live
-    function verifyBookingData(BookingParameters memory _params, bytes memory _signature) external view returns (bool) {
-        return factoryContract.verifyBookingData(_params, _signature);
-    }
-
     function updateBookingStatus(bytes memory _bookingId, BookingStatus _status) internal {
         if (
             _status == BookingStatus.Cancelled ||
@@ -177,7 +172,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         Booking memory booking = bookings[bookingsMap[_bookingId]];
         require(booking.guest != address(0), "Booking does not exist");
         require(booking.status == BookingStatus.InProgress, "Booking is already cancelled or payout");
-        require(booking.balance < _amount, "Insufficient Booking balance");
+        require(booking.balance >= _amount, "Insufficient Booking balance");
 
         if (_amount == booking.balance) {
             updateBookingStatus(_bookingId, BookingStatus.PayOut);
@@ -204,6 +199,10 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
 
     function bookingHistory() external view returns (Booking[] memory) {
         return bookings;
+    }
+
+    function getBooking(bytes memory _bookingId) external view returns (Booking memory) {
+        return bookings[bookingsMap[_bookingId]];
     }
 
     function _safeTransferFrom(
