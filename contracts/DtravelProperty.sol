@@ -97,7 +97,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
             IERC20(_params.token).allowance(msg.sender, address(this)) >= _params.bookingAmount,
             "Token allowance too low"
         );
-        _safeTransferFrom(IERC20(_params.token), msg.sender, address(this), _params.bookingAmount);
+        _safeTransferFrom(_params.token, msg.sender, address(this), _params.bookingAmount);
 
         bookings.push();
         uint256 bookingIndex = bookings.length - 1;
@@ -157,9 +157,9 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         uint256 treasuryAmount = ((booking.balance - guestAmount) * configContract.fee()) / 10000;
         uint256 hostAmount = booking.balance - guestAmount - treasuryAmount;
 
-        IERC20(booking.token).transfer(booking.guest, guestAmount);
-        IERC20(booking.token).transfer(host, hostAmount);
-        IERC20(booking.token).transfer(configContract.dtravelTreasury(), treasuryAmount);
+        _safeTransfer(booking.token, booking.guest, guestAmount);
+        _safeTransfer(booking.token, host, hostAmount);
+        _safeTransfer(booking.token, configContract.dtravelTreasury(), treasuryAmount);
 
         factoryContract.cancel(_bookingId, guestAmount, hostAmount, treasuryAmount, block.timestamp);
     }
@@ -193,8 +193,8 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         uint256 hostAmount = (_amount * (10000 - configContract.fee())) / 10000;
         uint256 treasuryAmount = _amount - hostAmount;
 
-        IERC20(booking.token).transfer(host, hostAmount);
-        IERC20(booking.token).transfer(configContract.dtravelTreasury(), treasuryAmount);
+        _safeTransfer(booking.token, host, hostAmount);
+        _safeTransfer(booking.token, configContract.dtravelTreasury(), treasuryAmount);
 
         factoryContract.payout(
             _bookingId,
@@ -210,12 +210,27 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     }
 
     function _safeTransferFrom(
-        IERC20 token,
-        address sender,
-        address recipient,
-        uint256 amount
+        address _token,
+        address _sender,
+        address _recipient,
+        uint256 _amount
     ) internal returns (bool) {
-        bool sent = token.transferFrom(sender, recipient, amount);
-        return sent;
+        if (_amount > 0) {
+            bool sent = IERC20(_token).transferFrom(_sender, _recipient, _amount);
+            return sent;
+        }
+        return false;
+    }
+
+    function _safeTransfer(
+        address _token,
+        address _recipient,
+        uint256 _amount
+    ) internal returns (bool) {
+        if (_amount > 0) {
+            bool sent = IERC20(_token).transfer(_recipient, _amount);
+            return sent;
+        }
+        return false;
     }
 }
