@@ -95,9 +95,9 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
 
     // Refund to the guest
 
-        IERC20(booking.token).transfer(booking.guest, guestAmount);
-        IERC20(booking.token).transfer(host, hostAmount);
-        IERC20(booking.token).transfer(configContract.dtravelTreasury(), treasuryAmount);
+        _safeTransfer(booking.token, booking.guest, guestAmount);
+        _safeTransfer(booking.token, host, hostAmount);
+        _safeTransfer(booking.token, configContract.dtravelTreasury(), treasuryAmount);
 
         factoryContract.cancelByGuest(_bookingId, guestAmount, hostAmount, treasuryAmount, block.timestamp);
     }
