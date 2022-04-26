@@ -37,10 +37,6 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     address host; // host address
     uint256 private constant oneDay = 60 * 60 * 24; // one day in seconds
 
-    string private constant CANCELLATIONPOLICY_TYPE = "CancellationPolicy(uint256 expiryTime,uint256 refundAmount)";
-    string private constant BOOKING_TYPE =
-        "uint256 id,uint256 checkInTimestamp,uint256 checkOutTimestamp,address guest,address token,Identity bidder)Identity(uint256 userId,address wallet)";
-
     /**
     @param _id Property Id
     @param _config Contract address of DtravelConfig
@@ -118,10 +114,6 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         factoryContract.book(_params.bookingId);
     }
 
-    function veriyBookingData(BookingParameters memory _params, bytes memory _signature) external view returns (bool) {
-        return factoryContract.verifyBookingData(_params, _signature);
-    }
-
     function updateBookingStatus(bytes memory _bookingId, BookingStatus _status) internal {
         if (
             _status == BookingStatus.Cancelled ||
@@ -180,7 +172,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         Booking memory booking = bookings[bookingsMap[_bookingId]];
         require(booking.guest != address(0), "Booking does not exist");
         require(booking.status == BookingStatus.InProgress, "Booking is already cancelled or payout");
-        require(booking.balance < _amount, "Insufficient Booking balance");
+        require(booking.balance >= _amount, "Insufficient Booking balance");
 
         if (_amount == booking.balance) {
             updateBookingStatus(_bookingId, BookingStatus.PayOut);
@@ -207,6 +199,10 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
 
     function bookingHistory() external view returns (Booking[] memory) {
         return bookings;
+    }
+
+    function getBooking(bytes memory _bookingId) external view returns (Booking memory) {
+        return bookings[bookingsMap[_bookingId]];
     }
 
     function _safeTransferFrom(
