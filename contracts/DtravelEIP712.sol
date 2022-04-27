@@ -17,7 +17,7 @@ library DtravelEIP712 {
         keccak256("CancellationPolicy(uint256 expiryTime,uint256 refundAmount)");
     bytes32 constant BOOKING_PARAMETERS_TYPEHASH =
         keccak256(
-            "BookingParameters(address signer,address token,bytes bookingId,uint256 checkInTimestamp,uint256 checkOutTimestamp,uint256 bookingExpirationTimestamp,uint256 bookingAmount,CancellationPolicy[] cancellationPolicies)CancellationPolicy(uint256 expiryTime,uint256 refundAmount)"
+            "BookingParameters(address signer,address token,string bookingId,uint256 checkInTimestamp,uint256 checkOutTimestamp,uint256 bookingExpirationTimestamp,uint256 bookingAmount,CancellationPolicy[] cancellationPolicies)CancellationPolicy(uint256 expiryTime,uint256 refundAmount)"
         );
 
     function verify(
@@ -65,7 +65,7 @@ library DtravelEIP712 {
                     BOOKING_PARAMETERS_TYPEHASH,
                     bookingParameters.signer,
                     bookingParameters.token,
-                    keccak256(bookingParameters.bookingId),
+                    bookingParameters.bookingId,
                     bookingParameters.checkInTimestamp,
                     bookingParameters.checkOutTimestamp,
                     bookingParameters.bookingExpirationTimestamp,
