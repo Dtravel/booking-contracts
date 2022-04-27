@@ -65,7 +65,7 @@ library DtravelEIP712 {
                     BOOKING_PARAMETERS_TYPEHASH,
                     bookingParameters.signer,
                     bookingParameters.token,
-                    bookingParameters.bookingId,
+                    keccak256(bytes(bookingParameters.bookingId)),
                     bookingParameters.checkInTimestamp,
                     bookingParameters.checkOutTimestamp,
                     bookingParameters.bookingExpirationTimestamp,
