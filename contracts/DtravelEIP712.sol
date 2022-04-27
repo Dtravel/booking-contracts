@@ -75,11 +75,15 @@ library DtravelEIP712 {
     }
 
     function hashCancellationPolicyArray(CancellationPolicy[] memory array) internal pure returns (bytes32) {
-        bytes memory concatedHashArray = bytes.concat(hashCancellationPolicy(array[0]));
-        for (uint256 i = 1; i < array.length; i++) {
-            concatedHashArray = bytes.concat(concatedHashArray, hashCancellationPolicy(array[i]));
+        if (array.length > 0) {
+            bytes memory concatedHashArray = bytes.concat(hashCancellationPolicy(array[0]));
+            for (uint256 i = 1; i < array.length; i++) {
+                concatedHashArray = bytes.concat(concatedHashArray, hashCancellationPolicy(array[i]));
+            }
+            return keccak256(concatedHashArray);
+        } else {
+            return keccak256("");
         }
-        return keccak256(concatedHashArray);
     }
 
     function digest(BookingParameters memory parameters, bytes32 domainSeparator) internal pure returns (bytes32) {
