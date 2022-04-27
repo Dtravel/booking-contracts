@@ -36,6 +36,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     DtravelConfig configContract; // config contract
     DtravelFactory factoryContract; // factory contract
     address host; // host address
+    mapping(address => bool) public hostDelegates; // addresses authorized by the host to act in the host's behalf
     uint256 private constant oneDay = 60 * 60 * 24; // one day in seconds
 
     /**
@@ -66,12 +67,20 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     }
 
     /**
-    @notice Modifier to check if the caller is the host
+    @notice Modifier to check if the caller is the host or a delegate approved by the host
     */
-    modifier onlyHost() {
-        require(msg.sender == host, "Only Host is authorized to call this action");
+    modifier onlyHostOrDelegate() {
+        require(msg.sender == host || hostDelegates(msg.sender) == true, "Only the host or a host's delegate is authorized to call this action");
 
         _;
+    }
+    
+    function approve(address delegate) external onlyHostOrDelegate {
+      hostDelegates(delegate) = true;
+    }
+
+    function revoke(address delegate) external onlyHostOrDelegate {
+      hostDelegates(delegate) = false;
     }
 
     /**
@@ -159,18 +168,6 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         factoryContract.cancelByGuest(_bookingId, guestAmount, hostAmount, treasuryAmount, block.timestamp);
     }
 
-    // function emergencyCancel(string memory _bookingId) external onlyBackend nonReentrant {
-    //     Booking memory booking = bookings[getBookingIndex(_bookingId)];
-    //     require(booking.guest != address(0), "Booking does not exist");
-    //     require(booking.status == BookingStatus.InProgress, "Booking is already cancelled or payout");
-
-    //     updateBookingStatus(_bookingId, BookingStatus.EmergencyCancelled);
-
-    //     // Refund to the guest
-
-    //     IERC20(booking.token).transfer(booking.guest, booking.balance);
-    // }
-
     /**
     Anyone can call the `payout` function. When it is called, the difference between 
     the remaining balance and the amount due to the guest if the guest decides to cancel
@@ -215,7 +212,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     Any amount that has been paid out to the host or to the treasury through calls to `payout` 
     will have to be refunded manually to the guest.
     */
-    function cancelByHost(string memory _bookingId) public nonReentrant onlyHost {
+    function cancelByHost(string memory _bookingId) public nonReentrant onlyHostOrDelegate {
         Booking storage booking = bookings[getBookingIndex(_bookingId)];
         require(booking.guest != address(0), "Booking does not exist");
         require(
