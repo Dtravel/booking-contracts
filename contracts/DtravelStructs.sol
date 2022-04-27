@@ -8,7 +8,6 @@ struct CancellationPolicy {
 }
 
 struct BookingParameters {
-    address signer;
     address token;
     string bookingId;
     uint256 checkInTimestamp;
