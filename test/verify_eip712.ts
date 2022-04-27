@@ -61,7 +61,7 @@ describe('DtravelEIP712', function () {
       const data = {
         signer: '0xDFe6849bd982484cA1a894f477a8507Ff480D54d',
         token: '0x9CAC127A2F2ea000D0AcBA03A2A52Be38F8ea3ec',
-        bookingId: new TextEncoder().encode('2hB2o789n'),
+        bookingId: '2hB2o789n',
         checkInTimestamp: 1650687132,
         checkOutTimestamp: 1650860051,
         bookingExpirationTimestamp: 1650687132,
@@ -92,7 +92,7 @@ describe('DtravelEIP712', function () {
       const data = {
         signer: '0xDFe6849bd982484cA1a894f477a8507Ff480D54d',
         token: '0x9CAC127A2F2ea000D0AcBA03A2A52Be38F8ea3ec',
-        bookingId: new TextEncoder().encode('2hB2o789n'),
+        bookingId: '2hB2o789n',
         checkInTimestamp: 1650687132,
         checkOutTimestamp: 1650860051,
         bookingExpirationTimestamp: 1650687132,
@@ -122,7 +122,7 @@ describe('DtravelEIP712', function () {
       const data = {
         signer: '0xDFe6849bd982484cA1a894f477a8507Ff480D54d',
         token: '0x9CAC127A2F2ea000D0AcBA03A2A52Be38F8ea3ec',
-        bookingId: new TextEncoder().encode('2hB2o789n'),
+        bookingId: '2hB2o789n',
         checkInTimestamp: 1650687132,
         checkOutTimestamp: 1650860051,
         bookingExpirationTimestamp: 1650687132,
@@ -155,7 +155,7 @@ describe('DtravelEIP712', function () {
       const data = {
         signer: '0xDFe6849bd982484cA1a894f477a8507Ff480D54d',
         token: '0x9CAC127A2F2ea000D0AcBA03A2A52Be38F8ea3ec',
-        bookingId: new TextEncoder().encode('2hB2o789n'),
+        bookingId: '2hB2o789n',
         checkInTimestamp: 1650687132,
         checkOutTimestamp: 1650860051,
         bookingExpirationTimestamp: 1650687132,
@@ -185,7 +185,7 @@ describe('DtravelEIP712', function () {
       const data = {
         signer: '0xDFe6849bd982484cA1a894f477a8507Ff480D54d',
         token: '0x9CAC127A2F2ea000D0AcBA03A2A52Be38F8ea3ec',
-        bookingId: new TextEncoder().encode('2hB2o789n'),
+        bookingId: '2hB2o789n',
         checkInTimestamp: 1650687132,
         checkOutTimestamp: 1650860051,
         bookingExpirationTimestamp: 1650687132,
