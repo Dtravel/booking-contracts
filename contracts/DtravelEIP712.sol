@@ -17,7 +17,7 @@ library DtravelEIP712 {
         keccak256("CancellationPolicy(uint256 expiryTime,uint256 refundAmount)");
     bytes32 constant BOOKING_PARAMETERS_TYPEHASH =
         keccak256(
-            "BookingParameters(address signer,address token,string bookingId,uint256 checkInTimestamp,uint256 checkOutTimestamp,uint256 bookingExpirationTimestamp,uint256 bookingAmount,CancellationPolicy[] cancellationPolicies)CancellationPolicy(uint256 expiryTime,uint256 refundAmount)"
+            "BookingParameters(address token,string bookingId,uint256 checkInTimestamp,uint256 checkOutTimestamp,uint256 bookingExpirationTimestamp,uint256 bookingAmount,CancellationPolicy[] cancellationPolicies)CancellationPolicy(uint256 expiryTime,uint256 refundAmount)"
         );
 
     function verify(
@@ -63,7 +63,6 @@ library DtravelEIP712 {
             keccak256(
                 abi.encode(
                     BOOKING_PARAMETERS_TYPEHASH,
-                    bookingParameters.signer,
                     bookingParameters.token,
                     keccak256(bytes(bookingParameters.bookingId)),
                     bookingParameters.checkInTimestamp,
@@ -76,11 +75,15 @@ library DtravelEIP712 {
     }
 
     function hashCancellationPolicyArray(CancellationPolicy[] memory array) internal pure returns (bytes32) {
-        bytes memory concatedHashArray = bytes.concat(hashCancellationPolicy(array[0]));
-        for (uint256 i = 1; i < array.length; i++) {
-            concatedHashArray = bytes.concat(concatedHashArray, hashCancellationPolicy(array[i]));
+        if (array.length > 0) {
+            bytes memory concatedHashArray = bytes.concat(hashCancellationPolicy(array[0]));
+            for (uint256 i = 1; i < array.length; i++) {
+                concatedHashArray = bytes.concat(concatedHashArray, hashCancellationPolicy(array[i]));
+            }
+            return keccak256(concatedHashArray);
+        } else {
+            return keccak256("");
         }
-        return keccak256(concatedHashArray);
     }
 
     function digest(BookingParameters memory parameters, bytes32 domainSeparator) internal pure returns (bytes32) {
