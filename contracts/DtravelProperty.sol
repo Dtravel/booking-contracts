@@ -80,7 +80,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     function book(BookingParameters memory _params, bytes memory _signature) external nonReentrant {
         require(block.timestamp < _params.bookingExpirationTimestamp, "Booking data is expired");
         require(configContract.supportedTokens(_params.token) == true, "Token is not whitelisted");
-        require(_params.checkInTimestamp > block.timestamp, "Booking for past date is not allowed");
+        require(_params.checkInTimestamp + oneDay >= block.timestamp, "Booking for past day is not allowed");
         require(
             _params.checkOutTimestamp >= _params.checkInTimestamp + oneDay,
             "Booking period should be at least one night"
