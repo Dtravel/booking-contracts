@@ -12,8 +12,9 @@ import "./DtravelStructs.sol";
 enum BookingStatus {
     InProgress,
     PartialPayOut,
-    PayOut,
-    Cancelled,
+    FullyPayOut,
+    CancelledByGuest,
+    CancelledByHost,
     EmergencyCancelled
 }
 
@@ -78,6 +79,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     @param _signature Signature of the transaction
     */
     function book(BookingParameters memory _params, bytes memory _signature) external nonReentrant {
+        require(bookingsMap[_params.bookingId] > 0, "Booking already exists");
         require(block.timestamp < _params.bookingExpirationTimestamp, "Booking data is expired");
         require(configContract.supportedTokens(_params.token) == true, "Token is not whitelisted");
         require(_params.checkInTimestamp > block.timestamp, "Booking for past date is not allowed");
@@ -96,7 +98,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         _safeTransferFrom(_params.token, msg.sender, address(this), _params.bookingAmount);
 
         bookings.push();
-        uint256 bookingIndex = bookings.length - 1;
+        uint256 bookingIndex = bookings.length; // index of the new booking starting from 1
         for (uint8 i = 0; i < _params.cancellationPolicies.length; i++) {
             bookings[bookingIndex].cancellationPolicies.push(_params.cancellationPolicies[i]);
         }
@@ -115,23 +117,26 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     }
 
     function updateBookingStatus(string memory _bookingId, BookingStatus _status) internal {
+        require(bookingsMap[_bookingId] > 0, "Booking does not exist");
         if (
-            _status == BookingStatus.Cancelled ||
-            _status == BookingStatus.PayOut ||
+            _status == BookingStatus.CancelledByGuest ||
+            _status == BookingStatus.CancelledByHost ||
+            _status == BookingStatus.FullyPayOut ||
             _status == BookingStatus.EmergencyCancelled
         ) {
-            bookings[bookingsMap[_bookingId]].balance = 0;
+            bookings[bookingsMap[_bookingId] - 1].balance = 0;
         }
-        bookings[bookingsMap[_bookingId]].status = _status;
+        bookings[bookingsMap[_bookingId] - 1].status = _status;
     }
 
     function cancel(string memory _bookingId) public nonReentrant {
-        Booking memory booking = bookings[bookingsMap[_bookingId]];
+        require(bookingsMap[_bookingId] > 0, "Booking does not exist");
+        Booking memory booking = bookings[bookingsMap[_bookingId] - 1];
         require(booking.guest != address(0), "Booking does not exist");
         require(booking.guest == msg.sender, "Only the guest can cancel the booking");
         require(
             booking.status == BookingStatus.InProgress && booking.balance > 0,
-            "Booking is already cancelled or PayOut"
+            "Booking is already cancelled or paid out"
         );
 
         uint256 guestAmount = 0;
@@ -143,7 +148,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
             }
         }
 
-        updateBookingStatus(_bookingId, BookingStatus.Cancelled);
+        updateBookingStatus(_bookingId, BookingStatus.CancelledByGuest);
 
         // Refund to the guest
         uint256 treasuryAmount = ((booking.balance - guestAmount) * configContract.fee()) / 10000;
@@ -153,11 +158,11 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         _safeTransfer(booking.token, host, hostAmount);
         _safeTransfer(booking.token, configContract.dtravelTreasury(), treasuryAmount);
 
-        factoryContract.cancel(_bookingId, guestAmount, hostAmount, treasuryAmount, block.timestamp);
+        factoryContract.cancelByGuest(_bookingId, guestAmount, hostAmount, treasuryAmount, block.timestamp);
     }
 
     // function emergencyCancel(string memory _bookingId) external onlyBackend nonReentrant {
-    //     Booking memory booking = bookings[bookingsMap[_bookingId]];
+    //     Booking memory booking = bookings[bookingsMap[_bookingId] - 1];
     //     require(booking.guest != address(0), "Booking does not exist");
     //     require(booking.status == BookingStatus.InProgress, "Booking is already cancelled or payout");
 
@@ -168,22 +173,33 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     //     IERC20(booking.token).transfer(booking.guest, booking.balance);
     // }
 
-    function payout(string memory _bookingId, uint256 _amount) external nonReentrant onlyBackend {
-        Booking memory booking = bookings[bookingsMap[_bookingId]];
+    /**
+    Anyone can call the `payout` function. When it is called, the difference between 
+    the remaining balance and the amount due to the guest if the guest decides to cancel
+    is split between the host and treasury.
+    */
+    function payout(string memory _bookingId) external nonReentrant {
+        require(bookingsMap[_bookingId] > 0, "Booking does not exist");
+        Booking storage booking = bookings[bookingsMap[_bookingId] - 1];
         require(booking.guest != address(0), "Booking does not exist");
-        require(booking.status == BookingStatus.InProgress, "Booking is already cancelled or payout");
-        require(booking.balance >= _amount, "Insufficient Booking balance");
+        require(booking.balance != 0, "Booking is already cancelled or fully paid out");
 
-        if (_amount == booking.balance) {
-            updateBookingStatus(_bookingId, BookingStatus.PayOut);
-        } else {
-            bookings[bookingsMap[_bookingId]].balance -= _amount;
-            updateBookingStatus(_bookingId, BookingStatus.PartialPayOut);
+        uint256 toBePaid = 0;
+
+        for (uint256 i = 0; i < booking.cancellationPolicies.length; i++) {
+            if (booking.cancellationPolicies[i].expiryTime >= block.timestamp) {
+                toBePaid = booking.balance - booking.cancellationPolicies[i].refundAmount;
+                break;
+            }
         }
 
+        booking.balance -= toBePaid;
+
+        if (booking.balance == 0) updateBookingStatus(_bookingId, BookingStatus.FullyPayOut);
+
         // Split the payment
-        uint256 hostAmount = (_amount * (10000 - configContract.fee())) / 10000;
-        uint256 treasuryAmount = _amount - hostAmount;
+        uint256 treasuryAmount = (toBePaid * configContract.fee()) / 10000;
+        uint256 hostAmount = toBePaid - treasuryAmount;
 
         _safeTransfer(booking.token, host, hostAmount);
         _safeTransfer(booking.token, configContract.dtravelTreasury(), treasuryAmount);
@@ -193,8 +209,34 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
             hostAmount,
             treasuryAmount,
             block.timestamp,
-            _amount == booking.balance ? 1 : 2
+            toBePaid == booking.balance ? 1 : 2
         );
+    }
+
+    /**
+    When a booking is cancelled by the host, the whole remaining balance is sent to the guest.
+    Any amount that has been paid out to the host or to the treasury through calls to `FullyPaidOut` 
+    will have to be refunded manually to the guest.
+    */
+    function cancelByHost(string memory _bookingId) public nonReentrant onlyHost {
+        require(bookingsMap[_bookingId] > 0, "Booking does not exist");
+        Booking storage booking = bookings[bookingsMap[_bookingId] - 1]; // TODO: check this line
+        require(booking.guest != address(0), "Booking does not exist");
+        require(
+            booking.status == BookingStatus.InProgress && booking.balance > 0,
+            "Booking is already cancelled or fully paid out"
+        );
+
+        updateBookingStatus(_bookingId, BookingStatus.CancelledByHost);
+
+        // Refund to the guest
+        uint256 guestAmount = booking.balance;
+
+        booking.balance = 0;
+
+        _safeTransfer(booking.token, booking.guest, guestAmount);
+
+        factoryContract.cancelByHost(_bookingId, guestAmount, block.timestamp);
     }
 
     function bookingHistory() external view returns (Booking[] memory) {
@@ -202,7 +244,8 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     }
 
     function getBooking(string memory _bookingId) external view returns (Booking memory) {
-        return bookings[bookingsMap[_bookingId]];
+        require(bookingsMap[_bookingId] > 0, "Booking does not exist");
+        return bookings[bookingsMap[_bookingId] - 1];
     }
 
     function _safeTransferFrom(
