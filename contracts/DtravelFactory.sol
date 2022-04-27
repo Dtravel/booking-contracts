@@ -12,10 +12,10 @@ contract DtravelFactory is Ownable {
     mapping(address => bool) private propertyMapping;
 
     event PropertyCreated(uint256[] ids, address[] properties, address host);
-    event Book(address property, bytes bookingId, uint256 bookedTimestamp);
+    event Book(address property, string bookingId, uint256 bookedTimestamp);
     event Cancel(
         address property,
-        bytes bookingId,
+        string bookingId,
         uint256 guestAmount,
         uint256 hostAmount,
         uint256 treasuryAmount,
@@ -23,7 +23,7 @@ contract DtravelFactory is Ownable {
     );
     event Payout(
         address property,
-        bytes bookingId,
+        string bookingId,
         uint256 hostAmount,
         uint256 treasuryAmount,
         uint256 payoutTimestamp,
@@ -51,22 +51,27 @@ contract DtravelFactory is Ownable {
         emit PropertyCreated(_ids, properties, _host);
     }
 
-    function verifyBookingData(BookingParameters memory _params, bytes memory _signature) external view onlyMatchingProperty returns (bool) {
+    function verifyBookingData(BookingParameters memory _params, bytes memory _signature)
+        external
+        view
+        onlyMatchingProperty
+        returns (bool)
+    {
         require(_params.cancellationPolicies.length > 0, "Invalid cancellation policy array");
         uint256 chainId;
         assembly {
             chainId := chainid()
         }
         DtravelConfig config = DtravelConfig(configContract);
-        return DtravelEIP712.verify(_params, chainId, msg.sender, config.dtravelBackend(),  _signature);
+        return DtravelEIP712.verify(_params, chainId, msg.sender, config.dtravelBackend(), _signature);
     }
 
-    function book(bytes memory _bookingId) external onlyMatchingProperty {
+    function book(string memory _bookingId) external onlyMatchingProperty {
         emit Book(msg.sender, _bookingId, block.timestamp);
     }
 
     function cancel(
-        bytes memory _bookingId,
+        string memory _bookingId,
         uint256 _guestAmount,
         uint256 _hostAmount,
         uint256 _treasuryAmount,
@@ -76,7 +81,7 @@ contract DtravelFactory is Ownable {
     }
 
     function payout(
-        bytes memory _bookingId,
+        string memory _bookingId,
         uint256 _hostAmount,
         uint256 _treasuryAmount,
         uint256 _payoutTimestamp,

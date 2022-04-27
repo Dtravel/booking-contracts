@@ -18,7 +18,7 @@ enum BookingStatus {
 }
 
 struct Booking {
-    bytes id;
+    string id;
     uint256 checkInTimestamp;
     uint256 checkOutTimestamp;
     uint256 balance;
@@ -31,7 +31,7 @@ struct Booking {
 contract DtravelProperty is Ownable, ReentrancyGuard {
     uint256 public id; // property id
     Booking[] public bookings; // bookings array
-    mapping(bytes => uint256) public bookingsMap; // bookings map
+    mapping(string => uint256) public bookingsMap; // bookings map
     DtravelConfig configContract; // config contract
     DtravelFactory factoryContract; // factory contract
     address host; // host address
@@ -114,7 +114,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         factoryContract.book(_params.bookingId);
     }
 
-    function updateBookingStatus(bytes memory _bookingId, BookingStatus _status) internal {
+    function updateBookingStatus(string memory _bookingId, BookingStatus _status) internal {
         if (
             _status == BookingStatus.Cancelled ||
             _status == BookingStatus.PayOut ||
@@ -125,7 +125,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         bookings[bookingsMap[_bookingId]].status = _status;
     }
 
-    function cancel(bytes memory _bookingId) public nonReentrant {
+    function cancel(string memory _bookingId) public nonReentrant {
         Booking memory booking = bookings[bookingsMap[_bookingId]];
         require(booking.guest != address(0), "Booking does not exist");
         require(booking.guest == msg.sender, "Only the guest can cancel the booking");
@@ -156,7 +156,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         factoryContract.cancel(_bookingId, guestAmount, hostAmount, treasuryAmount, block.timestamp);
     }
 
-    // function emergencyCancel(bytes memory _bookingId) external onlyBackend nonReentrant {
+    // function emergencyCancel(string memory _bookingId) external onlyBackend nonReentrant {
     //     Booking memory booking = bookings[bookingsMap[_bookingId]];
     //     require(booking.guest != address(0), "Booking does not exist");
     //     require(booking.status == BookingStatus.InProgress, "Booking is already cancelled or payout");
@@ -168,7 +168,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     //     IERC20(booking.token).transfer(booking.guest, booking.balance);
     // }
 
-    function payout(bytes memory _bookingId, uint256 _amount) external nonReentrant onlyBackend {
+    function payout(string memory _bookingId, uint256 _amount) external nonReentrant onlyBackend {
         Booking memory booking = bookings[bookingsMap[_bookingId]];
         require(booking.guest != address(0), "Booking does not exist");
         require(booking.status == BookingStatus.InProgress, "Booking is already cancelled or payout");
@@ -201,7 +201,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         return bookings;
     }
 
-    function getBooking(bytes memory _bookingId) external view returns (Booking memory) {
+    function getBooking(string memory _bookingId) external view returns (Booking memory) {
         return bookings[bookingsMap[_bookingId]];
     }
 
