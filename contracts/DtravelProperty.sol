@@ -32,7 +32,7 @@ struct Booking {
 contract DtravelProperty is Ownable, ReentrancyGuard {
     uint256 public id; // property id
     Booking[] public bookings; // bookings array
-    mapping(string => uint256) public bookingsMap; // bookings map
+    mapping(string => uint256) public bookingsMap; // booking id to index + 1 in bookings array
     DtravelConfig configContract; // config contract
     DtravelFactory factoryContract; // factory contract
     address host; // host address
@@ -98,7 +98,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         _safeTransferFrom(_params.token, msg.sender, address(this), _params.bookingAmount);
 
         bookings.push();
-        uint256 bookingIndex = bookings.length; // index of the new booking starting from 1
+        uint256 bookingIndex = bookings.length - 1;
         for (uint8 i = 0; i < _params.cancellationPolicies.length; i++) {
             bookings[bookingIndex].cancellationPolicies.push(_params.cancellationPolicies[i]);
         }
@@ -110,7 +110,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         bookings[bookingIndex].token = _params.token;
         bookings[bookingIndex].status = BookingStatus.InProgress;
 
-        bookingsMap[_params.bookingId] = bookingIndex;
+        bookingsMap[_params.bookingId] = bookingIndex + 1;
 
         // emit Book event
         factoryContract.book(_params.bookingId);
@@ -220,7 +220,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     */
     function cancelByHost(string memory _bookingId) public nonReentrant onlyHost {
         require(bookingsMap[_bookingId] > 0, "Booking does not exist");
-        Booking storage booking = bookings[bookingsMap[_bookingId] - 1]; // TODO: check this line
+        Booking storage booking = bookings[bookingsMap[_bookingId] - 1];
         require(booking.guest != address(0), "Booking does not exist");
         require(
             booking.status == BookingStatus.InProgress && booking.balance > 0,
