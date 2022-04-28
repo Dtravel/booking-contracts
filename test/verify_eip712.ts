@@ -10,7 +10,6 @@ use(solidity)
 const privateKey = '0x44d34f80e5de79ba6be6d2431216db30e5842f9a13907bf112496f3569aa48e2'
 const types = {
   BookingParameters: [
-    { name: 'signer', type: 'address' },
     { name: 'token', type: 'address' },
     { name: 'bookingId', type: 'string' },
     { name: 'checkInTimestamp', type: 'uint256' },
@@ -44,13 +43,13 @@ beforeEach(async function () {
       DtravelEIP712: dtravelEIP712.address,
     },
   })
-  dtravelEIP712Test = await DtravelEIP712Test.deploy()
+  dtravelEIP712Test = await DtravelEIP712Test.deploy(signerAddress)
   await dtravelEIP712Test.deployed()
 })
 
 describe('DtravelEIP712', function () {
   describe('Should verify eip712 signature successfully', function () {
-    it('Valid data and signature', async function () {
+    it('Valid data and signature with cancellation policy', async function () {
       const domain = {
         name: 'Dtravel Booking',
         version: '1',
@@ -59,7 +58,6 @@ describe('DtravelEIP712', function () {
       }
 
       const data = {
-        signer: '0xDFe6849bd982484cA1a894f477a8507Ff480D54d',
         token: '0x9CAC127A2F2ea000D0AcBA03A2A52Be38F8ea3ec',
         bookingId: '2hB2o789n',
         checkInTimestamp: 1650687132,
@@ -79,6 +77,30 @@ describe('DtravelEIP712', function () {
 
       expect(verifyResult).true
     })
+
+    it('Valid data and signature without cancellation policy', async function () {
+      const domain = {
+        name: 'Dtravel Booking',
+        version: '1',
+        chainId: 1,
+        verifyingContract: dtravelEIP712Test.address,
+      }
+
+      const data = {
+        token: '0x9CAC127A2F2ea000D0AcBA03A2A52Be38F8ea3ec',
+        bookingId: '2hB2o789n',
+        checkInTimestamp: 1650687132,
+        checkOutTimestamp: 1650860051,
+        bookingExpirationTimestamp: 1650687132,
+        bookingAmount: BigInt('100000000000000000000'),
+        cancellationPolicies: [],
+      }
+      const generatedSignature = await wallet._signTypedData(domain, types, data)
+
+      let verifyResult = await dtravelEIP712Test.verify(data, 1, generatedSignature)
+
+      expect(verifyResult).true
+    })
   })
   describe('Should NOT verify eip712 signature successfully', function () {
     it('Wrong chainId', async function () {
@@ -90,7 +112,6 @@ describe('DtravelEIP712', function () {
       }
 
       const data = {
-        signer: '0xDFe6849bd982484cA1a894f477a8507Ff480D54d',
         token: '0x9CAC127A2F2ea000D0AcBA03A2A52Be38F8ea3ec',
         bookingId: '2hB2o789n',
         checkInTimestamp: 1650687132,
@@ -120,7 +141,6 @@ describe('DtravelEIP712', function () {
       }
 
       const data = {
-        signer: '0xDFe6849bd982484cA1a894f477a8507Ff480D54d',
         token: '0x9CAC127A2F2ea000D0AcBA03A2A52Be38F8ea3ec',
         bookingId: '2hB2o789n',
         checkInTimestamp: 1650687132,
@@ -153,7 +173,6 @@ describe('DtravelEIP712', function () {
       }
 
       const data = {
-        signer: '0xDFe6849bd982484cA1a894f477a8507Ff480D54d',
         token: '0x9CAC127A2F2ea000D0AcBA03A2A52Be38F8ea3ec',
         bookingId: '2hB2o789n',
         checkInTimestamp: 1650687132,
@@ -183,7 +202,6 @@ describe('DtravelEIP712', function () {
       }
 
       const data = {
-        signer: '0xDFe6849bd982484cA1a894f477a8507Ff480D54d',
         token: '0x9CAC127A2F2ea000D0AcBA03A2A52Be38F8ea3ec',
         bookingId: '2hB2o789n',
         checkInTimestamp: 1650687132,

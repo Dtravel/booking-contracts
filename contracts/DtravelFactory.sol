@@ -58,7 +58,6 @@ contract DtravelFactory is Ownable {
         onlyMatchingProperty
         returns (bool)
     {
-        require(_params.cancellationPolicies.length > 0, "Invalid cancellation policy array");
         uint256 chainId;
         assembly {
             chainId := chainid()
