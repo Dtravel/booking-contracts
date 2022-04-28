@@ -5,11 +5,17 @@ import "../DtravelStructs.sol";
 import { DtravelEIP712 } from "../DtravelEIP712.sol";
 
 contract DtravelEIP712Test {
+    address authorizedAddress;
+
+    constructor (address _authorizedAddress) {
+        authorizedAddress = _authorizedAddress;
+    }
+
     function verify(
         BookingParameters memory parameters,
         uint256 chainId,
         bytes memory signature
     ) external view returns (bool) {
-        return DtravelEIP712.verify(parameters, chainId, address(this), parameters.signer, signature);
+        return DtravelEIP712.verify(parameters, chainId, address(this), authorizedAddress, signature);
     }
 }
