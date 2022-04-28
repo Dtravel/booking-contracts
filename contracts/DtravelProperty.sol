@@ -79,7 +79,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     @param _signature Signature of the transaction
     */
     function book(BookingParameters memory _params, bytes memory _signature) external nonReentrant {
-        require(bookingsMap[_params.bookingId] > 0, "Booking already exists");
+        require(getBookingIndex(_params.bookingId) == 0, "Booking already exists");
         require(block.timestamp < _params.bookingExpirationTimestamp, "Booking data is expired");
         require(configContract.supportedTokens(_params.token) == true, "Token is not whitelisted");
         require(_params.checkInTimestamp + oneDay >= block.timestamp, "Booking for past date is not allowed");
@@ -183,12 +183,20 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
 
         uint256 toBePaid = 0;
 
-        for (uint256 i = 0; i < booking.cancellationPolicies.length; i++) {
-            if (booking.cancellationPolicies[i].expiryTime >= block.timestamp) {
-                toBePaid = booking.balance - booking.cancellationPolicies[i].refundAmount;
-                break;
+        if (booking.cancellationPolicies.length == 0) {
+            toBePaid = booking.balance;
+        } else if (booking.cancellationPolicies[booking.cancellationPolicies.length - 1].expiryTime < block.timestamp) {
+            toBePaid = booking.balance;
+        } else {
+            for (uint256 i = 0; i < booking.cancellationPolicies.length; i++) {
+                if (booking.cancellationPolicies[i].expiryTime >= block.timestamp) {
+                    toBePaid = booking.cancellationPolicies[i].refundAmount;
+                    break;
+                }
             }
         }
+
+        require(toBePaid > 0, "Invalid payout call");
 
         booking.balance -= toBePaid;
 
