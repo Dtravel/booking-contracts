@@ -204,7 +204,10 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
 
         booking.balance -= toBePaid;
 
-        if (booking.balance == 0) updateBookingStatus(_bookingId, BookingStatus.FullyPaidOut);
+        updateBookingStatus(
+            _bookingId,
+            booking.balance == 0 ? BookingStatus.FullyPaidOut : BookingStatus.PartialPayOut
+        );
 
         // Split the payment
         uint256 treasuryAmount = (toBePaid * configContract.fee()) / 10000;
