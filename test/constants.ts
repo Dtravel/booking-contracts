@@ -1,0 +1,5 @@
+const HOST_ADDRESS = '0x8d64B57C74ba7536a99606057E18DdDAF6bfa667'
+
+export default {
+  HOST_ADDRESS,
+}
