@@ -194,7 +194,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         } else {
             for (uint256 i = 0; i < booking.cancellationPolicies.length; i++) {
                 if (booking.cancellationPolicies[i].expiryTime + configContract.payoutDelayTime() >= block.timestamp) {
-                    toBePaid = booking.cancellationPolicies[i].refundAmount;
+                    toBePaid = booking.cancellationPolicies[i].payoutAmount;
                     break;
                 }
             }

@@ -14,10 +14,10 @@ library DtravelEIP712 {
     bytes32 constant EIP712DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
     bytes32 constant CANCELLATION_POLICY_TYPEHASH =
-        keccak256("CancellationPolicy(uint256 expiryTime,uint256 refundAmount)");
+        keccak256("CancellationPolicy(uint256 expiryTime,uint256 refundAmount,uint256 payoutAmount)");
     bytes32 constant BOOKING_PARAMETERS_TYPEHASH =
         keccak256(
-            "BookingParameters(address token,string bookingId,uint256 checkInTimestamp,uint256 checkOutTimestamp,uint256 bookingExpirationTimestamp,uint256 bookingAmount,CancellationPolicy[] cancellationPolicies)CancellationPolicy(uint256 expiryTime,uint256 refundAmount)"
+            "BookingParameters(address token,string bookingId,uint256 checkInTimestamp,uint256 checkOutTimestamp,uint256 bookingExpirationTimestamp,uint256 bookingAmount,CancellationPolicy[] cancellationPolicies)CancellationPolicy(uint256 expiryTime,uint256 refundAmount,uint256 payoutAmount)"
         );
 
     function verify(
@@ -54,7 +54,12 @@ library DtravelEIP712 {
     function hashCancellationPolicy(CancellationPolicy memory cancellationPolicy) internal pure returns (bytes32) {
         return
             keccak256(
-                abi.encode(CANCELLATION_POLICY_TYPEHASH, cancellationPolicy.expiryTime, cancellationPolicy.refundAmount)
+                abi.encode(
+                    CANCELLATION_POLICY_TYPEHASH,
+                    cancellationPolicy.expiryTime,
+                    cancellationPolicy.refundAmount,
+                    cancellationPolicy.payoutAmount
+                )
             );
     }
 
