@@ -3,17 +3,16 @@ import { ethers } from 'hardhat'
 import hre from 'hardhat'
 
 async function main() {
-
-  const DtravelEIP712 = await ethers.getContractFactory('DtravelEIP712');
-  const dtravelEIP712 = await DtravelEIP712.deploy();
-  await dtravelEIP712.deployed();
+  const DtravelEIP712 = await ethers.getContractFactory('DtravelEIP712')
+  const dtravelEIP712 = await DtravelEIP712.deploy()
+  await dtravelEIP712.deployed()
 
   const dtravelFactory = await ethers.getContractFactory('DtravelFactory', {
     libraries: {
-      DtravelEIP712: dtravelEIP712.address
-    }
+      DtravelEIP712: dtravelEIP712.address,
+    },
   })
-  const factoryContract = await dtravelFactory.deploy('0xe8167D79F5E7bc460Ebdd830bA9cc6Ca43799feD')
+  const factoryContract = await dtravelFactory.deploy('0x668eD30aAcC7C7c206aAF1327d733226416233E2')
 
   // The address the Contract WILL have once mined
   console.log(factoryContract.address)
