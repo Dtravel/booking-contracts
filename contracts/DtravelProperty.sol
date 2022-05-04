@@ -27,6 +27,7 @@ struct Booking {
     address token;
     BookingStatus status;
     CancellationPolicy[] cancellationPolicies;
+    uint256 cancellationPolicyExcutedAt; // index + 1 of the policy that was executed, 0 if none, 1 if first, 2 if second, etc.
 }
 
 contract DtravelProperty is Ownable, ReentrancyGuard {
@@ -121,6 +122,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         bookings[bookingIndex].guest = msg.sender;
         bookings[bookingIndex].token = _params.token;
         bookings[bookingIndex].status = BookingStatus.InProgress;
+        bookings[bookingIndex].cancellationPolicyExcutedAt = 0;
 
         bookingsMap[_params.bookingId] = bookingIndex + 1;
 
@@ -128,7 +130,11 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         factoryContract.book(_params.bookingId);
     }
 
-    function updateBookingStatus(string memory _bookingId, BookingStatus _status) internal {
+    function updateBookingStatus(
+        string memory _bookingId,
+        BookingStatus _status,
+        uint256 _cancellationPolicyExcutedAt
+    ) internal {
         if (
             _status == BookingStatus.CancelledByGuest ||
             _status == BookingStatus.CancelledByHost ||
@@ -138,6 +144,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
             bookings[getBookingIndex(_bookingId)].balance = 0;
         }
         bookings[getBookingIndex(_bookingId)].status = _status;
+        bookings[getBookingIndex(_bookingId)].cancellationPolicyExcutedAt = _cancellationPolicyExcutedAt;
     }
 
     function cancel(string memory _bookingId) public nonReentrant {
@@ -150,15 +157,15 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         );
 
         uint256 guestAmount = 0;
-
-        for (uint256 i = 0; i < booking.cancellationPolicies.length; i++) {
+        uint256 i;
+        for (i = 0; i < booking.cancellationPolicies.length; i++) {
             if (booking.cancellationPolicies[i].expiryTime >= block.timestamp) {
                 guestAmount = booking.cancellationPolicies[i].refundAmount;
                 break;
             }
         }
 
-        updateBookingStatus(_bookingId, BookingStatus.CancelledByGuest);
+        updateBookingStatus(_bookingId, BookingStatus.CancelledByGuest, i + 1);
 
         // Refund to the guest
         uint256 treasuryAmount = ((booking.balance - guestAmount) * configContract.fee()) / 10000;
@@ -182,6 +189,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         require(booking.balance != 0, "Booking is already cancelled or fully paid out");
 
         uint256 toBePaid = 0;
+        uint256 cancellationPolicyIndex = 0;
 
         if (booking.cancellationPolicies.length == 0) {
             toBePaid = booking.balance;
@@ -190,13 +198,17 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
                 configContract.payoutDelayTime() <
             block.timestamp
         ) {
+            require(booking.cancellationPolicyExcutedAt != booking.cancellationPolicies.length, "Already paid out");
             toBePaid = booking.balance;
+            cancellationPolicyIndex = booking.cancellationPolicies.length;
         } else {
             for (uint256 i = 0; i <= booking.cancellationPolicies.length - 2; i++) {
                 if (
                     booking.cancellationPolicies[i].expiryTime + configContract.payoutDelayTime() <= block.timestamp &&
                     booking.cancellationPolicies[i + 1].expiryTime + configContract.payoutDelayTime() > block.timestamp
                 ) {
+                    require(booking.cancellationPolicyExcutedAt != i + 1, "Already paid out");
+                    cancellationPolicyIndex = i + 1;
                     toBePaid = booking.cancellationPolicies[i].payoutAmount;
                     break;
                 }
@@ -209,7 +221,8 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
 
         updateBookingStatus(
             _bookingId,
-            booking.balance == 0 ? BookingStatus.FullyPaidOut : BookingStatus.PartialPayOut
+            booking.balance == 0 ? BookingStatus.FullyPaidOut : BookingStatus.PartialPayOut,
+            cancellationPolicyIndex
         );
 
         // Split the payment
@@ -241,7 +254,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
             "Booking is already cancelled or fully paid out"
         );
 
-        updateBookingStatus(_bookingId, BookingStatus.CancelledByHost);
+        updateBookingStatus(_bookingId, BookingStatus.CancelledByHost, 0);
 
         // Refund to the guest
         uint256 guestAmount = booking.balance;
