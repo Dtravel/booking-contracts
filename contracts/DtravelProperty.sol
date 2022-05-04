@@ -70,17 +70,20 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     @notice Modifier to check if the caller is the host or a delegate approved by the host
     */
     modifier onlyHostOrDelegate() {
-        require(msg.sender == host || hostDelegates(msg.sender) == true, "Only the host or a host's delegate is authorized to call this action");
+        require(
+            msg.sender == host || hostDelegates[msg.sender] == true,
+            "Only the host or a host's delegate is authorized to call this action"
+        );
 
         _;
     }
-    
+
     function approve(address delegate) external onlyHostOrDelegate {
-      hostDelegates(delegate) = true;
+        hostDelegates[delegate] = true;
     }
 
     function revoke(address delegate) external onlyHostOrDelegate {
-      hostDelegates(delegate) = false;
+        hostDelegates[delegate] = false;
     }
 
     /**
