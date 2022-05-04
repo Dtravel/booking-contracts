@@ -34,8 +34,8 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     mapping(string => uint256) public bookingsMap; // bookings map
     DtravelConfig configContract; // config contract
     DtravelFactory factoryContract; // factory contract
-    address host; // host address
-    uint256 private constant oneDay = 60 * 60 * 24; // one day in seconds
+    address public host; // host address
+    uint256 private constant ONE_DAY = 60 * 60 * 24; // one day in seconds
 
     /**
     @param _id Property Id
@@ -82,12 +82,12 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         require(configContract.supportedTokens(_params.token) == true, "Token is not whitelisted");
         require(_params.checkInTimestamp > block.timestamp, "Booking for past date is not allowed");
         require(
-            _params.checkOutTimestamp >= _params.checkInTimestamp + oneDay,
+            _params.checkOutTimestamp >= _params.checkInTimestamp + ONE_DAY,
             "Booking period should be at least one night"
         );
         require(_params.cancellationPolicies.length > 0, "Booking should have at least one cancellation policy");
 
-        require(factoryContract.verifyBookingData(_params, _signature), "Invalid signature");
+        require(factoryContract.verifyBookingData(id, _params, _signature), "Invalid signature");
 
         require(
             IERC20(_params.token).allowance(msg.sender, address(this)) >= _params.bookingAmount,
@@ -111,7 +111,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         bookingsMap[_params.bookingId] = bookingIndex;
 
         // emit Book event
-        factoryContract.book(_params.bookingId);
+        factoryContract.book(id, _params.bookingId);
     }
 
     function updateBookingStatus(string memory _bookingId, BookingStatus _status) internal {
@@ -153,7 +153,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         _safeTransfer(booking.token, host, hostAmount);
         _safeTransfer(booking.token, configContract.dtravelTreasury(), treasuryAmount);
 
-        factoryContract.cancel(_bookingId, guestAmount, hostAmount, treasuryAmount, block.timestamp);
+        factoryContract.cancel(id, _bookingId, guestAmount, hostAmount, treasuryAmount, block.timestamp);
     }
 
     // function emergencyCancel(string memory _bookingId) external onlyBackend nonReentrant {
@@ -189,6 +189,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         _safeTransfer(booking.token, configContract.dtravelTreasury(), treasuryAmount);
 
         factoryContract.payout(
+            id,
             _bookingId,
             hostAmount,
             treasuryAmount,
