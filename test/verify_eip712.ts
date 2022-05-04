@@ -21,6 +21,7 @@ const types = {
   CancellationPolicy: [
     { name: 'expiryTime', type: 'uint256' },
     { name: 'refundAmount', type: 'uint256' },
+    { name: 'payoutAmount', type: 'uint256' },
   ],
 }
 
@@ -68,6 +69,7 @@ describe('DtravelEIP712', function () {
           {
             expiryTime: 1650773900,
             refundAmount: BigInt('50000000000000000000'),
+            payoutAmount: BigInt('100000000000000000000'),
           },
         ],
       }
@@ -122,6 +124,7 @@ describe('DtravelEIP712', function () {
           {
             expiryTime: 1650773900,
             refundAmount: BigInt('50000000000000000000'),
+            payoutAmount: BigInt('100000000000000000000'),
           },
         ],
       }
@@ -151,6 +154,7 @@ describe('DtravelEIP712', function () {
           {
             expiryTime: 1650773900,
             refundAmount: BigInt('50000000000000000000'),
+            payoutAmount: BigInt('100000000000000000000'),
           },
         ],
       }
@@ -183,6 +187,7 @@ describe('DtravelEIP712', function () {
           {
             expiryTime: 1650773900,
             refundAmount: BigInt('50000000000000000000'),
+            payoutAmount: BigInt('100000000000000000000'),
           },
         ],
       }
@@ -212,6 +217,7 @@ describe('DtravelEIP712', function () {
           {
             expiryTime: 1650773900,
             refundAmount: BigInt('50000000000000000000'),
+            payoutAmount: BigInt('100000000000000000000'),
           },
         ],
       }
