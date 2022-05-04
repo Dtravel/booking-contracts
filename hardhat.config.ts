@@ -62,9 +62,7 @@ function setupDefaultNetworkProviders(buidlerConfig) {
       // accounts: {
       //   mnemonic: getAccountMnemonic(),
       // },
-      accounts: [
-        getAccountPrivateKey()
-      ]
+      accounts: [getAccountPrivateKey()],
     }
   }
 }
@@ -104,7 +102,7 @@ const config: HardhatUserConfig = {
       },
     ],
   },
-  defaultNetwork: 'bsctestnet',
+  defaultNetwork: 'hardhat',
   networks: {
     hardhat: {
       chainId: 1337,
@@ -150,6 +148,6 @@ const config: HardhatUserConfig = {
   },
 }
 
-setupDefaultNetworkProviders(config)
+// setupDefaultNetworkProviders(config)
 
 export default config

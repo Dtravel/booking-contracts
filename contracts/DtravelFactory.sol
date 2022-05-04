@@ -13,7 +13,7 @@ contract DtravelFactory is Ownable {
 
     event PropertyCreated(uint256[] ids, address[] properties, address host);
     event Book(address property, string bookingId, uint256 bookedTimestamp);
-    event Cancel(
+    event CancelByGuest(
         address property,
         string bookingId,
         uint256 guestAmount,
@@ -21,6 +21,7 @@ contract DtravelFactory is Ownable {
         uint256 treasuryAmount,
         uint256 cancelTimestamp
     );
+    event CancelByHost(address property, string bookingId, uint256 guestAmount, uint256 cancelTimestamp);
     event Payout(
         address property,
         string bookingId,
@@ -69,14 +70,22 @@ contract DtravelFactory is Ownable {
         emit Book(msg.sender, _bookingId, block.timestamp);
     }
 
-    function cancel(
+    function cancelByGuest(
         string memory _bookingId,
         uint256 _guestAmount,
         uint256 _hostAmount,
         uint256 _treasuryAmount,
         uint256 _cancelTimestamp
     ) external onlyMatchingProperty {
-        emit Cancel(msg.sender, _bookingId, _guestAmount, _hostAmount, _treasuryAmount, _cancelTimestamp);
+        emit CancelByGuest(msg.sender, _bookingId, _guestAmount, _hostAmount, _treasuryAmount, _cancelTimestamp);
+    }
+
+    function cancelByHost(
+        string memory _bookingId,
+        uint256 _guestAmount,
+        uint256 _cancelTimestamp
+    ) external onlyMatchingProperty {
+        emit CancelByHost(msg.sender, _bookingId, _guestAmount, _cancelTimestamp);
     }
 
     function payout(
