@@ -5,7 +5,6 @@ pragma solidity >=0.8.4 <0.9.0;
 struct CancellationPolicy {
     uint256 expiryTime;
     uint256 refundAmount;
-    uint256 payoutAmount;
 }
 
 struct BookingParameters {

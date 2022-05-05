@@ -86,7 +86,6 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
             bookings[getBookingIndex(_bookingId)].balance = 0;
         }
         bookings[getBookingIndex(_bookingId)].status = _status;
-        bookings[getBookingIndex(_bookingId)].cancellationPolicyExcutedAt = _cancellationPolicyExcutedAt;
     }
 
     bookingStatus[_bookingId] = _status;
