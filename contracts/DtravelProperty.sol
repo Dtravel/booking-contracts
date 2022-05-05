@@ -92,7 +92,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     @param _signature Signature of the transaction
     */
     function book(BookingParameters memory _params, bytes memory _signature) external nonReentrant {
-        require(getBookingIndex(_params.bookingId) == 0, "Booking already exists");
+        require(bookingsMap[_params.bookingId] == 0, "Booking already exists");
         require(block.timestamp < _params.bookingExpirationTimestamp, "Booking data is expired");
         require(configContract.supportedTokens(_params.token) == true, "Token is not whitelisted");
         require(_params.checkInTimestamp + oneDay >= block.timestamp, "Booking for past date is not allowed");
@@ -273,7 +273,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     function getBookingIndex(string memory _bookingId) public view returns (uint256) {
         uint256 bookingIndex = bookingsMap[_bookingId];
         require(bookingIndex > 0, "Booking does not exist");
-        return bookingIndex;
+        return bookingIndex - 1;
     }
 
     function getBooking(string memory _bookingId) external view returns (Booking memory) {
