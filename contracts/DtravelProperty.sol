@@ -145,7 +145,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         require(booking.guest != address(0), "Booking does not exist");
         require(booking.guest == msg.sender, "Only the guest can cancel the booking");
         require(
-            booking.status == BookingStatus.InProgress && booking.balance > 0,
+            booking.balance > 0,
             "Booking is already cancelled or paid out"
         );
 
