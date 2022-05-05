@@ -91,7 +91,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     @param _signature Signature of the transaction
     */
     function book(BookingParameters memory _params, bytes memory _signature) external nonReentrant {
-        require(getBookingIndex(_params.bookingId) == 0, "Booking already exists");
+        require(bookingsMap[_params.bookingId] == 0, "Booking already exists");
         require(block.timestamp < _params.bookingExpirationTimestamp, "Booking data is expired");
         require(configContract.supportedTokens(_params.token) == true, "Token is not whitelisted");
         require(_params.checkInTimestamp + oneDay >= block.timestamp, "Booking for past date is not allowed");
@@ -145,12 +145,11 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         require(booking.guest != address(0), "Booking does not exist");
         require(booking.guest == msg.sender, "Only the guest can cancel the booking");
         require(
-            booking.status == BookingStatus.InProgress && booking.balance > 0,
+            booking.balance > 0,
             "Booking is already cancelled or paid out"
         );
 
         uint256 guestAmount = 0;
-
         for (uint256 i = 0; i < booking.cancellationPolicies.length; i++) {
             if (booking.cancellationPolicies[i].expiryTime >= block.timestamp) {
                 guestAmount = booking.cancellationPolicies[i].refundAmount;
@@ -192,12 +191,9 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         ) {
             toBePaid = booking.balance;
         } else {
-            for (uint256 i = 0; i <= booking.cancellationPolicies.length - 2; i++) {
-                if (
-                    booking.cancellationPolicies[i].expiryTime + configContract.payoutDelayTime() <= block.timestamp &&
-                    booking.cancellationPolicies[i + 1].expiryTime + configContract.payoutDelayTime() > block.timestamp
-                ) {
-                    toBePaid = booking.cancellationPolicies[i].payoutAmount;
+            for (uint256 i = 0; i < booking.cancellationPolicies.length; i++) {
+                if (booking.cancellationPolicies[i].expiryTime + configContract.payoutDelayTime() >= block.timestamp) {
+                    toBePaid = booking.balance - booking.cancellationPolicies[i].refundAmount;
                     break;
                 }
             }
@@ -260,7 +256,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     function getBookingIndex(string memory _bookingId) public view returns (uint256) {
         uint256 bookingIndex = bookingsMap[_bookingId];
         require(bookingIndex > 0, "Booking does not exist");
-        return bookingIndex;
+        return bookingIndex - 1;
     }
 
     function getBooking(string memory _bookingId) external view returns (Booking memory) {
