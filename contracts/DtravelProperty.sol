@@ -220,7 +220,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
             hostAmount,
             treasuryAmount,
             block.timestamp,
-            toBePaid == booking.balance ? 1 : 2
+            booking.balance == 0 ? 1 : 2
         );
     }
 
