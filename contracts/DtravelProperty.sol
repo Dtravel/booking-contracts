@@ -220,7 +220,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
             hostAmount,
             treasuryAmount,
             block.timestamp,
-            toBePaid == booking.balance ? 1 : 2
+            booking.balance == 0 ? 1 : 2
         );
     }
 
@@ -249,8 +249,18 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         factoryContract.cancelByHost(_bookingId, guestAmount, block.timestamp);
     }
 
-    function bookingHistory() external view returns (Booking[] memory) {
-        return bookings;
+    function totalBooking() external view returns (uint256) {
+        return bookings.length;
+    }
+
+    function bookingHistory(uint256 _startIndex, uint256 _pageSize) external view returns (Booking[] memory) {
+        require(_startIndex < bookings.length, "booking index is out of bounds");
+        uint256 resultLength = _startIndex + _pageSize < bookings.length ? _pageSize : bookings.length - _startIndex;
+        Booking[] memory result = new Booking[](resultLength);
+        for (uint256 i = 0; i < resultLength; i++) {
+            result[i] = bookings[i + _startIndex];
+        }
+        return result;
     }
 
     function getBookingIndex(string memory _bookingId) public view returns (uint256) {
