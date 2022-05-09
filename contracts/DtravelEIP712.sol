@@ -54,7 +54,11 @@ library DtravelEIP712 {
     function hashCancellationPolicy(CancellationPolicy memory cancellationPolicy) internal pure returns (bytes32) {
         return
             keccak256(
-                abi.encode(CANCELLATION_POLICY_TYPEHASH, cancellationPolicy.expiryTime, cancellationPolicy.refundAmount)
+                abi.encode(
+                    CANCELLATION_POLICY_TYPEHASH,
+                    cancellationPolicy.expiryTime,
+                    cancellationPolicy.refundAmount
+                )
             );
     }
 

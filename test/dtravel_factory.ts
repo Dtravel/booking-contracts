@@ -11,12 +11,17 @@ describe('DtravelFactory', function () {
 
   beforeEach(async function () {
     let DtravelConfig = await ethers.getContractFactory('DtravelConfig')
-    let dtravelConfig = await DtravelConfig.deploy(500, '0x8d64B57C74ba7536a99606057E18DdDAF6bfa667', [
-      '0x9CAC127A2F2ea000D0AcBA03A2A52Be38F8ea3ec', // BUSD
-      '0x7D08A9f17179670582C6b7983c94b6e2c218a612', // USDC
-      '0x0062fC7642E7BD9b4685901258207A6e22E23378', // USDT
-      '0x8Daeff86528910afaB7fBF5b6287360d33aAFDC8', // TRVL
-    ])
+    let dtravelConfig = await DtravelConfig.deploy(
+      500,
+      60 * 60 * 24 * 2,
+      '0x8d64B57C74ba7536a99606057E18DdDAF6bfa667',
+      [
+        '0x9CAC127A2F2ea000D0AcBA03A2A52Be38F8ea3ec', // BUSD
+        '0x7D08A9f17179670582C6b7983c94b6e2c218a612', // USDC
+        '0x0062fC7642E7BD9b4685901258207A6e22E23378', // USDT
+        '0x8Daeff86528910afaB7fBF5b6287360d33aAFDC8', // TRVL
+      ],
+    )
     await dtravelConfig.deployed()
 
     const DtravelEIP712 = await ethers.getContractFactory('DtravelEIP712')

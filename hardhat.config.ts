@@ -110,9 +110,7 @@ const config: HardhatUserConfig = {
       gas: 12000000,
       gasPrice: 'auto',
       blockGasLimit: 12000000,
-      accounts: {
-        mnemonic: '',
-      },
+      accounts: {},
     },
     ganache: {
       chainId: 1337,
