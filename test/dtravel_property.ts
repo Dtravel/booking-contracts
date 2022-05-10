@@ -7,6 +7,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { TOKENS, GUEST_PRIVATE_KEYS, BOOKING_SIGNATURE_TYPE } from './constants'
 
 const propertyIds = [1, 2, 3, 4]
+const initialBalance = ethers.BigNumber.from('1000000000000000000000000000000')
 
 describe('DtravelProperty', function () {
   let dtravelConfig: Contract
@@ -14,19 +15,33 @@ describe('DtravelProperty', function () {
   let properties: string[]
   let owner: SignerWithAddress
   let host: SignerWithAddress
+  let guest: SignerWithAddress
   let DtravelProperty: ContractFactory
+  let tokens: string[]
 
   beforeEach(async function () {
     // Deploy config contract
-    let DtravelConfig = await ethers.getContractFactory('DtravelConfig')
-    dtravelConfig = await DtravelConfig.deploy(500, 60 * 60 * 24 * 2, '0x8d64B57C74ba7536a99606057E18DdDAF6bfa667', [
-      TOKENS.BUSD, // BUSD
-      TOKENS.USDC, // USDC
-      TOKENS.USDT, // USDT
-      TOKENS.TRVL, // TRVL
-    ])
-    await dtravelConfig.deployed()
+    owner = (await ethers.getSigners())[0]
+    host = (await ethers.getSigners())[1]
+    guest = (await ethers.getSigners())[2]
 
+    // Mint test tokens to guest
+    tokens = await Promise.all(
+      Object.keys(TOKENS).map(async (token) => {
+        const TokenFactory = await ethers.getContractFactory('Token')
+        const tokenContract = await TokenFactory.connect(guest).deploy(token, token)
+        await tokenContract.deployed()
+        return tokenContract.address
+      }),
+    )
+
+    // Deploy config contract
+    let DtravelConfig = await ethers.getContractFactory('DtravelConfig')
+    dtravelConfig = await DtravelConfig.connect(owner).deploy(500, 60 * 60 * 24 * 2, owner.address, tokens)
+    await dtravelConfig.deployed()
+    expect(await dtravelConfig.dtravelBackend()).to.equal(owner.address)
+
+    // Deploy EIP712 contract
     const DtravelEIP712 = await ethers.getContractFactory('DtravelEIP712')
     const dtravelEIP712 = await DtravelEIP712.deploy()
     await dtravelEIP712.deployed()
@@ -40,15 +55,18 @@ describe('DtravelProperty', function () {
     dtravelFactory = await DtravelFactory.deploy(dtravelConfig.address)
     await dtravelFactory.deployed()
 
-    // Deploy property contracts
-    owner = (await ethers.getSigners())[0]
-    host = (await ethers.getSigners())[1]
+    // // Deploy property contracts
     await dtravelFactory.deployProperty(propertyIds, host.address)
     properties = await dtravelFactory.getProperties()
 
     DtravelProperty = await ethers.getContractFactory('DtravelProperty')
+  })
 
-    // Mint test tokens to guest
+  it('Should mint correct amount to guest', async function () {
+    for (let i = 0; i < tokens.length; i++) {
+      const tokenContract = (await ethers.getContractFactory('Token')).attach(tokens[i])
+      expect(ethers.BigNumber.from(await tokenContract.balanceOf(guest.address))).to.equal(initialBalance)
+    }
   })
 
   it('Should return correct configuration variables', async function () {
@@ -62,9 +80,6 @@ describe('DtravelProperty', function () {
   })
 
   it('Should allow booking if signature is correct', async function () {
-    const wallet = new Wallet(GUEST_PRIVATE_KEYS[0])
-    const signerAddress = wallet.address
-
     let DtravelEIP712 = await ethers.getContractFactory('DtravelEIP712')
     let dtravelEIP712 = await DtravelEIP712.deploy()
     await dtravelEIP712.deployed()
@@ -74,46 +89,49 @@ describe('DtravelProperty', function () {
         DtravelEIP712: dtravelEIP712.address,
       },
     })
-    let dtravelEIP712Test = await DtravelEIP712Test.deploy(signerAddress)
+    let dtravelEIP712Test = await DtravelEIP712Test.deploy(owner.address)
     await dtravelEIP712Test.deployed()
 
     const propertyAddress = await dtravelFactory.propertyMapping(propertyIds[0])
     const property = await DtravelProperty.attach(propertyAddress)
-
+    const chainId = await (await ethers.provider.getNetwork()).chainId
     const domain = {
       name: 'Dtravel Booking',
       version: '1',
-      chainId: 1,
-      verifyingContract: property.address,
+      chainId,
+      verifyingContract: propertyAddress,
+      // verifyingContract: dtravelEIP712Test.address,
     }
 
     const data = {
-      token: TOKENS.BUSD,
+      token: tokens[0],
       bookingId: '2hB2o789n',
       checkInTimestamp: 1655269737,
       checkOutTimestamp: 1657861737,
       bookingExpirationTimestamp: 1654060137,
-      bookingAmount: BigInt('100000000000000000000'),
+      bookingAmount: ethers.BigNumber.from('100000000000000000000'),
       cancellationPolicies: [
         {
           expiryTime: 1654664937,
-          refundAmount: BigInt('50000000000000000000'),
+          refundAmount: ethers.BigNumber.from('50000000000000000000'),
         },
       ],
     }
 
-    const generatedSignature = await wallet._signTypedData(domain, BOOKING_SIGNATURE_TYPE, data)
+    const generatedSignature = await owner._signTypedData(domain, BOOKING_SIGNATURE_TYPE, data)
 
-    let verifyResult = await dtravelEIP712Test.verify(data, 1, generatedSignature)
+    const TokenFactory = await ethers.getContractFactory('Token')
+    const tokenContract = await TokenFactory.attach(tokens[0])
+    const tx = await tokenContract.connect(guest).approve(propertyAddress, data.bookingAmount)
+    await tx.wait()
 
-    expect(verifyResult).true
+    // let verifyResult = await dtravelEIP712Test.verify(data, chainId, generatedSignature)
+    // console.log(verifyResult)
+    // expect(verifyResult).true
+    expect(await tokenContract.allowance(guest.address, propertyAddress)).to.equal(data.bookingAmount)
 
-    // expect(await property.book(data, generatedSignature))
-    //   .to.emit(dtravelFactory, 'Book')
-    //   .withArgs([property.address, data.bookingId, new Date().getTime() / 1000])
-    // const res = await property.book(data, generatedSignature)
-    // console.log({ res })
-    // const bookings = property.bookings()
-    // console.log({ bookings })
+    expect(await property.connect(guest).book(data, generatedSignature))
+      .to.emit(dtravelFactory, 'Book')
+      .withArgs(property.address, data.bookingId, Math.ceil(Date.now() / 1000))
   })
 })
