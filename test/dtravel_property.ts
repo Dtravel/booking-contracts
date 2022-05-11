@@ -55,7 +55,7 @@ describe('DtravelProperty', function () {
     dtravelFactory = await DtravelFactory.deploy(dtravelConfig.address)
     await dtravelFactory.deployed()
 
-    // // Deploy property contracts
+    // Deploy property contracts
     await dtravelFactory.deployProperty(propertyIds, host.address)
     properties = await dtravelFactory.getProperties()
 
@@ -100,7 +100,6 @@ describe('DtravelProperty', function () {
       version: '1',
       chainId,
       verifyingContract: propertyAddress,
-      // verifyingContract: dtravelEIP712Test.address,
     }
 
     const data = {
@@ -130,8 +129,10 @@ describe('DtravelProperty', function () {
     // expect(verifyResult).true
     expect(await tokenContract.allowance(guest.address, propertyAddress)).to.equal(data.bookingAmount)
 
-    expect(await property.connect(guest).book(data, generatedSignature))
-      .to.emit(dtravelFactory, 'Book')
-      .withArgs(property.address, data.bookingId, Math.ceil(Date.now() / 1000))
+    expect(await property.connect(guest).book(data, generatedSignature)).to.emit(dtravelFactory, 'Book')
+    // .withArgs(property.address, data.bookingId, Math.ceil(Date.now() / 1000))
+
+    const bookings = await property.bookingHistory()
+    console.log(bookings)
   })
 })
