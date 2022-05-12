@@ -124,15 +124,61 @@ describe('DtravelProperty', function () {
     const tx = await tokenContract.connect(guest).approve(propertyAddress, data.bookingAmount)
     await tx.wait()
 
-    // let verifyResult = await dtravelEIP712Test.verify(data, chainId, generatedSignature)
-    // console.log(verifyResult)
-    // expect(verifyResult).true
     expect(await tokenContract.allowance(guest.address, propertyAddress)).to.equal(data.bookingAmount)
 
     expect(await property.connect(guest).book(data, generatedSignature)).to.emit(dtravelFactory, 'Book')
     // .withArgs(property.address, data.bookingId, Math.ceil(Date.now() / 1000))
+    const bookings = await property.connect(guest).bookingHistory(0, 100)
+    expect(bookings.length).to.equal(1)
+  })
 
-    const bookings = await property.bookingHistory()
-    console.log(bookings)
+  it('Should refund correct amount if guest cancels the booking', async function () {
+    let DtravelEIP712 = await ethers.getContractFactory('DtravelEIP712')
+    let dtravelEIP712 = await DtravelEIP712.deploy()
+    await dtravelEIP712.deployed()
+
+    let DtravelEIP712Test = await ethers.getContractFactory('DtravelEIP712Test', {
+      libraries: {
+        DtravelEIP712: dtravelEIP712.address,
+      },
+    })
+    let dtravelEIP712Test = await DtravelEIP712Test.deploy(owner.address)
+    await dtravelEIP712Test.deployed()
+
+    const propertyAddress = await dtravelFactory.propertyMapping(propertyIds[0])
+    const property = await DtravelProperty.attach(propertyAddress)
+    const chainId = await (await ethers.provider.getNetwork()).chainId
+    const domain = {
+      name: 'Dtravel Booking',
+      version: '1',
+      chainId,
+      verifyingContract: propertyAddress,
+    }
+
+    const data = {
+      token: tokens[0],
+      bookingId: '2hB2o789n',
+      checkInTimestamp: 1655269737,
+      checkOutTimestamp: 1657861737,
+      bookingExpirationTimestamp: 1654060137,
+      bookingAmount: ethers.BigNumber.from('100000000000000000000'),
+      cancellationPolicies: [
+        {
+          expiryTime: 1654664937,
+          refundAmount: ethers.BigNumber.from('50000000000000000000'),
+        },
+      ],
+    }
+
+    const generatedSignature = await owner._signTypedData(domain, BOOKING_SIGNATURE_TYPE, data)
+
+    const TokenFactory = await ethers.getContractFactory('Token')
+    const tokenContract = await TokenFactory.attach(tokens[0])
+    const tx = await tokenContract.connect(guest).approve(propertyAddress, data.bookingAmount)
+    await tx.wait()
+
+    expect(await tokenContract.allowance(guest.address, propertyAddress)).to.equal(data.bookingAmount)
+
+    expect(await property.connect(guest).book(data, generatedSignature)).to.emit(dtravelFactory, 'Book')
   })
 })
