@@ -100,7 +100,11 @@ library DtravelEIP712 {
         bytes memory signature
     ) internal pure returns (address) {
         (bytes32 r, bytes32 s, uint8 v) = splitSignature(signature);
-        return ecrecover(digest(parameters, domainSeparator), v, r, s);
+        address signer = ecrecover(digest(parameters, domainSeparator), v, r, s);
+        if (signer == address(0)) {
+            revert("EIP712: zero address");
+        }
+        return signer;
     }
 
     function splitSignature(bytes memory sig)
@@ -112,7 +116,7 @@ library DtravelEIP712 {
             uint8 v
         )
     {
-        require(sig.length == 65, "invalid signature length");
+        require(sig.length == 65, "EIP712: invalid signature length");
         assembly {
             /*
             First 32 bytes stores the length of the signature
