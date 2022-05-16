@@ -58,12 +58,8 @@ contract DtravelFactory is Ownable {
         onlyMatchingProperty
         returns (bool)
     {
-        uint256 chainId;
-        assembly {
-            chainId := chainid()
-        }
         DtravelConfig config = DtravelConfig(configContract);
-        return DtravelEIP712.verify(_params, chainId, msg.sender, config.dtravelBackend(), _signature);
+        return DtravelEIP712.verify(_params, msg.sender, config.dtravelBackend(), _signature);
     }
 
     function book(string memory _bookingId) external onlyMatchingProperty {
