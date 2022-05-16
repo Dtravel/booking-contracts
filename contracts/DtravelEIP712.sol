@@ -35,7 +35,11 @@ library DtravelEIP712 {
                 verifyingContract: verifyingContract
             })
         );
-        return recoverSigner(parameters, domainSeperator, signature) == authorizedSigner;
+        address signer = recoverSigner(parameters, domainSeperator, signature);
+        if (signer != authorizedSigner) {
+            revert("EIP712: unauthorized signer");
+        }
+        return true;
     }
 
     function hashDomain(EIP712Domain memory eip712Domain) internal pure returns (bytes32) {
