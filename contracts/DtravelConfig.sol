@@ -61,6 +61,7 @@ contract DtravelConfig is Ownable {
     }
 
     function updateTreasury(address _treasury) public onlyOwner {
+        require(_treasury != address(0), "Config: treasury is zero address");
         dtravelTreasury = _treasury;
     }
 }
