@@ -36,14 +36,17 @@ contract DtravelConfig is Ownable {
     }
 
     function addSupportedToken(address _token) public onlyOwner {
+        require(_token != address(0), "Config: token is zero address");
         supportedTokens[_token] = true;
     }
 
     function removeSupportedToken(address _token) public onlyOwner {
+        require(_token != address(0), "Config: token is zero address");
         supportedTokens[_token] = false;
     }
 
     function updateTreasury(address _treasury) public onlyOwner {
+        require(_treasury != address(0), "Config: treasury is zero address");
         dtravelTreasury = _treasury;
     }
 }
