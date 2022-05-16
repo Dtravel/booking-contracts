@@ -22,11 +22,14 @@ library DtravelEIP712 {
 
     function verify(
         BookingParameters memory parameters,
-        uint256 chainId,
         address verifyingContract,
         address authorizedSigner,
         bytes memory signature
-    ) external pure returns (bool) {
+    ) external view returns (bool) {
+        uint256 chainId;
+        assembly {
+            chainId := chainid()
+        }
         bytes32 domainSeperator = hashDomain(
             EIP712Domain({
                 name: "Dtravel Booking",
