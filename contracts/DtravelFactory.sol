@@ -59,7 +59,7 @@ contract DtravelFactory is Ownable {
         onlyMatchingProperty
         returns (bool)
     {
-        DtravelConfig config = DtravelConfig(configContract);
+        IDtravelConfig config = IDtravelConfig(configContract);
         return DtravelEIP712.verify(_params, msg.sender, config.dtravelBackend(), _signature);
     }
 
