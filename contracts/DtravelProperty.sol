@@ -145,7 +145,8 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         Booking storage booking = bookings[getBookingIndex(_bookingId)];
         require(booking.guest != address(0), "Booking does not exist");
         require(
-            booking.status == BookingStatus.InProgress && booking.balance > 0,
+            (booking.status == BookingStatus.InProgress || booking.status == BookingStatus.PartialPayOut) &&
+                booking.balance > 0,
             "Booking is already cancelled or fully paid out"
         );
 
