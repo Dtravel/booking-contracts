@@ -34,7 +34,7 @@ contract DtravelConfig is Ownable {
     }
 
     function updateFee(uint256 _fee) public onlyOwner {
-        require(_fee >= 0 && _fee <= 2000, "Fee must be between 0 and 2000");
+        require(_fee >= 0 && _fee <= 2000, "Config: Fee must be between 0 and 2000");
         uint256 oldFee = fee;
         fee = _fee;
         emit UpdatedFee(oldFee, _fee);
