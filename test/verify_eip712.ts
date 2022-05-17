@@ -28,7 +28,7 @@ let wallet: Wallet
 let signerAddress: string
 let dtravelEIP712: Contract
 let dtravelEIP712Test: Contract
-let chainId: number = 1337
+let chainId: number
 
 beforeEach(async function () {
   // initialize wallet
@@ -47,8 +47,7 @@ beforeEach(async function () {
   dtravelEIP712Test = await DtravelEIP712Test.deploy(signerAddress)
   await dtravelEIP712Test.deployed()
 
-  // chainId = (await ethers.getDefaultProvider().getNetwork()).chainId;
-  // console.log("chainId", chainId);
+  chainId = (await ethers.provider.getNetwork()).chainId
 })
 
 describe('DtravelEIP712', function () {
@@ -131,7 +130,7 @@ describe('DtravelEIP712', function () {
       }
       const generatedSignature = await wallet._signTypedData(domain, types, data)
 
-      await expect(dtravelEIP712Test.verify(data, generatedSignature)).to.be.revertedWith('EIP712: unauthorized signer');
+      await expect(dtravelEIP712Test.verify(data, generatedSignature)).to.be.revertedWith('EIP712: unauthorized signer')
     })
 
     it('Wrong address of verifying contract', async function () {
@@ -158,7 +157,7 @@ describe('DtravelEIP712', function () {
       }
       const generatedSignature = await wallet._signTypedData(domain, types, data)
 
-      await expect(dtravelEIP712Test.verify(data, generatedSignature)).to.be.revertedWith('EIP712: unauthorized signer');
+      await expect(dtravelEIP712Test.verify(data, generatedSignature)).to.be.revertedWith('EIP712: unauthorized signer')
     })
 
     it('Re-generate signature with different wallet', async function () {
@@ -188,7 +187,7 @@ describe('DtravelEIP712', function () {
       }
       const generatedSignature = await newWalet._signTypedData(domain, types, data)
 
-      await expect(dtravelEIP712Test.verify(data, generatedSignature)).to.be.revertedWith('EIP712: unauthorized signer');
+      await expect(dtravelEIP712Test.verify(data, generatedSignature)).to.be.revertedWith('EIP712: unauthorized signer')
     })
 
     it('Modify data passing into contract', async function () {
@@ -217,7 +216,7 @@ describe('DtravelEIP712', function () {
 
       const manipulatedData = { ...data, bookingAmount: BigInt('1000000000000000000') }
 
-      await expect(dtravelEIP712Test.verify(manipulatedData, generatedSignature)).to.be.revertedWith('EIP712: unauthorized signer');
+      await expect(dtravelEIP712Test.verify(manipulatedData, generatedSignature)).to.be.revertedWith('EIP712: unauthorized signer')
     })
   })
 })
