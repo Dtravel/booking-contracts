@@ -14,9 +14,8 @@ contract DtravelEIP712Test {
 
     function verify(
         BookingParameters memory parameters,
-        uint256 chainId,
         bytes memory signature
     ) external view returns (bool) {
-        return DtravelEIP712.verify(parameters, chainId, address(this), authorizedAddress, signature);
+        return DtravelEIP712.verify(parameters, address(this), authorizedAddress, signature);
     }
 }

@@ -34,7 +34,7 @@ contract DtravelConfig is Ownable {
     }
 
     function updateFee(uint256 _fee) public onlyOwner {
-        require(_fee >= 0 && _fee <= 2000, "Fee must be between 0 and 2000");
+        require(_fee >= 0 && _fee <= 2000, "Config: Fee must be between 0 and 2000");
         uint256 oldFee = fee;
         fee = _fee;
         emit UpdatedFee(oldFee, _fee);
@@ -47,16 +47,19 @@ contract DtravelConfig is Ownable {
     }
 
     function addSupportedToken(address _token) public onlyOwner {
+        require(_token != address(0), "Config: token is zero address");
         supportedTokens[_token] = true;
         emit AddedSupportedToken(_token);
     }
 
     function removeSupportedToken(address _token) public onlyOwner {
+        require(_token != address(0), "Config: token is zero address");
         supportedTokens[_token] = false;
         emit RemovedSupportedToken(_token);
     }
 
     function updateTreasury(address _treasury) public onlyOwner {
+        require(_treasury != address(0), "Config: treasury is zero address");
         address oldTreasury = dtravelTreasury;
         dtravelTreasury = _treasury;
         emit UpdatedTreasury(oldTreasury, _treasury);
