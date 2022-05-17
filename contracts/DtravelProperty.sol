@@ -266,9 +266,9 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     }
 
     function getBookingIndex(string memory _bookingId) public view returns (uint256) {
-        uint256 bookingIndex = bookingsMap[_bookingId];
-        require(bookingIndex > 0, "Property: Booking does not exist");
-        return bookingIndex - 1;
+        uint256 bookingId = bookingsMap[_bookingId];
+        require(bookingId > 0, "Property: Booking does not exist");
+        return bookingId - 1;
     }
 
     function getBooking(string memory _bookingId) external view returns (Booking memory) {
