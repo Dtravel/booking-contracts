@@ -11,6 +11,13 @@ contract DtravelConfig is Ownable {
     address public dtravelBackend;
     mapping(address => bool) public supportedTokens;
 
+    event UpdatedFee(uint256 oldFee, uint256 newFee);
+    event UpdatedPayoutDelayTime(uint256 oldPayoutDelayTime, uint256 newPayoutDelayTime);
+    event UpdatedTreasury(address oldTreasury, address newTreasury);
+    event UpdatedBackend(address oldBackend, address newBackend);
+    event AddedSupportedToken(address token);
+    event RemovedSupportedToken(address token);
+
     constructor(
         uint256 _fee,
         uint256 _payoutDelayTime,
@@ -27,23 +34,31 @@ contract DtravelConfig is Ownable {
     }
 
     function updateFee(uint256 _fee) public onlyOwner {
-        require(_fee >= 0 && _fee <= 10000, "Fee must be between 0 and 10000");
+        require(_fee >= 0 && _fee <= 2000, "Fee must be between 0 and 2000");
+        uint256 oldFee = fee;
         fee = _fee;
+        emit UpdatedFee(oldFee, _fee);
     }
 
     function updatePayoutDelayTime(uint256 _payoutDelayTime) public onlyOwner {
+        uint256 oldPayoutDelayTime = payoutDelayTime;
         payoutDelayTime = _payoutDelayTime;
+        emit UpdatedPayoutDelayTime(oldPayoutDelayTime, _payoutDelayTime);
     }
 
     function addSupportedToken(address _token) public onlyOwner {
         supportedTokens[_token] = true;
+        emit AddedSupportedToken(_token);
     }
 
     function removeSupportedToken(address _token) public onlyOwner {
         supportedTokens[_token] = false;
+        emit RemovedSupportedToken(_token);
     }
 
     function updateTreasury(address _treasury) public onlyOwner {
+        address oldTreasury = dtravelTreasury;
         dtravelTreasury = _treasury;
+        emit UpdatedTreasury(oldTreasury, _treasury);
     }
 }
