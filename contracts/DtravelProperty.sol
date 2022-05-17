@@ -143,11 +143,11 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     */
     function cancelByHost(string memory _bookingId) public nonReentrant onlyHostOrDelegate {
         Booking storage booking = bookings[getBookingIndex(_bookingId)];
-        require(booking.guest != address(0), "Booking does not exist");
+        require(booking.guest != address(0), "Property: Booking does not exist");
         require(
             (booking.status == BookingStatus.InProgress || booking.status == BookingStatus.PartialPayOut) &&
                 booking.balance > 0,
-            "Booking is already cancelled or fully paid out"
+            "Property: Booking is already cancelled or fully paid out"
         );
 
         _updateBookingStatus(_bookingId, BookingStatus.CancelledByHost);
