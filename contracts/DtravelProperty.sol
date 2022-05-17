@@ -139,8 +139,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
 
     /**
     When a booking is cancelled by the host, the whole remaining balance is sent to the guest.
-    Any amount that has been paid out to the host or to the treasury through calls to `payout` 
-    will have to be refunded manually to the guest.
+    Any amount that has been paid out to the host or to the treasury through calls to `payout` will have to be refunded manually to the guest.
     */
     function cancelByHost(string memory _bookingId) public nonReentrant onlyHostOrDelegate {
         Booking storage booking = bookings[getBookingIndex(_bookingId)];
@@ -150,7 +149,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
             "Booking is already cancelled or fully paid out"
         );
 
-        updateBookingStatus(_bookingId, BookingStatus.CancelledByHost);
+        _updateBookingStatus(_bookingId, BookingStatus.CancelledByHost);
 
         // Refund to the guest
         uint256 guestAmount = booking.balance;
