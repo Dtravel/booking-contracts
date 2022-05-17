@@ -80,19 +80,12 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         );
         require(_params.cancellationPolicies.length > 0, "Booking should have at least one cancellation policy");
 
-        uint256 totalRefundAmount = 0;
         for (uint256 i = 0; i < _params.cancellationPolicies.length; i++) {
             require(
-                _params.cancellationPolicies[i].expiryTime >= block.timestamp,
-                "Cancellation policy should be in the future"
+                _params.bookingAmount >= _params.cancellationPolicies[i].refundAmount,
+                "Refund amount is greater than booking amount"
             );
-            totalRefundAmount += _params.cancellationPolicies[i].refundAmount;
         }
-
-        require(
-            _params.bookingAmount >= totalRefundAmount,
-            "Booking amount should be greater than or equal to the total refund amount"
-        );
 
         if (_params.cancellationPolicies.length > 1) {
             for (uint256 i = 0; i < _params.cancellationPolicies.length - 1; i++) {
@@ -204,6 +197,10 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         } else {
             for (uint256 i = 0; i < booking.cancellationPolicies.length; i++) {
                 if (booking.cancellationPolicies[i].expiryTime + configContract.payoutDelayTime() >= block.timestamp) {
+                    require(
+                        booking.balance >= booking.cancellationPolicies[i].refundAmount,
+                        "Insufficient booking balance"
+                    );
                     toBePaid = booking.balance - booking.cancellationPolicies[i].refundAmount;
                     break;
                 }
@@ -237,7 +234,8 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         Booking storage booking = bookings[getBookingIndex(_bookingId)];
         require(booking.guest != address(0), "Booking does not exist");
         require(
-            booking.status == BookingStatus.InProgress && booking.balance > 0,
+            (booking.status == BookingStatus.InProgress || booking.status == BookingStatus.PartialPayOut) &&
+                booking.balance > 0,
             "Booking is already cancelled or fully paid out"
         );
 
