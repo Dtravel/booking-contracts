@@ -37,13 +37,13 @@ contract DtravelFactory is Ownable {
     }
 
     modifier onlyMatchingProperty() {
-        require(propertyMapping[msg.sender] == true, "Property not found");
+        require(propertyMapping[msg.sender] == true, "Factory: Property not found");
         _;
     }
 
     function deployProperty(uint256[] memory _ids, address _host) public onlyOwner {
-        require(_ids.length > 0, "Invalid property ids");
-        require(_host != address(0), "Host address is invalid");
+        require(_ids.length > 0, "Factory: Invalid property ids");
+        require(_host != address(0), "Factory: Host address is invalid");
         address[] memory properties = new address[](_ids.length);
         for (uint256 i = 0; i < _ids.length; i++) {
             DtravelProperty property = new DtravelProperty(_ids[i], configContract, address(this), _host);
