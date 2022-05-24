@@ -31,13 +31,24 @@ const networkConfigs: NetworkConfig[] = [
   { network: 'ropsten', chainId: 3 },
   { network: 'rinkeby', chainId: 4 },
   { network: 'kovan', chainId: 42 },
+  { network: 'bscmainnet', chainId: 56 },
+  { network: 'bsctestnet', chainId: 97 },
 ]
 
 function getAccountMnemonic() {
   return process.env.MNEMONIC || ''
 }
 
+function getAccountPrivateKey() {
+  return process.env.PRIVATE_KEY || ''
+}
+
 function getDefaultProviderURL(network: string) {
+  if (network == 'bscmainnet') {
+    return 'https://bsc-dataseed.binance.org/'
+  } else if (network == 'bsctestnet') {
+    return 'https://data-seed-prebsc-1-s1.binance.org:8545/'
+  }
   return `https://${network}.infura.io/v3/${process.env.INFURA_KEY}`
 }
 
@@ -48,9 +59,10 @@ function setupDefaultNetworkProviders(buidlerConfig) {
       url: getDefaultProviderURL(netConfig.network),
       gas: netConfig.gasPrice || 'auto',
       gasPrice: netConfig.gasPrice || 'auto',
-      accounts: {
-        mnemonic: getAccountMnemonic(),
-      },
+      // accounts: {
+      //   mnemonic: getAccountMnemonic(),
+      // },
+      accounts: [getAccountPrivateKey()],
     }
   }
 }
@@ -90,7 +102,7 @@ const config: HardhatUserConfig = {
       },
     ],
   },
-  defaultNetwork: 'rinkeby',
+  defaultNetwork: 'hardhat',
   networks: {
     hardhat: {
       chainId: 1337,
@@ -136,6 +148,6 @@ const config: HardhatUserConfig = {
   },
 }
 
-setupDefaultNetworkProviders(config)
+// setupDefaultNetworkProviders(config)
 
 export default config
