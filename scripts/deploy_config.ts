@@ -6,9 +6,11 @@ async function main() {
   const configFactory = await ethers.getContractFactory('DtravelConfig')
 
   // If we had constructor arguments, they would be passed into deploy()
-  const configContract = await configFactory.deploy(500, '0x7c477A59578710eC7bfD2bf29D7a24F53A33979a', [
-    '0xc8A0dDCE71193D35a8adbE236EeED3ACd0B2c056',
-    '0xc7AD46e0b8a400Bb3C915120d284AafbA8fc4735',
+  const configContract = await configFactory.deploy(500, '0x16641b7916606D7b13Eb8A415dEc0B39dA2CEdaD', [
+    '0x9CAC127A2F2ea000D0AcBA03A2A52Be38F8ea3ec', // BUSD
+    '0x7D08A9f17179670582C6b7983c94b6e2c218a612', // USDC
+    '0x0062fC7642E7BD9b4685901258207A6e22E23378', // USDT
+    '0x8Daeff86528910afaB7fBF5b6287360d33aAFDC8', // TRVL
   ])
 
   // The address the Contract WILL have once mined
