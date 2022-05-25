@@ -41,7 +41,13 @@ contract DtravelFactory is Ownable {
         _;
     }
 
-    function deployProperty(uint256[] memory _ids, address _host) public onlyOwner {
+    modifier onlyOwnerOrDtravelBackend() {
+        IDtravelConfig config = IDtravelConfig(configContract);
+        require((owner() == _msgSender()) || (config.dtravelBackend() == _msgSender()), "Factory: caller is not the owner or backend");
+        _;
+    }
+
+    function deployProperty(uint256[] memory _ids, address _host) public onlyOwnerOrDtravelBackend {
         require(_ids.length > 0, "Factory: Invalid property ids");
         require(_host != address(0), "Factory: Host address is invalid");
         address[] memory properties = new address[](_ids.length);
