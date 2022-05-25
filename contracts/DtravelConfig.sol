@@ -64,4 +64,11 @@ contract DtravelConfig is Ownable {
         dtravelTreasury = _treasury;
         emit UpdatedTreasury(oldTreasury, _treasury);
     }
+
+    function updateDtravelBackend(address _backend) public onlyOwner {
+        require(_backend != address(0), "Config: backend is zero address");
+        address oldBackend = dtravelBackend;
+        dtravelBackend = _backend;
+        emit UpdatedBackend(oldBackend, _backend);
+    }
 }
