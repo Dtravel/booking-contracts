@@ -239,11 +239,10 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
             "Property: Booking is already cancelled or fully paid out"
         );
 
-        _updateBookingStatus(_bookingId, BookingStatus.CancelledByHost);
-
         // Refund to the guest
         uint256 guestAmount = booking.balance;
-
+        
+        _updateBookingStatus(_bookingId, BookingStatus.CancelledByHost);
         booking.balance = 0;
 
         _safeTransfer(booking.token, booking.guest, guestAmount);
