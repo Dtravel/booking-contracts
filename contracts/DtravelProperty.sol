@@ -231,7 +231,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     Any amount that has been paid out to the host or to the treasury through calls to `payout` will have to be refunded manually to the guest.
     */
     function cancelByHost(string memory _bookingId) public nonReentrant onlyHostOrDelegate {
-        Booking storage booking = bookings[getBookingIndex(_bookingId)];
+        Booking memory booking = bookings[getBookingIndex(_bookingId)];
         require(booking.guest != address(0), "Property: Booking does not exist");
         require(
             (booking.status == BookingStatus.InProgress || booking.status == BookingStatus.PartialPayOut) &&
@@ -241,9 +241,8 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
 
         // Refund to the guest
         uint256 guestAmount = booking.balance;
-        
+
         _updateBookingStatus(_bookingId, BookingStatus.CancelledByHost);
-        booking.balance = 0;
 
         _safeTransfer(booking.token, booking.guest, guestAmount);
 
