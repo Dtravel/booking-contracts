@@ -42,17 +42,18 @@ describe('DtravelFactory', function () {
 
     expect(await dtravelFactory.deployProperty(propertyIds, host.address)).to.emit(dtravelFactory, 'PropertyCreated')
     properties = await dtravelFactory.getProperties()
+    console.log({ properties })
     expect(properties.length).to.equal(propertyIds.length)
 
-    let DtravelProperty = await ethers.getContractFactory('DtravelProperty')
+    // let DtravelProperty = await ethers.getContractFactory('DtravelProperty')
 
-    for (let i = 0; i < propertyIds.length; i++) {
-      const propertyAddress = await dtravelFactory.propertyMapping(propertyIds[i])
-      const property = await DtravelProperty.attach(propertyAddress)
-      expect(propertyAddress).to.equal(properties[i])
-      expect(await property.owner()).to.equal(dtravelFactory.address)
-      expect(await property.host()).to.equal(host.address)
-      expect(await property.id()).to.equal(propertyIds[i])
-    }
+    // for (let i = 0; i < propertyIds.length; i++) {
+    //   const propertyAddress = await dtravelFactory.propertyMapping(propertyIds[i])
+    //   const property = await DtravelProperty.attach(propertyAddress)
+    //   expect(propertyAddress).to.equal(properties[i])
+    //   expect(await property.owner()).to.equal(dtravelFactory.address)
+    //   expect(await property.host()).to.equal(host.address)
+    //   expect(await property.id()).to.equal(propertyIds[i])
+    // }
   })
 })
