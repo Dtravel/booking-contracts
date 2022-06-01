@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity >=0.8.0 <0.9.0;
+pragma solidity >=0.8.4 <0.9.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "./interfaces/IDtravelConfig.sol";
 import "./DtravelProperty.sol";
 import "./DtravelStructs.sol";
 import { DtravelEIP712 } from "./DtravelEIP712.sol";
 
 contract DtravelFactory is Ownable {
     address public configContract;
-    address[] properties;
-    mapping(uint256 => address) public propertyMapping;
+    mapping(address => bool) private propertyMapping;
 
     event PropertyCreated(uint256[] ids, address[] properties, address host);
     event Book(address property, string bookingId, uint256 bookedTimestamp);
@@ -36,74 +36,71 @@ contract DtravelFactory is Ownable {
         configContract = _config;
     }
 
-    modifier onlyMatchingProperty(uint256 _propertyId) {
-        require(propertyMapping[_propertyId] == msg.sender, "Not a property contract");
+    modifier onlyMatchingProperty() {
+        require(propertyMapping[msg.sender] == true, "Factory: Property not found");
         _;
     }
 
-    function deployProperty(uint256[] memory _ids, address _host) public onlyOwner {
-        require(_ids.length > 0, "Invalid property ids");
-        require(_host != address(0), "Host address is invalid");
-        address[] memory newProperties = new address[](_ids.length);
+    modifier onlyOwnerOrDtravelBackend() {
+        IDtravelConfig config = IDtravelConfig(configContract);
+        require(
+            (owner() == _msgSender()) || (config.dtravelBackend() == _msgSender()),
+            "Factory: caller is not the owner or backend"
+        );
+        _;
+    }
+
+    function deployProperty(uint256[] memory _ids, address _host) public onlyOwnerOrDtravelBackend {
+        require(_ids.length > 0, "Factory: Invalid property ids");
+        require(_host != address(0), "Factory: Host address is invalid");
+        address[] memory properties = new address[](_ids.length);
         for (uint256 i = 0; i < _ids.length; i++) {
-            require(propertyMapping[_ids[i]] == address(0), "Property with the same id already exists");
             DtravelProperty property = new DtravelProperty(_ids[i], configContract, address(this), _host);
-            newProperties[i] = address(property);
-            propertyMapping[_ids[i]] = newProperties[i];
-            properties.push(newProperties[i]);
+            propertyMapping[address(property)] = true;
+            properties[i] = address(property);
         }
-        emit PropertyCreated(_ids, newProperties, _host);
+        emit PropertyCreated(_ids, properties, _host);
     }
 
-    function verifyBookingData(
-        uint256 _propertyId,
-        BookingParameters memory _params,
-        bytes memory _signature
-    ) external view onlyMatchingProperty(_propertyId) returns (bool) {
-        uint256 chainId;
-        assembly {
-            chainId := chainid()
-        }
-        DtravelConfig config = DtravelConfig(configContract);
-        return DtravelEIP712.verify(_params, chainId, msg.sender, config.dtravelBackend(), _signature);
+    function verifyBookingData(BookingParameters memory _params, bytes memory _signature)
+        external
+        view
+        onlyMatchingProperty
+        returns (bool)
+    {
+        IDtravelConfig config = IDtravelConfig(configContract);
+        return DtravelEIP712.verify(_params, msg.sender, config.dtravelBackend(), _signature);
     }
 
-    function book(uint256 _propertyId, string memory _bookingId) external onlyMatchingProperty(_propertyId) {
+    function book(string memory _bookingId) external onlyMatchingProperty {
         emit Book(msg.sender, _bookingId, block.timestamp);
     }
 
     function cancelByGuest(
-        uint256 _propertyId,
         string memory _bookingId,
         uint256 _guestAmount,
         uint256 _hostAmount,
         uint256 _treasuryAmount,
         uint256 _cancelTimestamp
-    ) external onlyMatchingProperty(_propertyId) {
+    ) external onlyMatchingProperty {
         emit CancelByGuest(msg.sender, _bookingId, _guestAmount, _hostAmount, _treasuryAmount, _cancelTimestamp);
     }
 
     function cancelByHost(
-        uint256 _propertyId,
         string memory _bookingId,
         uint256 _guestAmount,
         uint256 _cancelTimestamp
-    ) external onlyMatchingProperty(_propertyId) {
+    ) external onlyMatchingProperty {
         emit CancelByHost(msg.sender, _bookingId, _guestAmount, _cancelTimestamp);
     }
 
     function payout(
-        uint256 _propertyId,
         string memory _bookingId,
         uint256 _hostAmount,
         uint256 _treasuryAmount,
         uint256 _payoutTimestamp,
         uint8 _payoutType
-    ) external onlyMatchingProperty(_propertyId) {
+    ) external onlyMatchingProperty {
         emit Payout(msg.sender, _bookingId, _hostAmount, _treasuryAmount, _payoutTimestamp, _payoutType);
-    }
-
-    function getProperties() public view returns (address[] memory) {
-        return properties;
     }
 }

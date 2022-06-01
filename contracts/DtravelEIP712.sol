@@ -1,5 +1,6 @@
 //SPDX-License-Identifier: GPL-3.0
-pragma solidity >=0.8.0 <0.9.0;
+
+pragma solidity >=0.8.4 <0.9.0;
 
 import "./DtravelStructs.sol";
 
@@ -22,11 +23,14 @@ library DtravelEIP712 {
 
     function verify(
         BookingParameters memory parameters,
-        uint256 chainId,
         address verifyingContract,
         address authorizedSigner,
         bytes memory signature
-    ) external pure returns (bool) {
+    ) external view returns (bool) {
+        uint256 chainId;
+        assembly {
+            chainId := chainid()
+        }
         bytes32 domainSeperator = hashDomain(
             EIP712Domain({
                 name: "Dtravel Booking",
@@ -35,7 +39,11 @@ library DtravelEIP712 {
                 verifyingContract: verifyingContract
             })
         );
-        return recoverSigner(parameters, domainSeperator, signature) == authorizedSigner;
+        address signer = recoverSigner(parameters, domainSeperator, signature);
+        if (signer != authorizedSigner) {
+            revert("EIP712: unauthorized signer");
+        }
+        return true;
     }
 
     function hashDomain(EIP712Domain memory eip712Domain) internal pure returns (bytes32) {
@@ -100,7 +108,11 @@ library DtravelEIP712 {
         bytes memory signature
     ) internal pure returns (address) {
         (bytes32 r, bytes32 s, uint8 v) = splitSignature(signature);
-        return ecrecover(digest(parameters, domainSeparator), v, r, s);
+        address signer = ecrecover(digest(parameters, domainSeparator), v, r, s);
+        if (signer == address(0)) {
+            revert("EIP712: zero address");
+        }
+        return signer;
     }
 
     function splitSignature(bytes memory sig)
@@ -112,7 +124,7 @@ library DtravelEIP712 {
             uint8 v
         )
     {
-        require(sig.length == 65, "invalid signature length");
+        require(sig.length == 65, "EIP712: invalid signature length");
         assembly {
             /*
             First 32 bytes stores the length of the signature
