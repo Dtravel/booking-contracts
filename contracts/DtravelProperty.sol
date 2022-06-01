@@ -41,7 +41,10 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     @notice Modifier to check if the caller is the Dtravel backend
     */
     modifier onlyBackend() {
-        require(msg.sender == configContract.dtravelBackend(), "Property: Only Dtravel is authorized to call this action");
+        require(
+            msg.sender == configContract.dtravelBackend(),
+            "Property: Only Dtravel is authorized to call this action"
+        );
 
         _;
     }
@@ -78,7 +81,10 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
             _params.checkOutTimestamp >= _params.checkInTimestamp + oneDay,
             "Property: Booking period should be at least one night"
         );
-        require(_params.cancellationPolicies.length > 0, "Property: Booking should have at least one cancellation policy");
+        require(
+            _params.cancellationPolicies.length > 0,
+            "Property: Booking should have at least one cancellation policy"
+        );
 
         for (uint256 i = 0; i < _params.cancellationPolicies.length; i++) {
             require(
@@ -105,15 +111,21 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     @param _params Booking data provided by oracle backend
     @param _signature Signature of the transaction
     */
-    function book(BookingParameters memory _params, bytes memory _signature) external nonReentrant {
+    function book(BookingParameters memory _params, bytes memory _signature) external payable nonReentrant {
         // Check if parameters are valid
         validateBookingParameters(_params, _signature);
 
-        require(
-            IERC20(_params.token).allowance(msg.sender, address(this)) >= _params.bookingAmount,
-            "Property: Token allowance too low"
-        );
-        _safeTransferFrom(_params.token, msg.sender, address(this), _params.bookingAmount);
+        if (_params.token == address(1)) {
+            // Native Token
+            require(msg.value == _params.bookingAmount, "Property: Booking amount is less than the amount to be paid");
+        } else {
+            // ERC20 Token
+            require(
+                IERC20(_params.token).allowance(msg.sender, address(this)) >= _params.bookingAmount,
+                "Property: Token allowance too low"
+            );
+            _safeTransferFrom(_params.token, msg.sender, address(this), _params.bookingAmount);
+        }
 
         bookings.push();
         uint256 bookingIndex = bookings.length - 1;
@@ -151,7 +163,10 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         require(booking.guest != address(0), "Property: Booking does not exist");
         require(booking.guest == msg.sender, "Property: Only the guest can cancel the booking");
         require(booking.balance > 0, "Property: Booking is already cancelled or paid out");
-        require(IERC20(booking.token).balanceOf(address(this)) >= booking.balance, "Property: Insufficient token balance");
+        require(
+            IERC20(booking.token).balanceOf(address(this)) >= booking.balance,
+            "Property: Insufficient token balance"
+        );
 
         uint256 guestAmount = 0;
         for (uint256 i = 0; i < booking.cancellationPolicies.length; i++) {

@@ -28,6 +28,7 @@ contract DtravelConfig is Ownable {
         payoutDelayTime = _payoutDelayTime;
         dtravelTreasury = _treasury;
         dtravelBackend = msg.sender;
+        supportedTokens[address(1)] = true; // Support for native coin
         for (uint256 i = 0; i < _tokens.length; i++) {
             supportedTokens[_tokens[i]] = true;
         }
