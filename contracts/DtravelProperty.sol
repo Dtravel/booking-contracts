@@ -117,7 +117,10 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
 
         if (_params.token == address(1)) {
             // Native Token
-            require(msg.value == _params.bookingAmount, "Property: Booking amount is less than the amount to be paid");
+            require(
+                msg.value == _params.bookingAmount,
+                "Property: amount paid is different from the amount required for booking"
+            );
         } else {
             // ERC20 Token
             require(
