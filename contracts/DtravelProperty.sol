@@ -115,7 +115,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         // Check if parameters are valid
         validateBookingParameters(_params, _signature);
 
-        if (_params.token == address(1)) {
+        if (_params.token == address(0)) {
             // Native Token
             require(
                 msg.value == _params.bookingAmount,
