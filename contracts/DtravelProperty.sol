@@ -166,10 +166,17 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         require(booking.guest != address(0), "Property: Booking does not exist");
         require(booking.guest == msg.sender, "Property: Only the guest can cancel the booking");
         require(booking.balance > 0, "Property: Booking is already cancelled or paid out");
-        require(
-            IERC20(booking.token).balanceOf(address(this)) >= booking.balance,
-            "Property: Insufficient token balance"
-        );
+
+        if (booking.token == address(0)) {
+            // If native token
+            require(address(this).balance >= booking.balance, "Property: Insufficient ETH balance");
+        } else {
+            // If ERC20 token
+            require(
+                IERC20(booking.token).balanceOf(address(this)) >= booking.balance,
+                "Property: Insufficient token balance"
+            );
+        }
 
         uint256 guestAmount = 0;
         for (uint256 i = 0; i < booking.cancellationPolicies.length; i++) {
@@ -185,9 +192,17 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         uint256 treasuryAmount = ((booking.balance - guestAmount) * configContract.fee()) / 10000;
         uint256 hostAmount = booking.balance - guestAmount - treasuryAmount;
 
-        _safeTransfer(booking.token, booking.guest, guestAmount);
-        _safeTransfer(booking.token, host, hostAmount);
-        _safeTransfer(booking.token, configContract.dtravelTreasury(), treasuryAmount);
+        if (booking.token == address(0)) {
+            // If native token
+            _safeTransferETH(booking.guest, guestAmount);
+            _safeTransferETH(host, hostAmount);
+            _safeTransferETH(configContract.dtravelTreasury(), treasuryAmount);
+        } else {
+            // If ERC20 token
+            _safeTransfer(booking.token, booking.guest, guestAmount);
+            _safeTransfer(booking.token, host, hostAmount);
+            _safeTransfer(booking.token, configContract.dtravelTreasury(), treasuryAmount);
+        }
 
         factoryContract.cancelByGuest(_bookingId, guestAmount, hostAmount, treasuryAmount, block.timestamp);
     }
@@ -238,8 +253,15 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         uint256 treasuryAmount = (toBePaid * configContract.fee()) / 10000;
         uint256 hostAmount = toBePaid - treasuryAmount;
 
-        _safeTransfer(booking.token, host, hostAmount);
-        _safeTransfer(booking.token, configContract.dtravelTreasury(), treasuryAmount);
+        if (booking.token == address(0)) {
+            // If native token
+            _safeTransferETH(host, hostAmount);
+            _safeTransferETH(configContract.dtravelTreasury(), treasuryAmount);
+        } else {
+            // If ERC20 token
+            _safeTransfer(booking.token, host, hostAmount);
+            _safeTransfer(booking.token, configContract.dtravelTreasury(), treasuryAmount);
+        }
 
         factoryContract.payout(_bookingId, hostAmount, treasuryAmount, block.timestamp, booking.balance == 0 ? 1 : 2);
     }
@@ -264,7 +286,13 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
 
         booking.balance = 0;
 
-        _safeTransfer(booking.token, booking.guest, guestAmount);
+        if (booking.token == address(0)) {
+            // If native token
+            _safeTransferETH(booking.guest, guestAmount);
+        } else {
+            // If ERC20 token
+            _safeTransfer(booking.token, booking.guest, guestAmount);
+        }
 
         factoryContract.cancelByHost(_bookingId, guestAmount, block.timestamp);
     }
@@ -314,6 +342,14 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         if (_amount > 0) {
             bool sent = IERC20(_token).transfer(_recipient, _amount);
             return sent;
+        }
+        return false;
+    }
+
+    function _safeTransferETH(address _recipient, uint256 _amount) private returns (bool) {
+        if (_amount > 0) {
+            (bool sent, ) = payable(_recipient).call{ value: _amount }("");
+            require(sent, "ETH transfer failed");
         }
         return false;
     }
