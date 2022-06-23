@@ -48,13 +48,13 @@ contract DtravelConfig is Ownable {
     }
 
     function addSupportedToken(address _token) public onlyOwner {
-        require(_token != address(0), "Config: token is zero address");
+        require(!supportedTokens[_token], "Config: token is already whitelisted");
         supportedTokens[_token] = true;
         emit AddedSupportedToken(_token);
     }
 
     function removeSupportedToken(address _token) public onlyOwner {
-        require(_token != address(0), "Config: token is zero address");
+        require(supportedTokens[_token], "Config: token is not whitelisted");
         supportedTokens[_token] = false;
         emit RemovedSupportedToken(_token);
     }
