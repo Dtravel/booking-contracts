@@ -1,14 +1,11 @@
-import '@nomiclabs/hardhat-ethers'
-import hre from 'hardhat'
+import "@nomiclabs/hardhat-ethers"
+import hre from "hardhat"
 
 async function main() {
   await hre.run('verify:verify', {
-    address: '????', // DtravelProperty address
+    address: '????', // DtravelFactory address
     constructorArguments: [
-      0, // Property ID
       '?????', // DtravelConfig address
-      '?????', // DtravelFactory address
-      '?????' // Host address
     ],
   })
 }
