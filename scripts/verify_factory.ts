@@ -1,11 +1,12 @@
 import "@nomiclabs/hardhat-ethers"
 import hre from "hardhat"
+import  Configs from './configs.json'
 
 async function main() {
   await hre.run('verify:verify', {
-    address: '????', // DtravelFactory address
+    address: Configs['dtravel-factory-contract'], // DtravelFactory address
     constructorArguments: [
-      '?????', // DtravelConfig address
+      Configs['dtravel-config-contract']
     ],
   })
 }

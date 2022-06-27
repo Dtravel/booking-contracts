@@ -1,17 +1,11 @@
 import '@nomiclabs/hardhat-ethers'
 import hre from 'hardhat'
+import  Configs from './configs.json'
 
 async function main() {
   await hre.run('verify:verify', {
-    address: '?????', // deployed DtravelConfig address
-    constructorArguments: [
-      0, // fee percentage 5% -> 500, 0.1% -> 10
-      0, // payout delay time in seconds
-      '?????', // Dtravel treasury address
-      [
-        '?????', // supported token
-      ]
-    ],
+    address: Configs['dtravel-config-contract'], // deployed DtravelConfig address
+    constructorArguments: Configs['configs'],
   })
 }
 
