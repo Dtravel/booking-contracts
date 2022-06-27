@@ -1,5 +1,6 @@
 import '@nomiclabs/hardhat-ethers'
 import { ethers } from 'hardhat'
+import  Configs from './configs.json'
 
 async function main() {
 
@@ -7,14 +8,12 @@ async function main() {
   const dtravelEIP712 = await DtravelEIP712.deploy()
   await dtravelEIP712.deployed()
 
-  const dtravelConfig = '?????' // DtravelConfig address
-
   const DtravelFactory = await ethers.getContractFactory('DtravelFactory', {
     libraries: {
       DtravelEIP712: dtravelEIP712.address
     }
   })
-  const dtravelFactory = await DtravelFactory.deploy(dtravelConfig)
+  const dtravelFactory = await DtravelFactory.deploy(Configs['dtravel-config-contract'])
 
   // The address the Contract WILL have once mined
   console.log(dtravelFactory.address)
@@ -26,7 +25,7 @@ async function main() {
 
   // await hre.run('verify:verify', {
   //   address: dtravelFactory.address,
-  //   constructorArguments: [dtravelConfig],
+  //   constructorArguments: [Configs['dtravel-config-contract']],
   // })
 }
 
