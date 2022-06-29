@@ -148,6 +148,6 @@ const config: HardhatUserConfig = {
   },
 }
 
-// setupDefaultNetworkProviders(config)
+setupDefaultNetworkProviders(config)
 
 export default config
