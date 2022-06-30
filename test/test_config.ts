@@ -7,6 +7,7 @@ import { Contract, Wallet } from 'ethers'
 use(solidity)
 
 let dtravelConfig: Contract
+const zeroAddress = '0x0000000000000000000000000000000000000000'
 
 beforeEach(async function() {
     let DtravelConfig = await ethers.getContractFactory('DtravelConfig')
@@ -56,7 +57,7 @@ describe('DtravelConfig', function () {
         })
 
         it('only owner be able to update fee', async function() {
-            let newSignerDtravelConfig = connectContractToNewSigner(dtravelConfig)
+            let newSignerDtravelConfig = await connectContractToNewSigner(dtravelConfig)
 
             await expect(newSignerDtravelConfig.updateFee(600)).to.be.revertedWith('Ownable: caller is not the owner')
         })
@@ -72,7 +73,7 @@ describe('DtravelConfig', function () {
         })
 
         it('should not update token with zero address', async function() {
-            await expect(dtravelConfig.addSupportedToken('0x0000000000000000000000000000000000000000')).to.be.revertedWith('Config: token is zero address')
+            await expect(dtravelConfig.addSupportedToken(zeroAddress)).to.be.revertedWith('Config: token is zero address')
         })
 
         it('remove a supported token', async function() {
@@ -89,7 +90,7 @@ describe('DtravelConfig', function () {
         })
 
         it('only owner be able to update supported token', async function () {
-            let newSignerDtravelConfig = connectContractToNewSigner(dtravelConfig)
+            let newSignerDtravelConfig = await connectContractToNewSigner(dtravelConfig)
 
             await expect(newSignerDtravelConfig.addSupportedToken('0x8Daeff86528910afaB7fBF5b6287360d33aAFDC8')).to.be.revertedWith('Ownable: caller is not the owner')
 
@@ -107,11 +108,11 @@ describe('DtravelConfig', function () {
         })
 
         it('should not update Dtravel treasury address with zero address', async function() {
-            await expect(dtravelConfig.updateTreasury('0x0000000000000000000000000000000000000000')).to.be.revertedWith('Config: treasury is zero address')
+            await expect(dtravelConfig.updateTreasury(zeroAddress)).to.be.revertedWith('Config: treasury is zero address')
         })
 
         it('only owner be able to update Dtravel treasury address', async function() {
-            let newSignerDtravelConfig = connectContractToNewSigner(dtravelConfig)
+            let newSignerDtravelConfig = await connectContractToNewSigner(dtravelConfig)
 
             await expect(newSignerDtravelConfig.updateTreasury('0x8Ad046a7a8f5F1843dB504b739eFC70B819b25E8')).to.be.revertedWith('Ownable: caller is not the owner')
         })
@@ -127,20 +128,20 @@ describe('DtravelConfig', function () {
         })
 
         it('should not update Dtravel backend address with zero address', async function() {
-            await expect(dtravelConfig.updateDtravelBackend('0x0000000000000000000000000000000000000000')).to.be.revertedWith('Config: backend is zero address')
+            await expect(dtravelConfig.updateDtravelBackend(zeroAddress)).to.be.revertedWith('Config: backend is zero address')
         })
 
         it('only owner be able to update Dtravel backend address', async function() {
-            let newSignerDtravelConfig = connectContractToNewSigner(dtravelConfig)
+            let newSignerDtravelConfig = await connectContractToNewSigner(dtravelConfig)
 
             await expect(newSignerDtravelConfig.updateDtravelBackend('0x8Ad046a7a8f5F1843dB504b739eFC70B819b25E8')).to.be.revertedWith('Ownable: caller is not the owner')
         })
     })
 })
 
-function connectContractToNewSigner(contract: Contract): Contract {
-    const privateKey = '0x44d34f80e5de79ba6be6d2431216db30e5842f9a13907bf112496f3569aa48e2'
-    let wallet = new Wallet(privateKey, ethers.provider)
-    let newSignerContract = contract.connect(wallet)
+async function connectContractToNewSigner(contract: Contract): Promise<Contract> {
+    let signers = await ethers.getSigners()
+    let newSigner = signers[1]
+    let newSignerContract = contract.connect(newSigner)
     return newSignerContract
 }
