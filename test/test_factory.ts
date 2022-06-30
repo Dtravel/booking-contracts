@@ -99,19 +99,3 @@ async function verifyDeployPropertyTransaction(transaction: any) {
     let dtravelProperty = DtravelProperty.attach(propertyAddress)
     expect(await dtravelProperty.id()).equal(propertyId)
 }
-
-async function getDeployedPropertyContractFromTransaction(transaction: any): Promise<Contract> {
-    let events = transaction.events;
-    let propertyCreatedEvent: Map<string, any>
-    for (let event of events) {
-        if (event['event'] === 'PropertyCreated') {
-            propertyCreatedEvent = event;
-            break;
-        }
-    }
-    let propertyEventArgs = propertyCreatedEvent['args'];
-    let propertyAddress = propertyEventArgs['properties'][0]
-    let DtravelProperty = await ethers.getContractFactory('DtravelProperty')
-    let dtravelProperty = DtravelProperty.attach(propertyAddress)
-    return dtravelProperty
-}
