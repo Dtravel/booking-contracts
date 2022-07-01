@@ -8,15 +8,19 @@ use(solidity)
 
 let dtravelConfig: Contract
 let dtravelFactory: Contract
-const hostAddress = '0x70997970C51812dc3A010C7d01b50e0d17dc79C8'
+let hostAddress: string
 const propertyId = BigNumber.from(1)
 
 beforeEach(async function() {
+    let signers = await ethers.getSigners()
+    hostAddress = signers[2].address
+    let treasuryAddress = signers[1].address
+
     let DtravelConfig = await ethers.getContractFactory('DtravelConfig')
     dtravelConfig = await DtravelConfig.deploy(
         500,
         24 * 60 * 60,
-        '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
+        treasuryAddress,
         ['0x9CAC127A2F2ea000D0AcBA03A2A52Be38F8ea3ec']
     )
     await dtravelConfig.deployed()
@@ -86,16 +90,17 @@ async function verifyDeployPropertyTransaction(transaction: any) {
     }
 
     /// verify the existence of PropertyCreated event
-    expect(propertyCreatedEvent).exist
+    expect(propertyCreatedEvent).to.be.not.undefined
+    expect(propertyCreatedEvent).to.be.not.null
 
     /// verify data of PropertyCreated event
     let propertyEventArgs = propertyCreatedEvent['args'];
-    expect(propertyEventArgs['host']).equal(hostAddress)
-    expect(propertyEventArgs['ids'][0]).equal(propertyId)
+    expect(propertyEventArgs['host']).to.equal(hostAddress)
+    expect(propertyEventArgs['ids'][0]).to.equal(propertyId)
 
     /// verify new deployed property contract
     let propertyAddress = propertyEventArgs['properties'][0]
     let DtravelProperty = await ethers.getContractFactory('DtravelProperty')
     let dtravelProperty = DtravelProperty.attach(propertyAddress)
-    expect(await dtravelProperty.id()).equal(propertyId)
+    expect(await dtravelProperty.id()).to.equal(propertyId)
 }

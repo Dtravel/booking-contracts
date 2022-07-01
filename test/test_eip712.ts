@@ -2,12 +2,11 @@ import { expect, use } from 'chai'
 import { ethers } from 'hardhat'
 import { describe, it } from 'mocha'
 import { solidity } from 'ethereum-waffle'
-import { Contract, Wallet } from 'ethers'
+import { Contract } from 'ethers'
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 
 use(solidity)
 
-// private key to sign data
-const privateKey = '0x44d34f80e5de79ba6be6d2431216db30e5842f9a13907bf112496f3569aa48e2'
 const types = {
   BookingParameters: [
     { name: 'token', type: 'address' },
@@ -24,16 +23,16 @@ const types = {
   ],
 }
 
-let wallet: Wallet
+let signer: SignerWithAddress
 let signerAddress: string
 let dtravelEIP712: Contract
 let dtravelEIP712Test: Contract
 let chainId: number
 
 beforeEach(async function () {
-  // initialize wallet
-  wallet = new Wallet(privateKey)
-  signerAddress = wallet.address
+  let signers = await ethers.getSigners()
+  signer = signers[1]
+  signerAddress = signer.address
 
   let DtravelEIP712 = await ethers.getContractFactory('DtravelEIP712')
   dtravelEIP712 = await DtravelEIP712.deploy()
@@ -74,7 +73,7 @@ describe('DtravelEIP712', function () {
           },
         ],
       }
-      const generatedSignature = await wallet._signTypedData(domain, types, data)
+      const generatedSignature = await signer._signTypedData(domain, types, data)
 
       let verifyResult = await dtravelEIP712Test.verify(data, generatedSignature)
 
@@ -98,7 +97,7 @@ describe('DtravelEIP712', function () {
         bookingAmount: BigInt('100000000000000000000'),
         cancellationPolicies: [],
       }
-      const generatedSignature = await wallet._signTypedData(domain, types, data)
+      const generatedSignature = await signer._signTypedData(domain, types, data)
 
       let verifyResult = await dtravelEIP712Test.verify(data, generatedSignature)
 
@@ -128,7 +127,7 @@ describe('DtravelEIP712', function () {
           },
         ],
       }
-      const generatedSignature = await wallet._signTypedData(domain, types, data)
+      const generatedSignature = await signer._signTypedData(domain, types, data)
 
       await expect(dtravelEIP712Test.verify(data, generatedSignature)).to.be.revertedWith('EIP712: unauthorized signer')
     })
@@ -155,14 +154,14 @@ describe('DtravelEIP712', function () {
           },
         ],
       }
-      const generatedSignature = await wallet._signTypedData(domain, types, data)
+      const generatedSignature = await signer._signTypedData(domain, types, data)
 
       await expect(dtravelEIP712Test.verify(data, generatedSignature)).to.be.revertedWith('EIP712: unauthorized signer')
     })
 
     it('Re-generate signature with different wallet', async function () {
-      const newPrivateKey = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d'
-      let newWalet = new Wallet(newPrivateKey)
+      let signers = await ethers.getSigners()
+      let newSigner = signers[2]
 
       const domain = {
         name: 'Dtravel Booking',
@@ -185,7 +184,7 @@ describe('DtravelEIP712', function () {
           },
         ],
       }
-      const generatedSignature = await newWalet._signTypedData(domain, types, data)
+      const generatedSignature = await newSigner._signTypedData(domain, types, data)
 
       await expect(dtravelEIP712Test.verify(data, generatedSignature)).to.be.revertedWith('EIP712: unauthorized signer')
     })
@@ -212,7 +211,7 @@ describe('DtravelEIP712', function () {
           },
         ],
       }
-      const generatedSignature = await wallet._signTypedData(domain, types, data)
+      const generatedSignature = await signer._signTypedData(domain, types, data)
 
       const manipulatedData = { ...data, bookingAmount: BigInt('1000000000000000000') }
 
