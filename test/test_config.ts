@@ -7,15 +7,20 @@ import { Contract, Wallet } from 'ethers'
 use(solidity)
 
 let dtravelConfig: Contract
+let treasuryAddress: string
 const zeroAddress = '0x0000000000000000000000000000000000000000'
+const tokenAddress = '0x9CAC127A2F2ea000D0AcBA03A2A52Be38F8ea3ec'
 
 beforeEach(async function() {
+    let signers = await ethers.getSigners()
+    treasuryAddress = signers[1].address
+
     let DtravelConfig = await ethers.getContractFactory('DtravelConfig')
     dtravelConfig = await DtravelConfig.deploy(
         500,
         24 * 60 * 60,
-        '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
-        ['0x9CAC127A2F2ea000D0AcBA03A2A52Be38F8ea3ec']
+        treasuryAddress,
+        [tokenAddress]
     )
     await dtravelConfig.deployed()
 })
@@ -23,25 +28,25 @@ beforeEach(async function() {
 describe('DtravelConfig', function () {
     describe('Verify initial config', function() {
         it('initialize with valid fee', async function() {
-            expect(await dtravelConfig.fee()).equal(500)
+            expect(await dtravelConfig.fee()).to.equal(500)
         })
 
         it('initialize with valid payout delay', async function() {
-            expect(await dtravelConfig.payoutDelayTime()).equal(24 * 60 * 60)
+            expect(await dtravelConfig.payoutDelayTime()).to.equal(24 * 60 * 60)
         })
 
         it('intialize with valid Dtravel treasury address', async function() {
-            expect(await dtravelConfig.dtravelTreasury()).equal('0x70997970C51812dc3A010C7d01b50e0d17dc79C8')
+            expect(await dtravelConfig.dtravelTreasury()).to.equal(treasuryAddress)
         })
 
         it('initialize with valid supported token', async function() {
-            expect(await dtravelConfig.supportedTokens('0x9CAC127A2F2ea000D0AcBA03A2A52Be38F8ea3ec')).true
+            expect(await dtravelConfig.supportedTokens(tokenAddress)).true
         })
 
         it('intialize with valid Dtravel backend address', async function() {
             let signers = await ethers.getSigners()
             let defaultSignerAddress = signers[0].address
-            expect(await dtravelConfig.dtravelBackend()).equal(defaultSignerAddress)
+            expect(await dtravelConfig.dtravelBackend()).to.equal(defaultSignerAddress)
         })
     })
     describe('Verify updating fee', function () {
@@ -49,7 +54,7 @@ describe('DtravelConfig', function () {
             let updateFeeTx = await dtravelConfig.updateFee(600)
             await updateFeeTx.wait()
 
-            expect(await dtravelConfig.fee()).equal(600)
+            expect(await dtravelConfig.fee()).to.equal(600)
         })
 
         it('should not update fee with invalid value', async function() {
@@ -100,11 +105,13 @@ describe('DtravelConfig', function () {
 
     describe('Verify updating Dtravel treasury address', function() {
         it('should update Dtravel treasury address with valid value', async function() {
-            const newTreasurAddress = '0x8Ad046a7a8f5F1843dB504b739eFC70B819b25E8'
+            let signers = await ethers.getSigners()
+            const newTreasurAddress = signers[2].address
+
             let updateTreasuryTx = await dtravelConfig.updateTreasury(newTreasurAddress)
             await updateTreasuryTx.wait()
 
-            expect(await dtravelConfig.dtravelTreasury()).equal(newTreasurAddress)
+            expect(await dtravelConfig.dtravelTreasury()).to.equal(newTreasurAddress)
         })
 
         it('should not update Dtravel treasury address with zero address', async function() {
@@ -112,19 +119,24 @@ describe('DtravelConfig', function () {
         })
 
         it('only owner be able to update Dtravel treasury address', async function() {
+            let signers = await ethers.getSigners()
+            const newTreasurAddress = signers[2].address
+
             let newSignerDtravelConfig = await connectContractToNewSigner(dtravelConfig)
 
-            await expect(newSignerDtravelConfig.updateTreasury('0x8Ad046a7a8f5F1843dB504b739eFC70B819b25E8')).to.be.revertedWith('Ownable: caller is not the owner')
+            await expect(newSignerDtravelConfig.updateTreasury(newTreasurAddress)).to.be.revertedWith('Ownable: caller is not the owner')
         })
     })
 
     describe('Verify update Dtravel backend address', function() {
         it('should update Dtravel backend address with valid value', async function() {
-            const newBackendAddress = '0x8Ad046a7a8f5F1843dB504b739eFC70B819b25E8'
+            let signers = await ethers.getSigners()
+            const newBackendAddress = signers[2].address
+
             let updateBackendTx = await dtravelConfig.updateDtravelBackend(newBackendAddress)
             await updateBackendTx.wait()
 
-            expect(await dtravelConfig.dtravelBackend()).equal(newBackendAddress)
+            expect(await dtravelConfig.dtravelBackend()).to.equal(newBackendAddress)
         })
 
         it('should not update Dtravel backend address with zero address', async function() {
@@ -132,9 +144,12 @@ describe('DtravelConfig', function () {
         })
 
         it('only owner be able to update Dtravel backend address', async function() {
+            let signers = await ethers.getSigners()
+            const newBackendAddress = signers[2].address
+
             let newSignerDtravelConfig = await connectContractToNewSigner(dtravelConfig)
 
-            await expect(newSignerDtravelConfig.updateDtravelBackend('0x8Ad046a7a8f5F1843dB504b739eFC70B819b25E8')).to.be.revertedWith('Ownable: caller is not the owner')
+            await expect(newSignerDtravelConfig.updateDtravelBackend(newBackendAddress)).to.be.revertedWith('Ownable: caller is not the owner')
         })
     })
 })
