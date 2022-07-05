@@ -15,8 +15,13 @@ jobs:
           name: Install npm wee
           command: yarn
       - run:
-          name: Test Contracts
+          name: Test contracts
           command: npx hardhat test
+      - run:
+          name: Test coverage
+          command: npx hardhat clean && npx hardhat coverage
+      - store_artifacts:
+          path: reports/coverage
       - save_cache:
           key: deps-{{ checksum "package.json" }}
           paths:
