@@ -3,45 +3,33 @@ orbs:
   node: circleci/node@5.0.2
 jobs:
   run-test:
-    docker:
-      - image: cimg/node:16.15.1
+    executor:
+      name: node/default
+      tag: '16'
     steps:
       - checkout
-      - restore_cache:
-          keys:
-            - deps-{{ checksum "package.json" }}
-            - deps-
-      - run:
-          name: Install yarn wee
-          command: yarn install
+      - node/install-packages:
+          check-cache: always
+          pkg-manager: yarn-berry
+          with-cache: false
       - run:
           name: Test contracts
           command: npx hardhat test
-      - save_cache:
-          key: deps-{{ checksum "package.json" }}
-          paths:
-            - node_modules
   run-coverage:
-    docker:
-      - image: cimg/node:16.15.1
+    executor:
+      name: node/default
+      tag: '16'
     steps:
       - checkout
-      - restore_cache:
-          keys:
-            - deps-{{ checksum "package.json" }}
-            - deps-
-      - run:
-          name: Install yarn wee
-          command: yarn install
+      - node/install-packages:
+          check-cache: always
+          pkg-manager: yarn-berry
+          with-cache: false
       - run:
           name: Test coverage
           command: npx hardhat clean && npx hardhat coverage
       - store_artifacts:
           path: reports/coverage
-      - save_cache:
-          key: deps-{{ checksum "package.json" }}
-          paths:
-            - node_modules
 workflows:
   test:
     jobs:
