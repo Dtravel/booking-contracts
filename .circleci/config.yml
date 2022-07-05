@@ -11,7 +11,7 @@ jobs:
       - node/install-packages:
           check-cache: always
           pkg-manager: yarn-berry
-          with-cache: false
+          with-cache: true
       - run:
           name: Test contracts
           command: npx hardhat test
@@ -24,7 +24,7 @@ jobs:
       - node/install-packages:
           check-cache: always
           pkg-manager: yarn-berry
-          with-cache: false
+          with-cache: true
       - run:
           name: Test coverage
           command: npx hardhat clean && npx hardhat coverage
