@@ -4,7 +4,7 @@ orbs:
 jobs:
   build:
     docker:
-      - image: cimg/node:18.4.0
+      - image: cimg/node:16.15.1
     steps:
       - checkout
       # - restore_cache:
@@ -17,7 +17,7 @@ jobs:
       
       - run:
           name: Install npm wee
-          command: npm install
+          command: yarn
       - run:
           name: Test Contracts
           command: npx hardhat test
