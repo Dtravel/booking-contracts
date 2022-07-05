@@ -7,10 +7,10 @@ jobs:
       - image: cimg/node:16.15.0
     steps:
       - checkout
-      - restore_cache:
-          keys:
-            - deps-{{ checksum "package.json" }}
-            - deps-
+      # - restore_cache:
+      #     keys:
+      #       - deps-{{ checksum "package.json" }}
+      #       - deps-
       # - run:
       #     name: Update npm
       #     command: 'npm i'
