@@ -1,3 +1,0 @@
-ingress:
-  apigwEnable: false
-targetPort: 80
