@@ -2,7 +2,7 @@ version: 2.1
 orbs:
   node: circleci/node@5.0.2
 jobs:
-  build:
+  test:
     docker:
       - image: cimg/node:16.15.1
     steps:
@@ -12,11 +12,28 @@ jobs:
             - deps-{{ checksum "package.json" }}
             - deps-
       - run:
-          name: Install npm wee
-          command: yarn
+          name: Install yarn wee
+          command: yarn install
       - run:
           name: Test contracts
           command: npx hardhat test
+      - save_cache:
+          key: deps-{{ checksum "package.json" }}
+          paths:
+            - node_modules
+  
+  coverage:
+    docker:
+      - image: cimg/node:16.15.1
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - deps-{{ checksum "package.json" }}
+            - deps-
+      - run:
+          name: Install yarn wee
+          command: yarn install
       - run:
           name: Test coverage
           command: npx hardhat clean && npx hardhat coverage
