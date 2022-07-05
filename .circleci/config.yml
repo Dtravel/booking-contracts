@@ -7,13 +7,14 @@ jobs:
       - image: cimg/node:18.4.0
     steps:
       - checkout
-      - run:
-          name: Update npm
-          command: 'sudo npm install -g npm@latest'
       - restore_cache:
           keys:
             - deps-{{ checksum "package.json" }}
             - deps-
+      - run:
+          name: Update npm
+          command: 'npm i'
+      
       # - run:
       #     name: Install npm wee
       #     command: npm install
