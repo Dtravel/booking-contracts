@@ -1,8 +1,10 @@
 version: 2.1
+orbs:
+  node: circleci/node@5.0.2
 jobs:
   build:
     docker:
-      - node: cimg/node:17.5.0
+      - image: cimg/node:17.5.0
     steps:
       - checkout
       - run:
