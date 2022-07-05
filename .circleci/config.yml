@@ -5,7 +5,7 @@ jobs:
   run-test:
     executor:
       name: node/default
-      tag: '16'
+      tag: '16.15.1'
     steps:
       - checkout
       - node/install-packages:
@@ -18,7 +18,7 @@ jobs:
   run-coverage:
     executor:
       name: node/default
-      tag: '16'
+      tag: '16.15.1'
     steps:
       - checkout
       - node/install-packages:
