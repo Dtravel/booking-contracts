@@ -2,7 +2,7 @@ version: 2.1
 orbs:
   node: circleci/node@5.0.2
 jobs:
-  test:
+  run-test:
     docker:
       - image: cimg/node:16.15.1
     steps:
@@ -21,8 +21,7 @@ jobs:
           key: deps-{{ checksum "package.json" }}
           paths:
             - node_modules
-  
-  coverage:
+  run-coverage:
     docker:
       - image: cimg/node:16.15.1
     steps:
@@ -43,3 +42,10 @@ jobs:
           key: deps-{{ checksum "package.json" }}
           paths:
             - node_modules
+workflows:
+  test:
+    jobs:
+      - run-test
+  coverage:
+    jobs:
+      - run-coverage
