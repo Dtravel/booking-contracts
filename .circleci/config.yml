@@ -14,9 +14,9 @@ jobs:
           keys:
             - deps-{{ checksum "package.json" }}
             - deps-
-      - run:
-          name: Install npm wee
-          command: npm install
+      # - run:
+      #     name: Install npm wee
+      #     command: npm install
       - run:
           name: Test Contracts
           command: npx hardhat test
