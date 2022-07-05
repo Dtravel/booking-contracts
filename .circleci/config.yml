@@ -11,9 +11,9 @@ jobs:
           keys:
             - deps-{{ checksum "package.json" }}
             - deps-
-      - run:
-          name: Update npm
-          command: 'npm i'
+      # - run:
+      #     name: Update npm
+      #     command: 'npm i'
       
       # - run:
       #     name: Install npm wee
