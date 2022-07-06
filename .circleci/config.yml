@@ -36,7 +36,7 @@ commands:
               -Dsonar.projectKey=dTravel_$CIRCLE_PROJECT_REPONAME\
               -Dsonar.sources=. \
               -Dsonar.host.url=$HOST_URL \
-              -Dsonar.login=$SONAR_LOGIN \
+              -Dsonar.login=sqp_2dbb6c338982f420b7681bfc69ba238537d7bfa5 \
               -Dsonar.javascript.lcov.reportPaths=./reports/coverage/lcov.info \
               -Dsonar.coverage.exclusions='src/main.ts,src/common/**/*.*,test/*.*,src/**/*.spec.ts'
 jobs:
