@@ -45,9 +45,9 @@ jobs:
           path: reports/coverage
       - code-analysis
 workflows:
-  test:
+  test-and-coverage:
     jobs:
       - run-test
-  coverage:
-    jobs:
-      - run-coverage
+      - run-coverage:
+          requires:
+            - run-test
