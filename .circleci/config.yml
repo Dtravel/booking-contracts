@@ -37,7 +37,7 @@ commands:
               -Dsonar.sources=. \
               -Dsonar.host.url=$HOST_URL \
               -Dsonar.login=$SONAR_LOGIN \
-              -Dsonar.javascript.lcov.reportPaths=./coverage/lcov.info \
+              -Dsonar.javascript.lcov.reportPaths=./reports/coverage/lcov.info \
               -Dsonar.coverage.exclusions='src/main.ts,src/common/**/*.*,test/*.*,src/**/*.spec.ts'
 jobs:
   run-test:
@@ -71,6 +71,7 @@ jobs:
   run-sonar:
     executor: docker-executor
     steps:
+      - checkout
       - setup-environment
       - install-engine
       - code-analysis
