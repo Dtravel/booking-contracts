@@ -32,7 +32,7 @@ commands:
       - run:
           name: "Sonarqube scanner"
           command: |
-            sonar-scanner \
+            ./sonar-scanner-4.2.0.1873/bin/sonar-scanner \
               -Dsonar.projectKey=dTravel_$CIRCLE_PROJECT_REPONAME\
               -Dsonar.sources=. \
               -Dsonar.host.url=$HOST_URL \
