@@ -18,7 +18,7 @@ commands:
               -Dsonar.host.url=$HOST_URL \
               -Dsonar.login=$SONAR_LOGIN \
               -Dsonar.javascript.lcov.reportPaths=./reports/coverage/lcov.info \
-              -Dsonar.coverage.exclusions='src/main.ts,src/common/**/*.*,test/*.*,src/**/*.spec.ts'
+              -Dsonar.coverage.exclusions='src/main.ts,src/common/**/*.*,test/*.*,src/**/*.spec.ts'; fi
 jobs:
   run-test:
     executor:
