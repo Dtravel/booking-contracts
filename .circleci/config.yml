@@ -20,50 +20,18 @@ commands:
               -Dsonar.javascript.lcov.reportPaths=./reports/coverage/lcov.info \
               -Dsonar.coverage.exclusions='src/main.ts,src/common/**/*.*,test/*.*,src/**/*.spec.ts'
 jobs:
-  run-test:
-    executor:
-      name: node/default
-      tag: '16.15.1'
-    steps:
-      - checkout
-      - node/install-packages:
-          check-cache: always
-          pkg-manager: yarn-berry
-          with-cache: true
-      - run:
-          name: Test contracts
-          command: npx hardhat test
   run-coverage:
-    executor:
-      name: node/default
-      tag: '16.15.1'
-    steps:
-      - checkout
-      - node/install-packages:
-          check-cache: always
-          pkg-manager: yarn-berry
-          with-cache: true
-      - run:
-          name: Test coverage
-          command: npx hardhat clean && npx hardhat coverage
-      - store_artifacts:
-          path: reports/coverage
-  run-sonar:
     executor: docker-executor
     steps:
       - checkout
-      # - setup-environment
-      # - install-engine
+      - run: yarn
+      - run:
+          name: Test coverage
+          command: npx hardhat clean && npx hardhat coverage
       - code-analysis
 workflows:
   test-and-coverage:
     jobs:
-      - run-test
       - run-coverage:
-          requires:
-            - run-test
-      - run-sonar:
           context:
             - ecr-dev
-          requires:
-            - run-coverage
