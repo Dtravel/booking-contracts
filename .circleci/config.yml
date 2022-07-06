@@ -17,7 +17,7 @@ commands:
               -Dsonar.sources=. \
               -Dsonar.host.url=$HOST_URL \
               -Dsonar.login=$SONAR_LOGIN \
-              -Dsonar.javascript.lcov.reportPaths=xưreports/coverage/lcov.info \
+              -Dsonar.javascript.lcov.reportPaths=reports/coverage/lcov.info \
               -Dsonar.coverage.exclusions='src/main.ts,src/common/**/*.*,test/*.*,src/**/*.spec.ts'
 jobs:
   run-coverage:
