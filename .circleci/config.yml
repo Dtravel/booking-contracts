@@ -18,7 +18,7 @@ commands:
               -Dsonar.host.url=$HOST_URL \
               -Dsonar.login=$SONAR_LOGIN \
               -Dsonar.javascript.lcov.reportPaths=reports/coverage/lcov.info \
-              -Dsonar.coverage.exclusions='contracts/**,scripts/**,test/**,**/*.ts'
+              -Dsonar.coverage.exclusions=''
 jobs:
   run-coverage:
     executor: docker-executor
