@@ -12,13 +12,12 @@ commands:
       - run:
           name: "Sonarqube scanner"
           command: |
-            if [ $CIRCLE_BRANCH == dev ]; then sonar-scanner \
               -Dsonar.projectKey=dTravel_$CIRCLE_PROJECT_REPONAME\
               -Dsonar.sources=. \
               -Dsonar.host.url=$HOST_URL \
               -Dsonar.login=$SONAR_LOGIN \
               -Dsonar.javascript.lcov.reportPaths=./reports/coverage/lcov.info \
-              -Dsonar.coverage.exclusions='src/main.ts,src/common/**/*.*,test/*.*,src/**/*.spec.ts'; fi
+              -Dsonar.coverage.exclusions='src/main.ts,src/common/**/*.*,test/*.*,src/**/*.spec.ts'
 jobs:
   run-test:
     executor:
