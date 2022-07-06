@@ -11,7 +11,8 @@ commands:
     steps:
       - run:
           name: "Sonarqube scanner"
-          command: |
+          command: | 
+              sonar-scanner \
               -Dsonar.projectKey=dTravel_$CIRCLE_PROJECT_REPONAME\
               -Dsonar.sources=. \
               -Dsonar.host.url=$HOST_URL \
