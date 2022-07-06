@@ -63,6 +63,9 @@ jobs:
           command: npx hardhat clean && npx hardhat coverage
       - store_artifacts:
           path: reports/coverage
+  run-sonar:
+    executor: docker-executor
+    steps:
       - setup-environment
       - install-engine
       - code-analysis
@@ -71,7 +74,10 @@ workflows:
     jobs:
       - run-test
       - run-coverage:
+          requires:
+            - run-test
+      - run-sonar:
           context:
             - ecr-dev
           requires:
-            - run-test
+            - run-coverage
