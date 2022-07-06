@@ -1,6 +1,11 @@
 version: 2.1
 orbs:
   node: circleci/node@5.0.2
+executors:
+  docker-executor:
+    docker:
+      - image: cimg/node:17.5.0
+    resource_class: medium
 commands:
   setup-environment:
     description: "Setup requirements"
