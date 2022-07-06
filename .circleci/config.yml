@@ -13,7 +13,7 @@ commands:
           name: "Sonarqube scanner"
           command: | 
               sonar-scanner \
-              -Dsonar.projectKey=dTravel_$CIRCLE_PROJECT_REPONAME\
+              -Dsonar.projectKey=dTravel_$CIRCLE_PROJECT_REPONAME \
               -Dsonar.sources=. \
               -Dsonar.host.url=$HOST_URL \
               -Dsonar.login=$SONAR_LOGIN \
