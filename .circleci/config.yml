@@ -4,39 +4,19 @@ orbs:
 executors:
   docker-executor:
     docker:
-      - image: cimg/node:17.5.0
-    resource_class: medium
+      - image: public.ecr.aws/p5h0u5q6/node-sonar:1.0.0
+    resource_class: medium+
 commands:
-  setup-environment:
-    description: "Setup requirements"
-    steps:
-      - run:
-          name: "Setup environment"
-          command: |
-            sudo apt update
-            sudo apt install openjdk-11-jre-headless
-  install-engine:
-    description: "Install Sonarqube scanner"
-    parameters:
-      engine_version:
-        type: string
-        default: "4.2.0.1873"
-    steps:
-      - run:
-          name: "Install Sonarqube scanner"
-          command: |
-            wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-<< parameters.engine_version >>.zip
-            unzip sonar-scanner-cli-<< parameters.engine_version >>.zip
   code-analysis:
     steps:
       - run:
           name: "Sonarqube scanner"
           command: |
-            ./sonar-scanner-4.2.0.1873/bin/sonar-scanner \
+            if [ $CIRCLE_BRANCH == dev ]; then sonar-scanner \
               -Dsonar.projectKey=dTravel_$CIRCLE_PROJECT_REPONAME\
               -Dsonar.sources=. \
               -Dsonar.host.url=$HOST_URL \
-              -Dsonar.login=sqp_2dbb6c338982f420b7681bfc69ba238537d7bfa5 \
+              -Dsonar.login=$SONAR_LOGIN \
               -Dsonar.javascript.lcov.reportPaths=./reports/coverage/lcov.info \
               -Dsonar.coverage.exclusions='src/main.ts,src/common/**/*.*,test/*.*,src/**/*.spec.ts'
 jobs:
@@ -72,8 +52,8 @@ jobs:
     executor: docker-executor
     steps:
       - checkout
-      - setup-environment
-      - install-engine
+      # - setup-environment
+      # - install-engine
       - code-analysis
 workflows:
   test-and-coverage:
