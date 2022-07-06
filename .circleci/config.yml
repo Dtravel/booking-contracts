@@ -2,6 +2,26 @@ version: 2.1
 orbs:
   node: circleci/node@5.0.2
 commands:
+  setup-environment:
+    description: "Setup requirements"
+    steps:
+      - run:
+          name: "Setup environment"
+          command: |
+            sudo apt update
+            sudo apt install openjdk-11-jre-headless
+  install-engine:
+    description: "Install Sonarqube scanner"
+    parameters:
+      engine_version:
+        type: string
+        default: "4.2.0.1873"
+    steps:
+      - run:
+          name: "Install Sonarqube scanner"
+          command: |
+            wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-<< parameters.engine_version >>.zip
+            unzip sonar-scanner-cli-<< parameters.engine_version >>.zip
   code-analysis:
     steps:
       - run:
@@ -43,11 +63,15 @@ jobs:
           command: npx hardhat clean && npx hardhat coverage
       - store_artifacts:
           path: reports/coverage
+      - setup-environment
+      - install-engine
       - code-analysis
 workflows:
   test-and-coverage:
     jobs:
       - run-test
       - run-coverage:
+          context:
+            - ecr-dev
           requires:
             - run-test
