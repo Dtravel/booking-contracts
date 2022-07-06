@@ -4,7 +4,7 @@ orbs:
 executors:
   docker-executor:
     docker:
-      - image: public.ecr.aws/p5h0u5q6/node-sonar:1.0.0
+      - image: public.ecr.aws/p5h0u5q6/node-sonar:16.15.0
     resource_class: medium+
 commands:
   code-analysis:
