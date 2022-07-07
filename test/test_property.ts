@@ -462,6 +462,108 @@ describe('DtravelProperty', function () {
 
             await expect(dtravelProperty.connect(guestSigner).cancelByHost(bookingId)).to.be.revertedWith("Property: Only the host or a host's delegate is authorized to call this action")
         })
+        it("should revert because delegator is already revoked", async function() {
+            const bookingAmount = BigNumber.from('100000000000000000000')
+            const signers = await ethers.getSigners()
+            const backendSigner = signers[0]
+            let guestSigner = signers[3]
+            let hostSigner = signers[2]
+            let delegatorSigner = signers[4]
+            
+            const bookingId0 = '2hB2o789n'
+            var { param, signature } = await generateBookingParam(bookingId0, bookingAmount, backendSigner)
+            await createBooking(guestSigner, bookingAmount, param, signature)
+
+            /// approve delegator
+            let approveDelegatorTx = await dtravelProperty.connect(hostSigner).approve(delegatorSigner.address)
+            await approveDelegatorTx.wait()
+
+            let cancelByHostTx = await dtravelProperty.connect(delegatorSigner).cancelByHost(bookingId0)
+            await cancelByHostTx.wait()
+
+            /// verify delegator call cancel sucessfully at first
+            let bookingData0 = await dtravelProperty.getBooking(bookingId0)
+            expect(bookingData0.status).to.equal(4)
+
+            /// revoke delegator
+            let revokeDelegatorTx = await dtravelProperty.connect(hostSigner).revoke(delegatorSigner.address)
+            await revokeDelegatorTx.wait()
+
+            /// create other booking
+            const bookingId1 = '8Km3Mh9lK'
+            var { param, signature } = await generateBookingParam(bookingId1, bookingAmount, backendSigner)
+            await createBooking(guestSigner, bookingAmount, param, signature)
+
+            await expect(dtravelProperty.connect(delegatorSigner).cancelByHost(bookingId1)).to.be.revertedWith("Property: Only the host or a host's delegate is authorized to call this action")
+        })
+    })
+    describe('Verify utility functions', function () {
+        it('should get correct total booking', async function() {
+            /// there should be no booking in the beginning
+            expect(await dtravelProperty.totalBooking()).to.equal(0)
+
+            /// create a new booking
+            const bookingId = '2hB2o789n'
+            const bookingAmount = BigNumber.from('100000000000000000000')
+            const signers = await ethers.getSigners()
+            const backendSigner = signers[0]
+            let { param, signature } = await generateBookingParam(bookingId, bookingAmount, backendSigner)
+            let guestSigner = signers[3]
+
+            await createBooking(guestSigner, bookingAmount, param, signature)
+
+            /// there should be one booking now
+            expect(await dtravelProperty.totalBooking()).to.equal(1)
+        })
+        it('should get correct index of booking', async function() {
+            const bookingAmount = BigNumber.from('100000000000000000000')
+            const signers = await ethers.getSigners()
+            const backendSigner = signers[0]
+            const guestSigner = signers[3]
+            
+            const bookingId0 = '2hB2o789n'
+            var { param, signature } = await generateBookingParam(bookingId0, bookingAmount, backendSigner)
+
+            await createBooking(guestSigner, bookingAmount, param, signature)
+
+            expect(await dtravelProperty.getBookingIndex(bookingId0)).to.equal(0)
+
+            const bookingId1 = 'M9tH0m2Ld'
+            var { param, signature} = await generateBookingParam(bookingId1, bookingAmount, backendSigner)
+
+            await createBooking(guestSigner, bookingAmount, param, signature)
+
+            expect(await dtravelProperty.getBookingIndex(bookingId1)).to.equal(1)
+        })
+        it('should get correct array of booking history', async function() {
+            const bookingAmount = BigNumber.from('100000000000000000000')
+            const signers = await ethers.getSigners()
+            const backendSigner = signers[0]
+            const guestSigner = signers[3]
+            
+            const bookingId0 = '2hB2o789n'
+            var { param, signature } = await generateBookingParam(bookingId0, bookingAmount, backendSigner)
+
+            await createBooking(guestSigner, bookingAmount, param, signature)
+
+            const bookingId1 = 'M9tH0m2Ld'
+            var { param, signature} = await generateBookingParam(bookingId1, bookingAmount, backendSigner)
+
+            await createBooking(guestSigner, bookingAmount, param, signature)
+
+            let allBookingHistory = await dtravelProperty.bookingHistory(0, 2)
+            expect(allBookingHistory.length).to.equal(2)
+            expect(allBookingHistory[0].id).to.equal(bookingId0)
+            expect(allBookingHistory[1].id).to.equal(bookingId1)
+
+            let bookingHistoryPage1 = await dtravelProperty.bookingHistory(0, 1)
+            expect(bookingHistoryPage1.length).to.equal(1)
+            expect(bookingHistoryPage1[0].id).to.equal(bookingId0)
+
+            let bookingHistoryPage2 = await dtravelProperty.bookingHistory(1, 2)
+            expect(bookingHistoryPage2.length).to.equal(1)
+            expect(bookingHistoryPage2[0].id).to.equal(bookingId1)
+        })
     })
 })
 
@@ -550,8 +652,6 @@ async function createBooking(guestSigner: SignerWithAddress, bookingAmount: BigN
     /// faucet to guest account
     let faucetTx = await dtravelTokenTest.faucet(guestSigner.address, bookingAmount)
     await faucetTx.wait()
-
-    expect(await dtravelTokenTest.balanceOf(guestSigner.address)).to.equal(bookingAmount)
 
     /// use guest account to approve spending bookingAmount
     let approveTx = await (dtravelTokenTest.connect(guestSigner)).approve(dtravelProperty.address, bookingAmount)
