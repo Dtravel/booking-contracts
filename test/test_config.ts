@@ -49,6 +49,7 @@ describe('DtravelConfig', function () {
             expect(await dtravelConfig.dtravelBackend()).to.equal(defaultSignerAddress)
         })
     })
+    
     describe('Verify updating fee', function () {
         it('should update fee with valid value', async function ()  {
             let updateFeeTx = await dtravelConfig.updateFee(600)
@@ -65,6 +66,21 @@ describe('DtravelConfig', function () {
             let newSignerDtravelConfig = await connectContractToNewSigner(dtravelConfig)
 
             await expect(newSignerDtravelConfig.updateFee(600)).to.be.revertedWith('Ownable: caller is not the owner')
+        })
+    })
+
+    describe('Verify update deplay duration of payout', function() {
+        it('should update deplay duration sucessfully', async function() {
+            let updateDelayDurationTx = await dtravelConfig.updatePayoutDelayTime(2 * 24 * 60 * 60)
+            await updateDelayDurationTx.wait()
+
+            expect(await dtravelConfig.payoutDelayTime()).to.equal(2 * 24 * 60 * 60)
+        })
+
+        it('only owner be able to update deply duration', async function() {
+            let newSignerDtravelConfig = await connectContractToNewSigner(dtravelConfig)
+
+            await expect(newSignerDtravelConfig.updatePayoutDelayTime(24 * 60 * 60)).to.be.revertedWith('Ownable: caller is not the owner')
         })
     })
 
