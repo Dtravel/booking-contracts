@@ -17,7 +17,6 @@ let hostAddress: string
 const propertyId = BigNumber.from(1)
 
 beforeEach(async function () {
-
     let signers = await ethers.getSigners()
     treasuryAddress = signers[1].address
     hostAddress = signers[2].address
@@ -136,6 +135,7 @@ describe('DtravelProperty', function () {
             let approveTx = await (dtravelTokenTest.connect(guestSigner)).approve(dtravelProperty.address, bookingAmount)
             await approveTx.wait()
 
+
             const oneDayDuration = 24 * 60 * 60 // second
             await increaseBlockTimestamp(2 * oneDayDuration)
 
@@ -191,7 +191,7 @@ describe('DtravelProperty', function () {
             expect(bookingData.balance).to.equal(0)
             expect(bookingData.status).to.equal(3)
         })
-        it('should cancel successfully with parital refund after first cancellation milestone', async function () {
+        it('should cancel successfully with partial refund after first cancellation milestone', async function () {
             const bookingId = '2hB2o789n'
             const bookingAmount = BigNumber.from('100000000000000000000')
             const signers = await ethers.getSigners()
@@ -204,9 +204,19 @@ describe('DtravelProperty', function () {
             /// before cancel
             expect(await dtravelTokenTest.balanceOf(guestSigner.address)).to.equal(0)
 
-            const oneDayDuration = 24 * 60 * 60 // second
-            await increaseBlockTimestamp(1.5 * oneDayDuration)
+            const oneDayDuration = 24 * 60 * 60 * 1000 // millisecond
+            let now = new Date()
+            now.setUTCHours(0, 0, 0, 0)
 
+            let freeCancellationDate = new Date()
+            freeCancellationDate.setTime(now.getTime() + oneDayDuration) // free cancallation milestone
+
+            let triggerCancellationDate = new Date()
+            triggerCancellationDate.setTime(freeCancellationDate.getTime() + 0.5 * oneDayDuration)
+            let diffFromNow = triggerCancellationDate.getTime() - (new Date()).getTime() // millisecond
+
+            await increaseBlockTimestamp(Math.round(diffFromNow / 1000))
+            
             /// call cancel
             let cancelTx = await (dtravelProperty.connect(guestSigner)).cancel(bookingId)
             await cancelTx.wait()
@@ -240,8 +250,18 @@ describe('DtravelProperty', function () {
             /// before cancel
             expect(await dtravelTokenTest.balanceOf(guestSigner.address)).to.equal(0)
 
-            const oneDayDuration = 24 * 60 * 60 // second
-            await increaseBlockTimestamp(2 * oneDayDuration)
+            const oneDayDuration = 24 * 60 * 60 * 1000 // millisecond
+            let now = new Date()
+            now.setUTCHours(0, 0, 0, 0)
+
+            let finalCancellationDate = new Date()
+            finalCancellationDate.setTime(now.getTime() + 2 * oneDayDuration)
+
+            let triggerCancellationDate = new Date()
+            triggerCancellationDate.setTime(finalCancellationDate.getTime() + 0.5 * oneDayDuration)
+            let diffFromNow = triggerCancellationDate.getTime() - (new Date()).getTime() // millisecond
+
+            await increaseBlockTimestamp(Math.round(diffFromNow / 1000))
 
             /// call cancel
             let cancelTx = await (dtravelProperty.connect(guestSigner)).cancel(bookingId)
@@ -325,8 +345,19 @@ describe('DtravelProperty', function () {
 
             await createBooking(guestSigner, bookingAmount, param, signature)
 
-            const oneDayDuration = 24 * 60 * 60 // second
-            await increaseBlockTimestamp(2 * oneDayDuration)
+            const oneDayDuration = 24 * 60 * 60 * 1000 // millisecond
+            const delayPayoutDuration = oneDayDuration
+            let now = new Date()
+            now.setUTCHours(0, 0, 0, 0)
+
+            let freeCancellationDate = new Date()
+            freeCancellationDate.setTime(now.getTime() + oneDayDuration) // free cancallation milestone
+
+            let triggerPartialPayoutDate = new Date()
+            triggerPartialPayoutDate.setTime(freeCancellationDate.getTime() + 0.5 * oneDayDuration + delayPayoutDuration)
+            let diffFromNow = triggerPartialPayoutDate.getTime() - (new Date()).getTime() // millisecond
+
+            await increaseBlockTimestamp(Math.round(diffFromNow / 1000))
 
             /// call partial payout
             let payoutTx = await dtravelProperty.payout(bookingId)
@@ -346,8 +377,15 @@ describe('DtravelProperty', function () {
             let bookingData = await dtravelProperty.getBooking(bookingId)
             expect(bookingData.balance).to.equal(remainBookingBalance)
             expect(bookingData.status).to.equal(1)
+            
+            let finalCancellationDate = new Date()
+            finalCancellationDate.setTime(now.getTime() + 2 * oneDayDuration)
 
-            await increaseBlockTimestamp(oneDayDuration)
+            let triggerFullPayoutDate = new Date()
+            triggerFullPayoutDate.setTime(finalCancellationDate.getTime() + 0.5 * oneDayDuration + delayPayoutDuration)
+            diffFromNow = triggerFullPayoutDate.getTime() - (new Date()).getTime()
+
+            await increaseBlockTimestamp(Math.round(diffFromNow / 1000))
 
             /// call full payout
             payoutTx = await dtravelProperty.payout(bookingId)
@@ -462,14 +500,14 @@ describe('DtravelProperty', function () {
 
             await expect(dtravelProperty.connect(guestSigner).cancelByHost(bookingId)).to.be.revertedWith("Property: Only the host or a host's delegate is authorized to call this action")
         })
-        it("should revert because delegator is already revoked", async function() {
+        it("should revert because delegator is already revoked", async function () {
             const bookingAmount = BigNumber.from('100000000000000000000')
             const signers = await ethers.getSigners()
             const backendSigner = signers[0]
             let guestSigner = signers[3]
             let hostSigner = signers[2]
             let delegatorSigner = signers[4]
-            
+
             const bookingId0 = '2hB2o789n'
             var { param, signature } = await generateBookingParam(bookingId0, bookingAmount, backendSigner)
             await createBooking(guestSigner, bookingAmount, param, signature)
@@ -498,7 +536,7 @@ describe('DtravelProperty', function () {
         })
     })
     describe('Verify utility functions', function () {
-        it('should get correct total booking', async function() {
+        it('should get correct total booking', async function () {
             /// there should be no booking in the beginning
             expect(await dtravelProperty.totalBooking()).to.equal(0)
 
@@ -515,12 +553,12 @@ describe('DtravelProperty', function () {
             /// there should be one booking now
             expect(await dtravelProperty.totalBooking()).to.equal(1)
         })
-        it('should get correct index of booking', async function() {
+        it('should get correct index of booking', async function () {
             const bookingAmount = BigNumber.from('100000000000000000000')
             const signers = await ethers.getSigners()
             const backendSigner = signers[0]
             const guestSigner = signers[3]
-            
+
             const bookingId0 = '2hB2o789n'
             var { param, signature } = await generateBookingParam(bookingId0, bookingAmount, backendSigner)
 
@@ -529,25 +567,25 @@ describe('DtravelProperty', function () {
             expect(await dtravelProperty.getBookingIndex(bookingId0)).to.equal(0)
 
             const bookingId1 = 'M9tH0m2Ld'
-            var { param, signature} = await generateBookingParam(bookingId1, bookingAmount, backendSigner)
+            var { param, signature } = await generateBookingParam(bookingId1, bookingAmount, backendSigner)
 
             await createBooking(guestSigner, bookingAmount, param, signature)
 
             expect(await dtravelProperty.getBookingIndex(bookingId1)).to.equal(1)
         })
-        it('should get correct array of booking history', async function() {
+        it('should get correct array of booking history', async function () {
             const bookingAmount = BigNumber.from('100000000000000000000')
             const signers = await ethers.getSigners()
             const backendSigner = signers[0]
             const guestSigner = signers[3]
-            
+
             const bookingId0 = '2hB2o789n'
             var { param, signature } = await generateBookingParam(bookingId0, bookingAmount, backendSigner)
 
             await createBooking(guestSigner, bookingAmount, param, signature)
 
             const bookingId1 = 'M9tH0m2Ld'
-            var { param, signature} = await generateBookingParam(bookingId1, bookingAmount, backendSigner)
+            var { param, signature } = await generateBookingParam(bookingId1, bookingAmount, backendSigner)
 
             await createBooking(guestSigner, bookingAmount, param, signature)
 
