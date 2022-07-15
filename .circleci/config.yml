@@ -1,0 +1,37 @@
+version: 2.1
+orbs:
+  node: circleci/node@5.0.2
+executors:
+  docker-executor:
+    docker:
+      - image: public.ecr.aws/p5h0u5q6/node-sonar:16.15.0
+    resource_class: medium+
+commands:
+  code-analysis:
+    steps:
+      - run:
+          name: "Sonarqube scanner"
+          command: | 
+              sonar-scanner \
+              -Dsonar.projectKey=dTravel_$CIRCLE_PROJECT_REPONAME \
+              -Dsonar.sources=. \
+              -Dsonar.host.url=$HOST_URL \
+              -Dsonar.login=$SONAR_LOGIN \
+              -Dsonar.javascript.lcov.reportPaths=reports/coverage/lcov.info \
+              -Dsonar.coverage.exclusions=''
+jobs:
+  run-coverage:
+    executor: docker-executor
+    steps:
+      - checkout
+      - run: yarn
+      - run:
+          name: Test coverage
+          command: npx hardhat clean && npx hardhat coverage
+      - code-analysis
+workflows:
+  test-and-coverage:
+    jobs:
+      - run-coverage:
+          context:
+            - ecr-dev

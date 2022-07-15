@@ -1,31 +1,31 @@
 import '@nomiclabs/hardhat-ethers'
 import { ethers } from 'hardhat'
-import hre from 'hardhat'
+import  Configs from './configs.json'
 
 async function main() {
 
-  const DtravelEIP712 = await ethers.getContractFactory('DtravelEIP712');
-  const dtravelEIP712 = await DtravelEIP712.deploy();
-  await dtravelEIP712.deployed();
+  const DtravelEIP712 = await ethers.getContractFactory('DtravelEIP712')
+  const dtravelEIP712 = await DtravelEIP712.deploy()
+  await dtravelEIP712.deployed()
 
-  const dtravelFactory = await ethers.getContractFactory('DtravelFactory', {
+  const DtravelFactory = await ethers.getContractFactory('DtravelFactory', {
     libraries: {
       DtravelEIP712: dtravelEIP712.address
     }
   })
-  const factoryContract = await dtravelFactory.deploy('0xe8167D79F5E7bc460Ebdd830bA9cc6Ca43799feD')
+  const dtravelFactory = await DtravelFactory.deploy(Configs['dtravel-config-contract'])
 
   // The address the Contract WILL have once mined
-  console.log(factoryContract.address)
+  console.log(dtravelFactory.address)
 
   // The transaction that was sent to the network to deploy the Contract
-  console.log(factoryContract.deployTransaction.hash)
+  console.log(dtravelFactory.deployTransaction.hash)
 
-  await factoryContract.deployed()
+  await dtravelFactory.deployed()
 
   // await hre.run('verify:verify', {
-  //   address: factoryContract.address,
-  //   constructorArguments: [],
+  //   address: dtravelFactory.address,
+  //   constructorArguments: [Configs['dtravel-config-contract']],
   // })
 }
 
