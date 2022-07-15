@@ -16,6 +16,7 @@ import 'hardhat-contract-sizer'
 import '@tenderly/hardhat-tenderly'
 import '@openzeppelin/hardhat-upgrades'
 import '@typechain/hardhat'
+import 'solidity-coverage'
 
 // Networks
 
@@ -148,6 +149,6 @@ const config: HardhatUserConfig = {
   },
 }
 
-setupDefaultNetworkProviders(config)
+// setupDefaultNetworkProviders(config)
 
 export default config
