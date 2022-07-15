@@ -6,7 +6,8 @@ async function main() {
   const DtravelConfig = await ethers.getContractFactory('DtravelConfig')
 
   // If we had constructor arguments, they would be passed into deploy()
-  const dtravelConfig = await DtravelConfig.deploy(Configs['configs'])
+  const args = Configs['configs'];
+  const dtravelConfig = await DtravelConfig.deploy(...args)
 
   // The address the Contract WILL have once mined
   console.log(dtravelConfig.address)
