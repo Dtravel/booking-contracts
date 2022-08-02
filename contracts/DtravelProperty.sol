@@ -3,13 +3,20 @@
 pragma solidity >=0.8.4 <0.9.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./interfaces/IDtravelConfig.sol";
 import "./interfaces/IDtravelFactory.sol";
 import "./DtravelStructs.sol";
 
-contract DtravelProperty is Ownable, ReentrancyGuard {
+contract DtravelProperty is Ownable, ERC721Enumerable, ReentrancyGuard {
+    using Strings for uint256;
+
+    string private baseTokenURI;
+    uint256 private currentIndex; /// @dev Current NFT index
+
     uint256 public id; // property id
     Booking[] public bookings; // bookings array
     mapping(string => uint256) public bookingsMap; // booking id to index + 1 in bookings array so the first booking has index 1
@@ -30,18 +37,41 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         address _config,
         address _factory,
         address _host
-    ) {
+    ) ERC721("Room Night NFT", "DNFT") {
         id = _id;
         configContract = IDtravelConfig(_config);
         factoryContract = IDtravelFactory(_factory);
         host = _host;
     }
 
+    /// @dev Set BaseTokenURI
+    function setBaseTokenURI(string memory _baseTokenURI) external onlyOwner {
+        baseTokenURI = _baseTokenURI;
+    }
+
+    function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
+        require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token");
+
+        return bytes(baseTokenURI).length > 0 ? string(abi.encodePacked(baseTokenURI, tokenId.toString())) : "";
+    }
+
+    function mint(address _who, uint256 _amount) external onlyOwner {
+        require(_amount > 0, "Amount should be greater than 0");
+
+        for (uint256 i = 0; i < _amount; i++) {
+            currentIndex++;
+            _mint(_who, currentIndex);
+        }
+    }
+
     /**
     @notice Modifier to check if the caller is the Dtravel backend
     */
     modifier onlyBackend() {
-        require(msg.sender == configContract.dtravelBackend(), "Property: Only Dtravel is authorized to call this action");
+        require(
+            msg.sender == configContract.dtravelBackend(),
+            "Property: Only Dtravel is authorized to call this action"
+        );
 
         _;
     }
@@ -78,7 +108,10 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
             _params.checkOutTimestamp >= _params.checkInTimestamp + oneDay,
             "Property: Booking period should be at least one night"
         );
-        require(_params.cancellationPolicies.length > 0, "Property: Booking should have at least one cancellation policy");
+        require(
+            _params.cancellationPolicies.length > 0,
+            "Property: Booking should have at least one cancellation policy"
+        );
 
         for (uint256 i = 0; i < _params.cancellationPolicies.length; i++) {
             require(
@@ -151,7 +184,10 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         require(booking.guest != address(0), "Property: Booking does not exist");
         require(booking.guest == msg.sender, "Property: Only the guest can cancel the booking");
         require(booking.balance > 0, "Property: Booking is already cancelled or paid out");
-        require(IERC20(booking.token).balanceOf(address(this)) >= booking.balance, "Property: Insufficient token balance");
+        require(
+            IERC20(booking.token).balanceOf(address(this)) >= booking.balance,
+            "Property: Insufficient token balance"
+        );
 
         uint256 guestAmount = 0;
         for (uint256 i = 0; i < booking.cancellationPolicies.length; i++) {
