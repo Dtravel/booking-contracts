@@ -103,7 +103,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
 
     /**
     @param _params Booking data provided by oracle backend
-    @param _signature Signature of the transaction
+    @param _signature Signature of the params
     */
     function book(BookingParameters memory _params, bytes memory _signature) external nonReentrant {
         // Check if parameters are valid
@@ -126,6 +126,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         bookings[bookingIndex].balance = _params.bookingAmount;
         bookings[bookingIndex].guest = msg.sender;
         bookings[bookingIndex].token = _params.token;
+        bookings[bookingIndex].referrer = _params.referrer;
         bookings[bookingIndex].status = BookingStatus.InProgress;
 
         bookingsMap[_params.bookingId] = bookingIndex + 1;
@@ -164,11 +165,13 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         _updateBookingStatus(_bookingId, BookingStatus.CancelledByGuest);
 
         // Refund to the guest
-        uint256 treasuryAmount = ((booking.balance - guestAmount) * configContract.fee()) / 10000;
-        uint256 hostAmount = booking.balance - guestAmount - treasuryAmount;
+        uint256 referrerAmount = ((booking.balance - guestAmount) * configContract.referrerFee()) / 10000;
+        uint256 treasuryAmount = (((booking.balance - guestAmount) * configContract.fee()) / 10000) - referrerAmount;
+        uint256 hostAmount = booking.balance - guestAmount - treasuryAmount - referrerAmount;
 
         _safeTransfer(booking.token, booking.guest, guestAmount);
         _safeTransfer(booking.token, host, hostAmount);
+        _safeTransfer(booking.token, booking.referrer, referrerAmount);
         _safeTransfer(booking.token, configContract.dtravelTreasury(), treasuryAmount);
 
         factoryContract.cancelByGuest(_bookingId, guestAmount, hostAmount, treasuryAmount, block.timestamp);
@@ -177,7 +180,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     /**
     Anyone can call the `payout` function. When it is called, the difference between 
     the remaining balance and the amount due to the guest if the guest decides to cancel
-    is split between the host and treasury.
+    is split between the host, the treasury and the referrer.
     */
     function payout(string memory _bookingId) external nonReentrant {
         Booking storage booking = bookings[getBookingIndex(_bookingId)];
@@ -217,10 +220,12 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         );
 
         // Split the payment
-        uint256 treasuryAmount = (toBePaid * configContract.fee()) / 10000;
-        uint256 hostAmount = toBePaid - treasuryAmount;
+        uint256 referrerAmount = (toBePaid * configContract.referrerFee()) / 10000;
+        uint256 treasuryAmount = ((toBePaid * configContract.fee()) / 10000) - referrerAmount;
+        uint256 hostAmount = toBePaid - treasuryAmount - referrerFee;
 
         _safeTransfer(booking.token, host, hostAmount);
+        _safeTransfer(booking.token, booking.referrer, referrerAmount);
         _safeTransfer(booking.token, configContract.dtravelTreasury(), treasuryAmount);
 
         factoryContract.payout(_bookingId, hostAmount, treasuryAmount, block.timestamp, booking.balance == 0 ? 1 : 2);

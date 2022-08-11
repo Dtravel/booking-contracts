@@ -5,7 +5,8 @@ pragma solidity >=0.8.4 <0.9.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract DtravelConfig is Ownable {
-    uint256 public fee; // fee percentage 5% -> 500, 0.1% -> 10
+    uint256 public fee; // treasury fee percentage 5% -> 500, 0.1% -> 10
+    uint256 public referrerFee; // fee paid to the entity that referred the booking
     uint256 public payoutDelayTime; // payout delay time in seconds
     address public dtravelTreasury;
     address public dtravelBackend;
@@ -20,11 +21,13 @@ contract DtravelConfig is Ownable {
 
     constructor(
         uint256 _fee,
+        uint256 _referrerFee,
         uint256 _payoutDelayTime,
         address _treasury,
         address[] memory _tokens
     ) {
         fee = _fee;
+        referrerFee = _referrerFee;
         payoutDelayTime = _payoutDelayTime;
         dtravelTreasury = _treasury;
         dtravelBackend = msg.sender;
@@ -38,6 +41,13 @@ contract DtravelConfig is Ownable {
         uint256 oldFee = fee;
         fee = _fee;
         emit UpdatedFee(oldFee, _fee);
+    }
+
+    function updateReferrerFee(uint256 _referrerFee) public onlyOwner {
+        require(_referrerFee <= fee, "Config: Referre Fee must be smaller than the Treasury Fee");
+        uint256 oldFee = referrerFee;
+        referrerFee = _referrerFee;
+        emit UpdatedReferrerFee(oldFee, _ReferrerFee);
     }
 
     function updatePayoutDelayTime(uint256 _payoutDelayTime) public onlyOwner {

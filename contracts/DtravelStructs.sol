@@ -14,6 +14,7 @@ struct BookingParameters {
     uint256 checkOutTimestamp;
     uint256 bookingExpirationTimestamp;
     uint256 bookingAmount;
+    address referrer;
     CancellationPolicy[] cancellationPolicies;
 }
 
