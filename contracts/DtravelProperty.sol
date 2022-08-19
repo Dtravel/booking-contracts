@@ -3,6 +3,7 @@
 pragma solidity >=0.8.4 <0.9.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./interfaces/IDtravelConfig.sol";
@@ -10,6 +11,8 @@ import "./interfaces/IDtravelFactory.sol";
 import "./DtravelStructs.sol";
 
 contract DtravelProperty is Ownable, ReentrancyGuard {
+    using SafeERC20 for IERC20;
+
     uint256 public id; // property id
     Booking[] public bookings; // bookings array
     mapping(string => uint256) public bookingsMap; // booking id to index + 1 in bookings array so the first booking has index 1
@@ -105,7 +108,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     @param _params Booking data provided by oracle backend
     @param _signature Signature of the params
     */
-    function book(BookingParameters memory _params, bytes memory _signature) external nonReentrant {
+    function book(BookingParameters calldata _params, bytes calldata _signature) external nonReentrant {
         // Check if parameters are valid
         validateBookingParameters(_params, _signature);
 
@@ -220,7 +223,8 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         );
 
         // Split the payment
-        uint256 referrerAmount = (toBePaid * configContract.referrerFee()) / 10000;
+        uint256 referrerFee = configContract.referrerFee();
+        uint256 referrerAmount = (toBePaid * referrerFee) / 10000;
         uint256 treasuryAmount = ((toBePaid * configContract.fee()) / 10000) - referrerAmount;
         uint256 hostAmount = toBePaid - treasuryAmount - referrerFee;
 
@@ -295,11 +299,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         address _token,
         address _recipient,
         uint256 _amount
-    ) internal returns (bool) {
-        if (_amount > 0) {
-            bool sent = IERC20(_token).transfer(_recipient, _amount);
-            return sent;
-        }
-        return false;
+    ) private {
+        IERC20(_token).safeTransfer(_recipient, _amount);
     }
 }

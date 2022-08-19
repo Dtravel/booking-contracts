@@ -44,11 +44,11 @@ contract DtravelConfig is Ownable {
         emit UpdatedFee(oldFee, _fee);
     }
 
-    function updateReferrerFee(uint256 _referrerFee) public onlyOwner {
-        require(_referrerFee <= fee, "Config: Referrer Fee must be smaller than the Treasury Fee");
+    function updateReferrerFee(uint256 _referrerFee) external onlyOwner {
+        require(_referrerFee <= fee, "Config: Referrer Fee <= Treasury Fee");
         uint256 oldFee = referrerFee;
         referrerFee = _referrerFee;
-        emit UpdatedReferrerFee(oldFee, _ReferrerFee);
+        emit UpdatedReferrerFee(oldFee, _referrerFee);
     }
 
     function updatePayoutDelayTime(uint256 _payoutDelayTime) public onlyOwner {

@@ -34,6 +34,7 @@ struct Booking {
     uint256 balance;
     address guest;
     address token;
+    address referrer;
     BookingStatus status;
     CancellationPolicy[] cancellationPolicies;
 }
