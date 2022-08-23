@@ -1,5 +1,4 @@
-build/
-cache/
-dist/
-node_modules/
-reports/
+node_modules
+artifacts
+cache
+coverage

@@ -1,25 +1,11 @@
-# Ignore node stuff
-node_modules/
-yarn-error.log
-
-# Ignore build stuff
-cache/
-build/
-dist/
-
-# Buidler cache
-cached/
-
-# Ignore solc bin output
-bin/
-
-# Others
-.env
+node_modules
 .DS_Store
-.vscode
+.env
+coverage
+coverage.json
+typechain
 
-# Reports
-/reports
-
-# Configs deploy
-/scripts/configs.json
+#Hardhat files
+cache
+artifacts
+.openzeppelin

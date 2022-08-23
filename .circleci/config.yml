@@ -27,7 +27,7 @@ jobs:
       - run: yarn
       - run:
           name: Test coverage
-          command: npx hardhat clean && npx hardhat coverage
+          command: npx hardhat clean && npx hardhat compile && npx hardhat coverage
       - code-analysis
 workflows:
   test-and-coverage:
