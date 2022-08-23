@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+yarn prettier:sol && yarn prettier:ts && yarn linter:sol && yarn linter:ts

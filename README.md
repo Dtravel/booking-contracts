@@ -1,53 +1,86 @@
-## Quickstart
+# Dtravel Booking Smart Contracts
 
-1. Clone the repo
-2. Run `yarn install`
+This repository contains the core smart contracts for Dtravel Booking Service.
 
-## What’s Included?
+## Prerequisites
+Node >= 10.x && yarn > 1.x
+```
+$ node --version
+v16.15.0
 
-- **[Hardhat](https://hardhat.org/)**: Ethereum development environment for professionals.
-- **[Waffle](https://getwaffle.io/)**: The most advanced framework for testing smart contracts
-- **[Typechain](https://github.com/ethereum-ts/TypeChain)**: TypeScript bindings for Ethereum smart contracts
-- **[Tenderly](https://tenderly.co/)**: Real-time monitoring, alerting, and troubleshooting for Smart Contracts.
-- **[Ethers]()**: A complete Ethereum wallet implementation and utilities in JavaScript (and TypeScript).
-- **[Etherscan](https://etherscan.io)**: Verify contracts in The Ethereum Blockchain Explorer
+$ yarn --version
+1.22.18
+```
 
-#### Hardhat Plugins
-- ABI Exporter
-- Gas Reporter
-- Contract Sizer
-- OpenZeppelin Upgrades
-## Usage
+Install dependencies
+```
+$ yarn
+```
+## Unit test
+1. Compile contract
+```
+$ yarn compile
+```
+2. Run tests
+```
+$ yarn test
+```
 
-Look at the `package.json` inside scripts section to see available commands. A number of helper build scripts are located in `/scripts`.
-### Build contracts
+## Solidity linter and prettiers
+1. Run linter to analyze convention and security for smart contracts
+```
+$ yarn linter:sol
+```
+2. Format smart contracts
+```
+$ yarn prettier:sol
+```
+3. Run eslint for TS scripts
+```
+$ yarn linter:ts
+```
+4. Format TS scripts
+```
+$ yarn prettier:ts
+```
+* ***Note***: *Updated pre-commit hook*
 
-Compiles contracts and creates Typechain bindings.
+## Test coverage
+1. Run script
+```
+yarn test:coverage
+```
 
-`yarn build`
+## Testnet deployment
+1. Config `.env`
+```
+ADMIN_PRIVATE_KEY=<admin private key>
+OPERATOR_PRIVATE_KEY=<minter private key>
+TREASURY_ADDR=<treasury address>
+VERIFIER_ADDR=<treasury address>
+```
+2. Deploy on BSC Testnet
+```
+$ yarn deploy:testnet
+```
 
-### Run tests
+***Note***: After the first deployment succeed, please save and keep file `.oppenzeppelin` private since it's important to upgrade contract later.
 
-Runs all tests in the `/test` folder.
+## Upgrade smart contract
+1. Clean cache and precompiled folders to avoid conflict errors
+```
+$ rm -rf artifacts cache .oppenzeppelin
+```
+2. Put your folder `.oppenzeppelin` into root directory
+3. Update your smart contracts
+4. Update `.env`
+```
+BEACON_UPGRADE_ADDR=<beacon address>
+```
+5. Run upgrade via `UpgradeableBeacon` contract
 
-`yarn test`
+```
+$ yarn upgrade:testnet:property
 
-### Run tests with gas report
-
-Run all tests calculating gas estimations.
-
-`yarn test:gas`
-
-The gas report will be saved on the `/reports` folder.
-
-### Deploy to Ethereum
-
-Create/modify network config in hardhat.config.ts and add API key and private key, then run:
-
-`npx hardhat run --network rinkeby scripts/deploy.ts`
-
-### Verify on Etherscan
-
-Using the hardhat-etherscan plugin, add Etherscan API key to hardhat.config.ts, then run:
-
-`npx hardhat verify --network rinkeby <DEPLOYED ADDRESS>`
+$ yarn upgrade:mainnet:property
+```
