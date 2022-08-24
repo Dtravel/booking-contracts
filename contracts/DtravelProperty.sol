@@ -210,7 +210,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
 
         _updateBookingStatus(
             _bookingId,
-            booking.balance == 0 ? BookingStatus.FullyPaidOut : BookingStatus.PartialPayOut
+            currentBalance == 0 ? BookingStatus.FullyPaidOut : BookingStatus.PartialPayOut
         );
 
         // Split the payment
