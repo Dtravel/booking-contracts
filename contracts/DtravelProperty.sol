@@ -37,15 +37,6 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     }
 
     /**
-    @notice Modifier to check if the caller is the Dtravel backend
-    */
-    modifier onlyBackend() {
-        require(msg.sender == configContract.dtravelBackend(), "Property: Only Dtravel is authorized to call this action");
-
-        _;
-    }
-
-    /**
     @notice Modifier to check if the caller is the host or a delegate approved by the host
     */
     modifier onlyHostOrDelegate() {
