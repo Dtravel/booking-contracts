@@ -261,20 +261,4 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         return bookings[getBookingIndex(_bookingId)];
     }
 
-    function _safeTransferFrom(
-        address _token,
-        address _sender,
-        address _recipient,
-        uint256 _amount
-    ) private {
-        IERC20(_token).transferFrom(_sender, _recipient, _amount);
-    }
-
-    function _safeTransfer(
-        address _token,
-        address _recipient,
-        uint256 _amount
-    ) private {
-        IERC20(_token).transfer(_recipient, _amount);
-    }
 }
