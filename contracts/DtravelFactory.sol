@@ -47,7 +47,7 @@ contract DtravelFactory is Ownable {
         _;
     }
 
-    function deployProperty(uint256[] memory _ids, address _host) public onlyOwnerOrDtravelBackend {
+    function deployProperty(uint256[] calldata _ids, address _host) external onlyOwnerOrDtravelBackend {
         require(_ids.length > 0, "Factory: Invalid property ids");
         require(_host != address(0), "Factory: Host address is invalid");
         address[] memory properties = new address[](_ids.length);
@@ -59,7 +59,7 @@ contract DtravelFactory is Ownable {
         emit PropertyCreated(_ids, properties, _host);
     }
 
-    function verifyBookingData(BookingParameters memory _params, bytes memory _signature)
+    function verifyBookingData(BookingParameters calldata _params, bytes calldata _signature)
         external
         view
         onlyMatchingProperty
@@ -69,7 +69,7 @@ contract DtravelFactory is Ownable {
         return DtravelEIP712.verify(_params, msg.sender, config.dtravelBackend(), _signature);
     }
 
-    function book(string memory _bookingId) external onlyMatchingProperty {
+    function book(string calldata _bookingId) external onlyMatchingProperty {
         emit Book(msg.sender, _bookingId, block.timestamp);
     }
 

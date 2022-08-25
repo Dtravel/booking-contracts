@@ -1,8 +1,7 @@
 {
-  "name": "solidity-starter",
+  "name": "booking-contracts",
   "version": "0.1.0",
-  "description": "Solidity starter",
-  "main": "index.js",
+  "description": "Smart contracts for Dtravel booking",
   "scripts": {
     "prepublishOnly": "scripts/prepublish",
     "build": "scripts/build",
@@ -29,8 +28,6 @@
     "README.md",
     "LICENSE"
   ],
-  "author": "Ariel Barmat",
-  "license": "MIT",
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",
     "@nomiclabs/hardhat-etherscan": "^3.0.3",

@@ -33,39 +33,39 @@ contract DtravelConfig is Ownable {
         }
     }
 
-    function updateFee(uint256 _fee) public onlyOwner {
-        require(_fee >= 0 && _fee <= 2000, "Config: Fee must be between 0 and 2000");
+    function updateFee(uint256 _fee) external onlyOwner {
+        require(_fee <= 2000, "Config: Fee must be between 0 and 2000");
         uint256 oldFee = fee;
         fee = _fee;
         emit UpdatedFee(oldFee, _fee);
     }
 
-    function updatePayoutDelayTime(uint256 _payoutDelayTime) public onlyOwner {
+    function updatePayoutDelayTime(uint256 _payoutDelayTime) external onlyOwner {
         uint256 oldPayoutDelayTime = payoutDelayTime;
         payoutDelayTime = _payoutDelayTime;
         emit UpdatedPayoutDelayTime(oldPayoutDelayTime, _payoutDelayTime);
     }
 
-    function addSupportedToken(address _token) public onlyOwner {
+    function addSupportedToken(address _token) external onlyOwner {
         require(_token != address(0), "Config: token is zero address");
         supportedTokens[_token] = true;
         emit AddedSupportedToken(_token);
     }
 
-    function removeSupportedToken(address _token) public onlyOwner {
+    function removeSupportedToken(address _token) external onlyOwner {
         require(_token != address(0), "Config: token is zero address");
         supportedTokens[_token] = false;
         emit RemovedSupportedToken(_token);
     }
 
-    function updateTreasury(address _treasury) public onlyOwner {
+    function updateTreasury(address _treasury) external onlyOwner {
         require(_treasury != address(0), "Config: treasury is zero address");
         address oldTreasury = dtravelTreasury;
         dtravelTreasury = _treasury;
         emit UpdatedTreasury(oldTreasury, _treasury);
     }
 
-    function updateDtravelBackend(address _backend) public onlyOwner {
+    function updateDtravelBackend(address _backend) external onlyOwner {
         require(_backend != address(0), "Config: backend is zero address");
         address oldBackend = dtravelBackend;
         dtravelBackend = _backend;

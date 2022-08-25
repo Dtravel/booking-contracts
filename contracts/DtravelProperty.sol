@@ -13,11 +13,10 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     uint256 public id; // property id
     Booking[] public bookings; // bookings array
     mapping(string => uint256) public bookingsMap; // booking id to index + 1 in bookings array so the first booking has index 1
-    IDtravelConfig configContract; // config contract
-    IDtravelFactory factoryContract; // factory contract
+    IDtravelConfig private configContract; // config contract
+    IDtravelFactory private factoryContract; // factory contract
     address host; // host address
     mapping(address => bool) public hostDelegates; // addresses authorized by the host to act in the host's behalf
-    uint256 private constant oneDay = 60 * 60 * 24; // one day in seconds
 
     /**
     @param _id Property Id
@@ -38,20 +37,11 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     }
 
     /**
-    @notice Modifier to check if the caller is the Dtravel backend
-    */
-    modifier onlyBackend() {
-        require(msg.sender == configContract.dtravelBackend(), "Property: Only Dtravel is authorized to call this action");
-
-        _;
-    }
-
-    /**
     @notice Modifier to check if the caller is the host or a delegate approved by the host
     */
     modifier onlyHostOrDelegate() {
         require(
-            msg.sender == host || hostDelegates[msg.sender] == true,
+            msg.sender == host || hostDelegates[msg.sender],
             "Property: Only the host or a host's delegate is authorized to call this action"
         );
 
@@ -66,16 +56,16 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         hostDelegates[delegate] = false;
     }
 
-    function validateBookingParameters(BookingParameters memory _params, bytes memory _signature)
-        public
+    function _validateBookingParameters(BookingParameters memory _params, bytes memory _signature)
+        private
         returns (bool)
     {
         require(bookingsMap[_params.bookingId] == 0, "Property: Booking already exists");
         require(block.timestamp < _params.bookingExpirationTimestamp, "Property: Booking data is expired");
-        require(configContract.supportedTokens(_params.token) == true, "Property: Token is not whitelisted");
-        require(_params.checkInTimestamp + oneDay >= block.timestamp, "Property: Booking for past date is not allowed");
+        require(configContract.supportedTokens(_params.token), "Property: Token is not whitelisted");
+        require(_params.checkInTimestamp + 1 days >= block.timestamp, "Property: Booking for past date is not allowed");
         require(
-            _params.checkOutTimestamp >= _params.checkInTimestamp + oneDay,
+            _params.checkOutTimestamp >= _params.checkInTimestamp + 1 days,
             "Property: Booking period should be at least one night"
         );
         require(_params.cancellationPolicies.length > 0, "Property: Booking should have at least one cancellation policy");
@@ -105,16 +95,11 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     @param _params Booking data provided by oracle backend
     @param _signature Signature of the transaction
     */
-    function book(BookingParameters memory _params, bytes memory _signature) external nonReentrant {
+    function book(BookingParameters calldata _params, bytes calldata _signature) external nonReentrant {
         // Check if parameters are valid
-        validateBookingParameters(_params, _signature);
+        _validateBookingParameters(_params, _signature);
 
-        require(
-            IERC20(_params.token).allowance(msg.sender, address(this)) >= _params.bookingAmount,
-            "Property: Token allowance too low"
-        );
-        _safeTransferFrom(_params.token, msg.sender, address(this), _params.bookingAmount);
-
+        address sender = _msgSender();
         bookings.push();
         uint256 bookingIndex = bookings.length - 1;
         for (uint256 i = 0; i < _params.cancellationPolicies.length; i++) {
@@ -124,17 +109,19 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         bookings[bookingIndex].checkInTimestamp = _params.checkInTimestamp;
         bookings[bookingIndex].checkOutTimestamp = _params.checkOutTimestamp;
         bookings[bookingIndex].balance = _params.bookingAmount;
-        bookings[bookingIndex].guest = msg.sender;
+        bookings[bookingIndex].guest = sender;
         bookings[bookingIndex].token = _params.token;
         bookings[bookingIndex].status = BookingStatus.InProgress;
 
         bookingsMap[_params.bookingId] = bookingIndex + 1;
 
+        IERC20(_params.token).transferFrom(sender, address(this), _params.bookingAmount);
+
         // emit Book event
         factoryContract.book(_params.bookingId);
     }
 
-    function _updateBookingStatus(string memory _bookingId, BookingStatus _status) internal {
+    function _updateBookingStatus(string calldata _bookingId, BookingStatus _status) internal {
         if (
             _status == BookingStatus.CancelledByGuest ||
             _status == BookingStatus.CancelledByHost ||
@@ -146,14 +133,13 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         bookings[getBookingIndex(_bookingId)].status = _status;
     }
 
-    function cancel(string memory _bookingId) public nonReentrant {
+    function cancel(string calldata _bookingId) public nonReentrant {
         Booking memory booking = bookings[getBookingIndex(_bookingId)];
         require(booking.guest != address(0), "Property: Booking does not exist");
         require(booking.guest == msg.sender, "Property: Only the guest can cancel the booking");
         require(booking.balance > 0, "Property: Booking is already cancelled or paid out");
-        require(IERC20(booking.token).balanceOf(address(this)) >= booking.balance, "Property: Insufficient token balance");
 
-        uint256 guestAmount = 0;
+        uint256 guestAmount;
         for (uint256 i = 0; i < booking.cancellationPolicies.length; i++) {
             if (booking.cancellationPolicies[i].expiryTime >= block.timestamp) {
                 guestAmount = booking.cancellationPolicies[i].refundAmount;
@@ -167,9 +153,9 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         uint256 treasuryAmount = ((booking.balance - guestAmount) * configContract.fee()) / 10000;
         uint256 hostAmount = booking.balance - guestAmount - treasuryAmount;
 
-        _safeTransfer(booking.token, booking.guest, guestAmount);
-        _safeTransfer(booking.token, host, hostAmount);
-        _safeTransfer(booking.token, configContract.dtravelTreasury(), treasuryAmount);
+        IERC20(booking.token).transfer(booking.guest, guestAmount);
+        IERC20(booking.token).transfer(host, hostAmount);
+        IERC20(booking.token).transfer(configContract.dtravelTreasury(), treasuryAmount);
 
         factoryContract.cancelByGuest(_bookingId, guestAmount, hostAmount, treasuryAmount, block.timestamp);
     }
@@ -179,16 +165,15 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
     the remaining balance and the amount due to the guest if the guest decides to cancel
     is split between the host and treasury.
     */
-    function payout(string memory _bookingId) external nonReentrant {
-        Booking storage booking = bookings[getBookingIndex(_bookingId)];
+    function payout(string calldata _bookingId) external nonReentrant {
+        uint256 idx = getBookingIndex(_bookingId);
+        Booking memory booking = bookings[idx];
         require(booking.guest != address(0), "Property: Booking does not exist");
         require(booking.balance != 0, "Property: Booking is already cancelled or fully paid out");
 
-        uint256 toBePaid = 0;
+        uint256 toBePaid;
 
-        if (booking.cancellationPolicies.length == 0) {
-            toBePaid = booking.balance;
-        } else if (
+        if (
             booking.cancellationPolicies[booking.cancellationPolicies.length - 1].expiryTime +
                 configContract.payoutDelayTime() <
             block.timestamp
@@ -209,28 +194,29 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
 
         require(toBePaid > 0, "Property: Invalid payout call");
 
-        booking.balance -= toBePaid;
+        uint256 currentBalance = booking.balance - toBePaid;
+        bookings[idx].balance = currentBalance;
 
         _updateBookingStatus(
             _bookingId,
-            booking.balance == 0 ? BookingStatus.FullyPaidOut : BookingStatus.PartialPayOut
+            currentBalance == 0 ? BookingStatus.FullyPaidOut : BookingStatus.PartialPayOut
         );
 
         // Split the payment
         uint256 treasuryAmount = (toBePaid * configContract.fee()) / 10000;
         uint256 hostAmount = toBePaid - treasuryAmount;
 
-        _safeTransfer(booking.token, host, hostAmount);
-        _safeTransfer(booking.token, configContract.dtravelTreasury(), treasuryAmount);
+        IERC20(booking.token).transfer(host, hostAmount);
+        IERC20(booking.token).transfer(configContract.dtravelTreasury(), treasuryAmount);
 
-        factoryContract.payout(_bookingId, hostAmount, treasuryAmount, block.timestamp, booking.balance == 0 ? 1 : 2);
+        factoryContract.payout(_bookingId, hostAmount, treasuryAmount, block.timestamp, currentBalance == 0 ? 1 : 2);
     }
 
     /**
     When a booking is cancelled by the host, the whole remaining balance is sent to the guest.
     Any amount that has been paid out to the host or to the treasury through calls to `payout` will have to be refunded manually to the guest.
     */
-    function cancelByHost(string memory _bookingId) public nonReentrant onlyHostOrDelegate {
+    function cancelByHost(string calldata _bookingId) external nonReentrant onlyHostOrDelegate {
         Booking memory booking = bookings[getBookingIndex(_bookingId)];
         require(booking.guest != address(0), "Property: Booking does not exist");
         require(
@@ -244,7 +230,7 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
 
         _updateBookingStatus(_bookingId, BookingStatus.CancelledByHost);
 
-        _safeTransfer(booking.token, booking.guest, guestAmount);
+        IERC20(booking.token).transfer(booking.guest, guestAmount);
 
         factoryContract.cancelByHost(_bookingId, guestAmount, block.timestamp);
     }
@@ -273,28 +259,4 @@ contract DtravelProperty is Ownable, ReentrancyGuard {
         return bookings[getBookingIndex(_bookingId)];
     }
 
-    function _safeTransferFrom(
-        address _token,
-        address _sender,
-        address _recipient,
-        uint256 _amount
-    ) internal returns (bool) {
-        if (_amount > 0) {
-            bool sent = IERC20(_token).transferFrom(_sender, _recipient, _amount);
-            return sent;
-        }
-        return false;
-    }
-
-    function _safeTransfer(
-        address _token,
-        address _recipient,
-        uint256 _amount
-    ) internal returns (bool) {
-        if (_amount > 0) {
-            bool sent = IERC20(_token).transfer(_recipient, _amount);
-            return sent;
-        }
-        return false;
-    }
 }

@@ -97,7 +97,7 @@ describe('DtravelProperty', function () {
 
             await expect(dtravelProperty.connect(guestSigner).book(param, signature)).to.be.revertedWith('EIP712: unauthorized signer')
         })
-        it('should revert because token allowance is too low', async function () {
+        it('should revert because of insufficient allowance', async function () {
             const bookingId = '2hB2o789n'
             const bookingAmount = BigNumber.from('100000000000000000000')
             const signers = await ethers.getSigners()
@@ -115,7 +115,7 @@ describe('DtravelProperty', function () {
             let approveTx = await (dtravelTokenTest.connect(guestSigner)).approve(dtravelProperty.address, bookingAmount.div(2))
             await approveTx.wait()
 
-            await expect(dtravelProperty.connect(guestSigner).book(param, signature)).to.be.revertedWith('Property: Token allowance too low')
+            await expect(dtravelProperty.connect(guestSigner).book(param, signature)).to.be.revertedWith('ERC20: insufficient allowance')
         })
         it('should revert because booking data is expired', async function () {
             const bookingId = '2hB2o789n'
