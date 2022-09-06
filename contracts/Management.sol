@@ -79,8 +79,13 @@ contract Management is IManagement, Ownable {
         @dev Caller must be ADMIN and the referrer fee must not be greater than the overall fee
         @param _feeNumerator the fee numerator
      */
-    function setReferrerFeeRatio(uint256 _feeNumerator) external override onlyOwner {
-        if (_feeNumerator > FEE_DENOMINATOR || _feeNumerator > feeNumerator) revert InvalidReferrerFee();
+    function setReferrerFeeRatio(uint256 _feeNumerator)
+        external
+        override
+        onlyOwner
+    {
+        if (_feeNumerator > FEE_DENOMINATOR || _feeNumerator > feeNumerator)
+            revert InvalidReferrerFee();
 
         referrerFeeNumerator = _feeNumerator;
 
