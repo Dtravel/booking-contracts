@@ -12,8 +12,10 @@ import "../interfaces/IProperty.sol";
 // common custom errors
 error ZeroAddress();
 error OnlyHost();
+error OnlyAuthorized();
 error GrantedAlready();
 error NotYetGranted();
+error WalletSetAlready();
 
 // service custom errors
 error Unauthorized();
@@ -64,6 +66,9 @@ contract Property is
     // host of the property
     address public host;
 
+    // host wallet to receive payment
+    address public hostWallet;
+
     // address of the property's factory
     address public factory;
 
@@ -87,8 +92,10 @@ contract Property is
 
         propertyId = _propertyId;
         host = _host;
+        hostWallet = _host;
         factory = _msgSender();
         management = IManagement(_management);
+        authorized[management.operator()] = true;
     }
 
     /**
@@ -115,6 +122,24 @@ contract Property is
         if (!authorized[_addr]) revert NotYetGranted();
 
         authorized[_addr] = false;
+    }
+
+    /**
+       @notice Update host wallet
+       @dev    Caller must be HOST or AUTHORIZED
+       @param _newWallet new wallet address
+     */
+    function updateHostWallet(address _newWallet) external override {
+        address msgSender = _msgSender();
+        if (msgSender != host && !authorized[msgSender])
+            revert OnlyAuthorized();
+        if (_newWallet == address(0)) revert ZeroAddress();
+        if (_newWallet == hostWallet) revert WalletSetAlready();
+
+        hostWallet = _newWallet;
+
+        // also grant authority to this new wallet
+        authorized[_newWallet] = true;
     }
 
     /**
@@ -148,6 +173,7 @@ contract Property is
         bookingInfo.balance = _setting.bookingAmount;
         bookingInfo.guest = sender;
         bookingInfo.paymentToken = _setting.paymentToken;
+        bookingInfo.paymentReceiver = hostWallet;
         bookingInfo.status = BookingStatus.IN_PROGRESS;
 
         uint256 n = _setting.policies.length;
@@ -255,7 +281,10 @@ contract Property is
             info.guest,
             refundAmount
         );
-        IERC20Upgradeable(info.paymentToken).safeTransfer(host, hostRevenue);
+        IERC20Upgradeable(info.paymentToken).safeTransfer(
+            info.paymentReceiver,
+            hostRevenue
+        );
         IERC20Upgradeable(info.paymentToken).safeTransfer(
             management.treasury(),
             fee
@@ -312,7 +341,10 @@ contract Property is
         uint256 hostRevenue = toBePaid - fee;
 
         // transfer payment and charge fee
-        IERC20Upgradeable(info.paymentToken).safeTransfer(host, hostRevenue);
+        IERC20Upgradeable(info.paymentToken).safeTransfer(
+            info.paymentReceiver,
+            hostRevenue
+        );
         IERC20Upgradeable(info.paymentToken).safeTransfer(
             management.treasury(),
             fee

@@ -13,6 +13,7 @@ interface IProperty {
         uint256 balance;
         address guest;
         address paymentToken;
+        address paymentReceiver;
         BookingStatus status;
         CancellationPolicy[] policies;
     }
@@ -44,6 +45,8 @@ interface IProperty {
     function grantAuthorized(address _addr) external;
 
     function revokeAuthorized(address _addr) external;
+
+    function updateHostWallet(address _newWallet) external;
 
     function book(BookingSetting calldata _setting, bytes calldata _signature)
         external;
