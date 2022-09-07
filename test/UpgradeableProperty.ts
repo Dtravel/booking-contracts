@@ -146,6 +146,16 @@ describe("Property test", function () {
       ).revertedWith("revokeAuthorized() upgraded!");
     });
 
+    it("should upgrade updateHostWallet()", async () => {
+      await expect(
+        upgradedProperty1.updateHostWallet(users[3].address)
+      ).revertedWith("updateHostWallet() upgraded!");
+
+      await expect(
+        upgradedProperty2.updateHostWallet(users[3].address)
+      ).revertedWith("updateHostWallet() upgraded!");
+    });
+
     it("should upgrade book()", async () => {
       const guest = users[1];
       const now = (await ethers.provider.getBlock("latest")).timestamp;

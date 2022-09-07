@@ -35,6 +35,9 @@ contract PropertyV2 is
     // host of the property
     address public host;
 
+    // host wallet to receive payment
+    address public hostWallet;
+
     // address of the property's factory
     address public factory;
 
@@ -90,6 +93,16 @@ contract PropertyV2 is
     function revokeAuthorized(address _addr) external pure override {
         _addr;
         revert("revokeAuthorized() upgraded!");
+    }
+
+    /**
+       @notice Update host wallet
+       @dev    Caller must be HOST or AUTHORIZED
+       @param _newWallet new wallet address
+     */
+    function updateHostWallet(address _newWallet) external pure override {
+        _newWallet;
+        revert("updateHostWallet() upgraded!");
     }
 
     /**
