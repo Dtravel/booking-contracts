@@ -176,18 +176,9 @@ contract Property is
             );
         }
 
-        address signer = _hashTypedDataV4(
-            keccak256(_hashSetting(_setting, policiesHashes))
-        ).recover(_signature);
-        if (signer != management.verifier()) revert InvalidSignature();
-    }
-
-    function _hashSetting(
-        BookingSetting calldata _setting,
-        bytes32[] memory policiesHashes
-    ) private view returns (bytes memory) {
-        return
-            abi.encode(
+        bytes memory settingHash;
+        {
+            settingHash = abi.encode(
                 BOOKING_SETTING_TYPEHASH,
                 _setting.bookingId,
                 _setting.checkIn,
@@ -199,6 +190,12 @@ contract Property is
                 _setting.referrer,
                 keccak256(abi.encodePacked(policiesHashes))
             );
+        }
+
+        address signer = _hashTypedDataV4(keccak256(settingHash)).recover(
+            _signature
+        );
+        if (signer != management.verifier()) revert InvalidSignature();
     }
 
     function _validateSetting(BookingSetting calldata _setting) private {
