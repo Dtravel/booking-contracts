@@ -50,6 +50,7 @@ describe("Property test", function () {
       { name: "expireAt", type: "uint256" },
       { name: "bookingAmount", type: "uint256" },
       { name: "paymentToken", type: "address" },
+      { name: "referrer", type: "address" },
       { name: "guest", type: "address" },
       { name: "policies", type: "CancellationPolicy[]" },
     ],
@@ -216,6 +217,7 @@ describe("Property test", function () {
           expireAt: now - 1 * days,
           bookingAmount: 55000,
           paymentToken: busd.address,
+          referrer: constants.AddressZero,
           guest: guest.address,
           policies: [
             {
@@ -241,6 +243,7 @@ describe("Property test", function () {
           expireAt: now + 3 * days,
           bookingAmount: 55000,
           paymentToken: busd.address,
+          referrer: constants.AddressZero,
           policies: [
             {
               expireAt: now,
@@ -265,6 +268,7 @@ describe("Property test", function () {
           expireAt: now + 3 * days,
           bookingAmount: 55000,
           paymentToken: busd.address,
+          referrer: constants.AddressZero,
           policies: [
             {
               expireAt: now,
@@ -289,6 +293,7 @@ describe("Property test", function () {
           expireAt: now + 3 * days,
           bookingAmount: 55000,
           paymentToken: busd.address,
+          referrer: constants.AddressZero,
           policies: [],
         };
 
@@ -308,6 +313,7 @@ describe("Property test", function () {
           expireAt: now + 3 * days,
           bookingAmount: 55000,
           paymentToken: busd.address,
+          referrer: constants.AddressZero,
           policies: [
             {
               expireAt: now,
@@ -336,6 +342,7 @@ describe("Property test", function () {
           expireAt: now + 3 * days,
           bookingAmount: 55000,
           paymentToken: busd.address,
+          referrer: constants.AddressZero,
           policies: [
             {
               expireAt: now + 1 * days,
@@ -377,6 +384,7 @@ describe("Property test", function () {
           expireAt: now + 3 * days,
           bookingAmount: 55000,
           paymentToken: busd.address,
+          referrer: constants.AddressZero,
           policies: [
             {
               expireAt: now,
@@ -396,6 +404,7 @@ describe("Property test", function () {
           expireAt: setting.expireAt,
           bookingAmount: setting.bookingAmount,
           paymentToken: setting.paymentToken,
+          referrer: setting.referrer,
           guest: guest.address,
           policies: setting.policies,
         };
@@ -422,6 +431,7 @@ describe("Property test", function () {
           expireAt: now + 3 * days,
           bookingAmount: 65000,
           paymentToken: fakeToken.address,
+          referrer: constants.AddressZero,
           policies: [
             {
               expireAt: now,
@@ -453,6 +463,7 @@ describe("Property test", function () {
           expireAt: now + 3 * days,
           bookingAmount: 65000,
           paymentToken: trvl.address,
+          referrer: constants.AddressZero,
           policies: [
             {
               expireAt: now,
@@ -482,6 +493,7 @@ describe("Property test", function () {
           expireAt: now + 3 * days,
           bookingAmount: 65000,
           paymentToken: trvl.address,
+          referrer: constants.AddressZero,
           policies: [
             {
               expireAt: now,
@@ -501,6 +513,7 @@ describe("Property test", function () {
           expireAt: setting.expireAt,
           bookingAmount: setting.bookingAmount,
           paymentToken: setting.paymentToken,
+          referrer: setting.referrer,
           guest: guest.address,
           policies: setting.policies,
         };
@@ -523,6 +536,7 @@ describe("Property test", function () {
           expireAt: now + 3 * days,
           bookingAmount: 65000,
           paymentToken: trvl.address,
+          referrer: constants.AddressZero,
           policies: [
             {
               expireAt: now,
@@ -542,6 +556,7 @@ describe("Property test", function () {
           expireAt: setting.expireAt,
           bookingAmount: setting.bookingAmount,
           paymentToken: setting.paymentToken,
+          referrer: setting.referrer,
           guest: guest.address,
           policies: setting.policies,
         };
@@ -564,6 +579,7 @@ describe("Property test", function () {
           expireAt: now + 3 * days,
           bookingAmount: 65000,
           paymentToken: trvl.address,
+          referrer: constants.AddressZero,
           policies: [
             {
               expireAt: now,
@@ -583,6 +599,7 @@ describe("Property test", function () {
           expireAt: setting.expireAt,
           bookingAmount: setting.bookingAmount,
           paymentToken: setting.paymentToken,
+          referrer: setting.referrer,
           guest: guest.address,
           policies: setting.policies,
         };
@@ -605,6 +622,7 @@ describe("Property test", function () {
           expireAt: now + 3 * days,
           bookingAmount: 65000,
           paymentToken: trvl.address,
+          referrer: constants.AddressZero,
           policies: [
             {
               expireAt: now,
@@ -624,6 +642,7 @@ describe("Property test", function () {
           expireAt: setting.expireAt + 4 * days,
           bookingAmount: setting.bookingAmount,
           paymentToken: setting.paymentToken,
+          referrer: setting.referrer,
           guest: guest.address,
           policies: setting.policies,
         };
@@ -646,6 +665,7 @@ describe("Property test", function () {
           expireAt: now + 3 * days,
           bookingAmount: 65000,
           paymentToken: trvl.address,
+          referrer: constants.AddressZero,
           policies: [
             {
               expireAt: now,
@@ -665,6 +685,7 @@ describe("Property test", function () {
           expireAt: setting.expireAt,
           bookingAmount: 2020,
           paymentToken: setting.paymentToken,
+          referrer: setting.referrer,
           guest: guest.address,
           policies: setting.policies,
         };
@@ -687,6 +708,7 @@ describe("Property test", function () {
           expireAt: now + 3 * days,
           bookingAmount: 65000,
           paymentToken: trvl.address,
+          referrer: constants.AddressZero,
           policies: [
             {
               expireAt: now,
@@ -706,6 +728,7 @@ describe("Property test", function () {
           expireAt: setting.expireAt,
           bookingAmount: setting.bookingAmount,
           paymentToken: busd.address,
+          referrer: setting.referrer,
           guest: guest.address,
           policies: setting.policies,
         };
@@ -728,6 +751,7 @@ describe("Property test", function () {
           expireAt: now + 3 * days,
           bookingAmount: 65000,
           paymentToken: trvl.address,
+          referrer: constants.AddressZero,
           policies: [
             {
               expireAt: now,
@@ -747,6 +771,7 @@ describe("Property test", function () {
           expireAt: setting.expireAt,
           bookingAmount: setting.bookingAmount,
           paymentToken: setting.paymentToken,
+          referrer: setting.referrer,
           guest: guest.address,
           policies: [setting.policies[0]],
         };
@@ -769,6 +794,7 @@ describe("Property test", function () {
           expireAt: now + 3 * days,
           bookingAmount: 65000,
           paymentToken: trvl.address,
+          referrer: constants.AddressZero,
           policies: [
             {
               expireAt: now,
@@ -803,6 +829,7 @@ describe("Property test", function () {
           expireAt: setting.expireAt,
           bookingAmount: setting.bookingAmount,
           paymentToken: setting.paymentToken,
+          referrer: setting.referrer,
           guest: guest.address,
           policies: setting.policies,
         };
@@ -829,6 +856,7 @@ describe("Property test", function () {
           expireAt: now + 3 * days,
           bookingAmount: 65000,
           paymentToken: trvl.address,
+          referrer: constants.AddressZero,
           policies: [
             {
               expireAt: now,
@@ -863,6 +891,7 @@ describe("Property test", function () {
           expireAt: setting.expireAt,
           bookingAmount: setting.bookingAmount,
           paymentToken: setting.paymentToken,
+          referrer: setting.referrer,
           guest: guest.address,
           policies: setting.policies,
         };
@@ -889,6 +918,7 @@ describe("Property test", function () {
           expireAt: now + 3 * days,
           bookingAmount: 65000,
           paymentToken: trvl.address,
+          referrer: constants.AddressZero,
           policies: [
             {
               expireAt: now,
@@ -923,6 +953,7 @@ describe("Property test", function () {
           expireAt: setting.expireAt,
           bookingAmount: setting.bookingAmount,
           paymentToken: setting.paymentToken,
+          referrer: setting.referrer,
           guest: guest.address,
           policies: setting.policies,
         };
@@ -949,6 +980,7 @@ describe("Property test", function () {
           expireAt: now + 3 * days,
           bookingAmount: 65000,
           paymentToken: trvl.address,
+          referrer: constants.AddressZero,
           policies: [
             {
               expireAt: now,
@@ -983,6 +1015,7 @@ describe("Property test", function () {
           checkOut: setting.checkOut,
           bookingAmount: setting.bookingAmount,
           paymentToken: setting.paymentToken,
+          referrer: setting.referrer,
           guest: guest.address,
           policies: setting.policies,
         };
@@ -1009,6 +1042,7 @@ describe("Property test", function () {
           expireAt: now + 3 * days,
           bookingAmount: 65000,
           paymentToken: trvl.address,
+          referrer: constants.AddressZero,
           policies: [
             {
               expireAt: now,
@@ -1043,6 +1077,7 @@ describe("Property test", function () {
           checkOut: setting.checkOut,
           expireAt: setting.expireAt,
           paymentToken: setting.paymentToken,
+          referrer: setting.referrer,
           guest: guest.address,
           policies: setting.policies,
         };
@@ -1069,6 +1104,7 @@ describe("Property test", function () {
           expireAt: now + 3 * days,
           bookingAmount: 65000,
           paymentToken: trvl.address,
+          referrer: constants.AddressZero,
           policies: [
             {
               expireAt: now,
@@ -1103,6 +1139,7 @@ describe("Property test", function () {
           checkOut: setting.checkOut,
           expireAt: setting.expireAt,
           bookingAmount: setting.bookingAmount,
+          referrer: setting.referrer,
           guest: guest.address,
           policies: setting.policies,
         };
@@ -1129,6 +1166,7 @@ describe("Property test", function () {
           expireAt: now + 3 * days,
           bookingAmount: 65000,
           paymentToken: trvl.address,
+          referrer: constants.AddressZero,
           policies: [
             {
               expireAt: now,
@@ -1164,6 +1202,7 @@ describe("Property test", function () {
           expireAt: setting.expireAt,
           bookingAmount: setting.bookingAmount,
           paymentToken: setting.paymentToken,
+          referrer: setting.referrer,
           policies: setting.policies,
         };
 
@@ -1189,6 +1228,7 @@ describe("Property test", function () {
           expireAt: now + 3 * days,
           bookingAmount: 65000,
           paymentToken: trvl.address,
+          referrer: constants.AddressZero,
           policies: [
             {
               expireAt: now,
@@ -1220,6 +1260,7 @@ describe("Property test", function () {
           expireAt: setting.expireAt,
           bookingAmount: setting.bookingAmount,
           paymentToken: setting.paymentToken,
+          referrer: setting.referrer,
           guest: guest.address,
         };
 
@@ -1245,6 +1286,7 @@ describe("Property test", function () {
           expireAt: now + 3 * days,
           bookingAmount: 65000,
           paymentToken: trvl.address,
+          referrer: constants.AddressZero,
           policies: [
             {
               expireAt: now,
@@ -1271,6 +1313,7 @@ describe("Property test", function () {
           expireAt: setting.expireAt,
           bookingAmount: setting.bookingAmount,
           paymentToken: setting.paymentToken,
+          referrer: setting.referrer,
           guest: guest.address,
           policies: [setting.policies[0]],
         };
@@ -1297,6 +1340,7 @@ describe("Property test", function () {
           expireAt: now + 3 * days,
           bookingAmount: 65000,
           paymentToken: trvl.address,
+          referrer: constants.AddressZero,
           policies: [
             {
               expireAt: now,
@@ -1323,6 +1367,7 @@ describe("Property test", function () {
           expireAt: setting.expireAt,
           bookingAmount: setting.bookingAmount,
           paymentToken: setting.paymentToken,
+          referrer: setting.referrer,
           guest: guest.address,
           policies: [setting.policies[0]],
         };
@@ -1349,6 +1394,7 @@ describe("Property test", function () {
           expireAt: now + 3 * days,
           bookingAmount: 65000,
           paymentToken: trvl.address,
+          referrer: constants.AddressZero,
           policies: [
             {
               expireAt: now,
@@ -1375,6 +1421,7 @@ describe("Property test", function () {
           expireAt: setting.expireAt,
           bookingAmount: setting.bookingAmount,
           paymentToken: setting.paymentToken,
+          referrer: setting.referrer,
           guest: guest.address,
           policies: [setting.policies[0]],
         };
@@ -1401,6 +1448,7 @@ describe("Property test", function () {
           expireAt: now + 3 * days,
           bookingAmount: 65000,
           paymentToken: trvl.address,
+          referrer: constants.AddressZero,
           policies: [
             {
               expireAt: now,
@@ -1427,6 +1475,7 @@ describe("Property test", function () {
           expireAt: setting.expireAt,
           bookingAmount: setting.bookingAmount,
           paymentToken: setting.paymentToken,
+          referrer: setting.referrer,
           guest: guest.address,
           policies: [setting.policies[0]],
         };
@@ -1453,6 +1502,7 @@ describe("Property test", function () {
           expireAt: now + 3 * days,
           bookingAmount: 65000,
           paymentToken: trvl.address,
+          referrer: constants.AddressZero,
           policies: [
             {
               expireAt: now,
@@ -1472,6 +1522,7 @@ describe("Property test", function () {
           expireAt: setting.expireAt,
           bookingAmount: setting.bookingAmount,
           paymentToken: setting.paymentToken,
+          referrer: setting.referrer,
           guest: guest.address,
           policies: setting.policies,
         };
@@ -1496,6 +1547,7 @@ describe("Property test", function () {
           expireAt: now + 3 * days,
           bookingAmount: 65000,
           paymentToken: trvl.address,
+          referrer: constants.AddressZero,
           policies: [
             {
               expireAt: now,
@@ -1515,6 +1567,7 @@ describe("Property test", function () {
           expireAt: setting.expireAt,
           bookingAmount: setting.bookingAmount,
           paymentToken: setting.paymentToken,
+          referrer: setting.referrer,
           guest: guest.address,
           policies: setting.policies,
         };
@@ -1643,6 +1696,7 @@ describe("Property test", function () {
         expireAt: now + 5 * days,
         bookingAmount: 65000,
         paymentToken: trvl.address,
+        referrer: constants.AddressZero,
         policies: [
           {
             expireAt: now + 2 * days,
@@ -1662,6 +1716,7 @@ describe("Property test", function () {
         expireAt: setting.expireAt,
         bookingAmount: setting.bookingAmount,
         paymentToken: setting.paymentToken,
+        referrer: setting.referrer,
         guest: guest.address,
         policies: setting.policies,
       };
@@ -1764,6 +1819,7 @@ describe("Property test", function () {
         expireAt: now + 5 * days,
         bookingAmount: 65000,
         paymentToken: trvl.address,
+        referrer: constants.AddressZero,
         policies: [
           {
             expireAt: now + 2 * days,
@@ -1783,6 +1839,7 @@ describe("Property test", function () {
         expireAt: setting.expireAt,
         bookingAmount: setting.bookingAmount,
         paymentToken: setting.paymentToken,
+        referrer: setting.referrer,
         guest: guest.address,
         policies: setting.policies,
       };
@@ -1869,6 +1926,7 @@ describe("Property test", function () {
         expireAt: now + 5 * days,
         bookingAmount: 85000,
         paymentToken: busd.address,
+        referrer: constants.AddressZero,
         policies: [
           {
             expireAt: now + 2 * days,
@@ -1888,6 +1946,7 @@ describe("Property test", function () {
         expireAt: setting.expireAt,
         bookingAmount: setting.bookingAmount,
         paymentToken: setting.paymentToken,
+        referrer: setting.referrer,
         guest: guest.address,
         policies: setting.policies,
       };
@@ -1967,6 +2026,7 @@ describe("Property test", function () {
         expireAt: now + 5 * days,
         bookingAmount: 85000,
         paymentToken: busd.address,
+        referrer: constants.AddressZero,
         policies: [
           {
             expireAt: now + 2 * days,
@@ -1986,6 +2046,7 @@ describe("Property test", function () {
         expireAt: setting.expireAt,
         bookingAmount: setting.bookingAmount,
         paymentToken: setting.paymentToken,
+        referrer: setting.referrer,
         guest: guest.address,
         policies: setting.policies,
       };
@@ -2095,6 +2156,7 @@ describe("Property test", function () {
         expireAt: now + 5 * days,
         bookingAmount: 85000,
         paymentToken: busd.address,
+        referrer: constants.AddressZero,
         policies: [
           {
             expireAt: now + 2 * days,
@@ -2114,6 +2176,7 @@ describe("Property test", function () {
         expireAt: setting.expireAt,
         bookingAmount: setting.bookingAmount,
         paymentToken: setting.paymentToken,
+        referrer: setting.referrer,
         guest: guest.address,
         policies: setting.policies,
       };
@@ -2173,6 +2236,7 @@ describe("Property test", function () {
         expireAt: now + 5 * days,
         bookingAmount: 85000,
         paymentToken: busd.address,
+        referrer: constants.AddressZero,
         policies: [
           {
             expireAt: now + 2 * days,
@@ -2192,6 +2256,7 @@ describe("Property test", function () {
         expireAt: setting.expireAt,
         bookingAmount: setting.bookingAmount,
         paymentToken: setting.paymentToken,
+        referrer: setting.referrer,
         guest: guest.address,
         policies: setting.policies,
       };
@@ -2249,6 +2314,7 @@ describe("Property test", function () {
         expireAt: now + 5 * days,
         bookingAmount: 85000,
         paymentToken: busd.address,
+        referrer: constants.AddressZero,
         policies: [
           {
             expireAt: now + 2 * days,
@@ -2268,6 +2334,7 @@ describe("Property test", function () {
         expireAt: setting.expireAt,
         bookingAmount: setting.bookingAmount,
         paymentToken: setting.paymentToken,
+        referrer: setting.referrer,
         guest: guest.address,
         policies: setting.policies,
       };
