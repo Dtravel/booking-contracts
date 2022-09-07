@@ -86,24 +86,25 @@ describe("Management test", function () {
       await expect(management.setReferrerFeeRatio(referrerFeeNumerator))
         .emit(management, "NewReferrerFeeNumerator")
         .withArgs(referrerFeeNumerator);
-    })
+    });
 
     it("should get referrer fee numerator", async () => {
-      const currentReferrerFeeDenominator = await management.referrerFeeNumerator();
+      const currentReferrerFeeDenominator =
+        await management.referrerFeeNumerator();
       expect(currentReferrerFeeDenominator).deep.equal(referrerFeeNumerator);
     });
 
     it("should revert when setting referrer fee ratio if caller is not ADMIN", async () => {
-      await expect(management.connect(operator).setReferrerFeeRatio(100)).revertedWith(
-        "Ownable: caller is not the owner"
-      );
+      await expect(
+        management.connect(operator).setReferrerFeeRatio(100)
+      ).revertedWith("Ownable: caller is not the owner");
     });
 
     it("should revert when setting incorrect referrer fee ratio", async () => {
       const currentfeeNumerator = await management.feeNumerator();
-      await expect(management.setReferrerFeeRatio(currentfeeNumerator.add(100))).to.be.revertedWith(
-        "InvalidReferrerFee"
-      );
+      await expect(
+        management.setReferrerFeeRatio(currentfeeNumerator.add(100))
+      ).to.be.revertedWith("InvalidReferrerFee");
     });
   });
 
