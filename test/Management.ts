@@ -15,6 +15,7 @@ describe("Management test", function () {
   let users: SignerWithAddress[];
 
   const feeNumerator = 1000; // 1000 / 10000 = 10%
+  const referrerFeeNumerator = 500; // 500 / 10000 = 5%
   const FEE_DENOMINATOR = 10000;
   const days = 24 * 3600;
   const payoutDelay = 2 * days;
@@ -76,6 +77,32 @@ describe("Management test", function () {
     it("should revert when setting incorrect fee ratio", async () => {
       await expect(management.setFeeRatio(20000)).to.be.revertedWith(
         "InvalidFee"
+      );
+    });
+  });
+
+  describe("Update referrer fee ratio", async () => {
+    it("should set referrer fee ratio if caller is ADMIN", async () => {
+      await expect(management.setReferrerFeeRatio(referrerFeeNumerator))
+        .emit(management, "NewReferrerFeeNumerator")
+        .withArgs(referrerFeeNumerator);
+    })
+
+    it("should get referrer fee numerator", async () => {
+      const currentReferrerFeeDenominator = await management.referrerFeeNumerator();
+      expect(currentReferrerFeeDenominator).deep.equal(referrerFeeNumerator);
+    });
+
+    it("should revert when setting referrer fee ratio if caller is not ADMIN", async () => {
+      await expect(management.connect(operator).setReferrerFeeRatio(100)).revertedWith(
+        "Ownable: caller is not the owner"
+      );
+    });
+
+    it("should revert when setting incorrect referrer fee ratio", async () => {
+      const currentfeeNumerator = await management.feeNumerator();
+      await expect(management.setReferrerFeeRatio(currentfeeNumerator.add(100))).to.be.revertedWith(
+        "InvalidReferrerFee"
       );
     });
   });
