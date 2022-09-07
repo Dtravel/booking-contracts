@@ -51,9 +51,9 @@ contract Property is
     // keccak256("CancellationPolicy(uint256 expireAt,uint256 refundAmount)");
     bytes32 private constant CANCELLATION_POLICY_TYPEHASH =
         0x71ed7adc2b3cc6f42e80ad08652651cbc6e0fd93b50d04298efafcfb6570f246;
-    // keccak256("Msg(uint256 bookingId,uint256 checkIn,uint256 checkOut,uint256 expireAt,uint256 bookingAmount,address paymentToken,address guest,CancellationPolicy[] policies)CancellationPolicy(uint256 expireAt,uint256 refundAmount)");
+    // keccak256("Msg(uint256 bookingId,uint256 checkIn,uint256 checkOut,uint256 expireAt,uint256 bookingAmount,address paymentToken,address guest, address referrer, CancellationPolicy[] policies)CancellationPolicy(uint256 expireAt,uint256 refundAmount)");
     bytes32 private constant BOOKING_SETTING_TYPEHASH =
-        0xe4407dbd9325b17ca1c7a742f4052c9f26c12dd2a9244d379e156f6522aa5cb6;
+        0x760410127243be04d933d6c42bbf5bbfcccacabca8fe488f2211edfc1fdca5f6;
 
     // the property ID
     uint256 public propertyId;
@@ -148,6 +148,7 @@ contract Property is
         bookingInfo.balance = _setting.bookingAmount;
         bookingInfo.guest = sender;
         bookingInfo.paymentToken = _setting.paymentToken;
+        bookingInfo.referrer = _setting.referrer;
         bookingInfo.status = BookingStatus.IN_PROGRESS;
 
         uint256 n = _setting.policies.length;
@@ -186,6 +187,7 @@ contract Property is
                     _setting.bookingAmount,
                     _setting.paymentToken,
                     _msgSender(),
+                    _setting.referrer,
                     keccak256(abi.encodePacked(policiesHashes))
                 )
             )
