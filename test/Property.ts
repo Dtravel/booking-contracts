@@ -1854,7 +1854,7 @@ describe("Property test", function () {
       await expect(property.connect(guest).payout(bookingId))
         .emit(property, "PayOut")
         .withArgs(guest.address, bookingId, txExcecutionTime, 1); // 1 = BookingStatus.PARTIAL_PAID
-      
+
       // restore EVM time for the next test
       await decreaseTime(1 * days + 1);
 
@@ -1868,7 +1868,9 @@ describe("Property test", function () {
       expect(guestBalance).deep.equal(guestBalanceBefore);
       expect(hostBalance).deep.equal(hostBalanceBefore.add(hostRevenue));
       expect(treasuryBalance).deep.equal(treasuryBalanceBefore.add(fee));
-      expect(referrerBalance).deep.equal(referrerBalanceBefore.add(referrerFee));
+      expect(referrerBalance).deep.equal(
+        referrerBalanceBefore.add(referrerFee)
+      );
       expect(contractBalance).deep.equal(contractBalanceBefore.sub(toBePaid));
 
       // check on-chain states
@@ -1975,7 +1977,6 @@ describe("Property test", function () {
         property.connect(guest).payout(bookingId)
       ).to.be.revertedWith("BookingNotFound");
     });
-
   });
 
   describe("Cancel by guest", async () => {
@@ -2098,7 +2099,10 @@ describe("Property test", function () {
         .mul(feeRatio)
         .div(feeDenominator)
         .sub(referrerFee);
-      const hostRevenue = bookingInfo.balance.sub(refund).sub(fee).sub(referrerFee);
+      const hostRevenue = bookingInfo.balance
+        .sub(refund)
+        .sub(fee)
+        .sub(referrerFee);
 
       now = (await ethers.provider.getBlock("latest")).timestamp;
       txExcecutionTime = now + 1;
@@ -2117,7 +2121,9 @@ describe("Property test", function () {
       expect(guestBalance).deep.equal(guestBalanceBefore.add(refund));
       expect(hostBalance).deep.equal(hostBalanceBefore.add(hostRevenue));
       expect(treasuryBalance).deep.equal(treasuryBalanceBefore.add(fee));
-      expect(referrerBalance).deep.equal(referrerBalanceBefore.add(referrerFee));
+      expect(referrerBalance).deep.equal(
+        referrerBalanceBefore.add(referrerFee)
+      );
       expect(contractBalance).deep.equal(
         contractBalanceBefore.sub(bookingInfo.balance)
       );
