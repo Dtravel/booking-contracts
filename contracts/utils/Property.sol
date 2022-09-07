@@ -95,7 +95,6 @@ contract Property is
         hostWallet = _host;
         factory = _msgSender();
         management = IManagement(_management);
-        authorized[management.operator()] = true;
     }
 
     /**
@@ -131,8 +130,11 @@ contract Property is
      */
     function updateHostWallet(address _newWallet) external override {
         address msgSender = _msgSender();
-        if (msgSender != host && !authorized[msgSender])
-            revert OnlyAuthorized();
+        if (
+            msgSender != host &&
+            msgSender != management.operator() &&
+            !authorized[msgSender]
+        ) revert OnlyAuthorized();
         if (_newWallet == address(0)) revert ZeroAddress();
         if (_newWallet == hostWallet) revert WalletSetAlready();
 
