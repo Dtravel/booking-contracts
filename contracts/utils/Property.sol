@@ -322,8 +322,11 @@ contract Property is
         booking[_bookingId].status = status;
 
         // split the payment
-        uint256 fee = (toBePaid * management.feeNumerator()) / FEE_DENOMINATOR;
-        uint256 hostRevenue = toBePaid - fee;
+        uint256 referrerFee = info.referrer != address(0) ? 
+            (toBePaid * management.referrerFeeNumerator()) / FEE_DENOMINATOR 
+            : 0;
+        uint256 fee = (toBePaid * management.feeNumerator()) / FEE_DENOMINATOR - referrerFee;
+        uint256 hostRevenue = toBePaid - fee - referrerFee;
 
         // transfer payment and charge fee
         IERC20Upgradeable(info.paymentToken).safeTransfer(host, hostRevenue);
@@ -331,6 +334,12 @@ contract Property is
             management.treasury(),
             fee
         );
+        if (info.referrer != address(0)) {
+            IERC20Upgradeable(info.paymentToken).safeTransfer(
+                info.referrer,
+                referrerFee
+            );
+        }
 
         emit PayOut(info.guest, _bookingId, current, status);
     }
