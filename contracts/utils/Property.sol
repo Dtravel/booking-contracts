@@ -177,22 +177,28 @@ contract Property is
         }
 
         address signer = _hashTypedDataV4(
-            keccak256(
-                abi.encode(
-                    BOOKING_SETTING_TYPEHASH,
-                    _setting.bookingId,
-                    _setting.checkIn,
-                    _setting.checkOut,
-                    _setting.expireAt,
-                    _setting.bookingAmount,
-                    _setting.paymentToken,
-                    _msgSender(),
-                    _setting.referrer,
-                    keccak256(abi.encodePacked(policiesHashes))
-                )
-            )
+            keccak256(_hashSetting(_setting, policiesHashes))
         ).recover(_signature);
         if (signer != management.verifier()) revert InvalidSignature();
+    }
+
+    function _hashSetting(
+        BookingSetting calldata _setting,
+        bytes32[] memory policiesHashes
+    ) private view returns (bytes memory) {
+        return
+            abi.encode(
+                BOOKING_SETTING_TYPEHASH,
+                _setting.bookingId,
+                _setting.checkIn,
+                _setting.checkOut,
+                _setting.expireAt,
+                _setting.bookingAmount,
+                _setting.paymentToken,
+                _msgSender(),
+                _setting.referrer,
+                keccak256(abi.encodePacked(policiesHashes))
+            );
     }
 
     function _validateSetting(BookingSetting calldata _setting) private {
@@ -322,10 +328,12 @@ contract Property is
         booking[_bookingId].status = status;
 
         // split the payment
-        uint256 referrerFee = info.referrer != address(0) ? 
-            (toBePaid * management.referrerFeeNumerator()) / FEE_DENOMINATOR 
+        uint256 referrerFee = info.referrer != address(0)
+            ? (toBePaid * management.referrerFeeNumerator()) / FEE_DENOMINATOR
             : 0;
-        uint256 fee = (toBePaid * management.feeNumerator()) / FEE_DENOMINATOR - referrerFee;
+        uint256 fee = (toBePaid * management.feeNumerator()) /
+            FEE_DENOMINATOR -
+            referrerFee;
         uint256 hostRevenue = toBePaid - fee - referrerFee;
 
         // transfer payment and charge fee
