@@ -51,9 +51,9 @@ contract Property is
     // keccak256("CancellationPolicy(uint256 expireAt,uint256 refundAmount)");
     bytes32 private constant CANCELLATION_POLICY_TYPEHASH =
         0x71ed7adc2b3cc6f42e80ad08652651cbc6e0fd93b50d04298efafcfb6570f246;
-    // keccak256("Msg(uint256 bookingId,uint256 checkIn,uint256 checkOut,uint256 expireAt,uint256 bookingAmount,address paymentToken,address guest, address referrer, CancellationPolicy[] policies)CancellationPolicy(uint256 expireAt,uint256 refundAmount)");
+    // keccak256("Msg(uint256 bookingId,uint256 checkIn,uint256 checkOut,uint256 expireAt,uint256 bookingAmount,address paymentToken,address referrer,address guest,CancellationPolicy[] policies)CancellationPolicy(uint256 expireAt,uint256 refundAmount)");
     bytes32 private constant BOOKING_SETTING_TYPEHASH =
-        0x760410127243be04d933d6c42bbf5bbfcccacabca8fe488f2211edfc1fdca5f6;
+        0x4299a080339bf90a75c045ad1230a6e716fe5314d953e0dcca074f146cfd96a5;
 
     // the property ID
     uint256 public propertyId;
@@ -177,6 +177,7 @@ contract Property is
         }
 
         bytes memory settingHash;
+        address guest = _msgSender();
         {
             settingHash = abi.encode(
                 BOOKING_SETTING_TYPEHASH,
@@ -186,8 +187,8 @@ contract Property is
                 _setting.expireAt,
                 _setting.bookingAmount,
                 _setting.paymentToken,
-                _msgSender(),
                 _setting.referrer,
+                guest,
                 keccak256(abi.encodePacked(policiesHashes))
             );
         }
