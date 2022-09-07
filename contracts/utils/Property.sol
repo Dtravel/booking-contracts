@@ -248,9 +248,12 @@ contract Property is
         }
 
         // refund to the guest
-        uint256 fee = ((info.balance - refundAmount) *
-            management.feeNumerator()) / FEE_DENOMINATOR;
-        uint256 hostRevenue = info.balance - refundAmount - fee;
+        uint256 remainingAmount = info.balance - refundAmount;
+        uint256 referrerFee = info.referrer != address(0) ?
+            ((remainingAmount * management.referrerFeeNumerator()) / FEE_DENOMINATOR) 
+            : 0;
+        uint256 fee = (remainingAmount * management.feeNumerator()) / FEE_DENOMINATOR - referrerFee;
+        uint256 hostRevenue = remainingAmount - fee - referrerFee;
 
         // transfer payment and charge fee
         IERC20Upgradeable(info.paymentToken).safeTransfer(
@@ -262,6 +265,9 @@ contract Property is
             management.treasury(),
             fee
         );
+        if (info.referrer != address(0)) {
+            IERC20Upgradeable(info.paymentToken).safeTransfer(info.referrer, referrerFee);
+        }
 
         // update booking storage
         booking[_bookingId].status = BookingStatus.GUEST_CANCELLED;
