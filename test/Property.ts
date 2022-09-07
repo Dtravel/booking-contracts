@@ -25,6 +25,7 @@ describe("Property test", function () {
   let operator: SignerWithAddress;
   let verifier: SignerWithAddress;
   let treasury: SignerWithAddress;
+  let referrer: SignerWithAddress;
   let host: SignerWithAddress;
   let users: SignerWithAddress[];
   let propertyBeacon: Contract;
@@ -61,7 +62,7 @@ describe("Property test", function () {
   };
 
   before(async () => {
-    [admin, operator, verifier, treasury, host, ...users] =
+    [admin, operator, verifier, treasury, referrer, host, ...users] =
       await ethers.getSigners();
 
     // deploy mock busd for payment
@@ -1776,6 +1777,105 @@ describe("Property test", function () {
       expect(bookingInfo.balance).deep.equal(remain);
     });
 
+    it("should make a partial payout and get correct fee for treasury and referrer", async () => {
+      // setup referrer fee
+      await management.setReferrerFeeRatio(500);
+
+      // make a booking
+      const guest = users[1];
+      let now = (await ethers.provider.getBlock("latest")).timestamp;
+      const setting = {
+        bookingId: 149,
+        checkIn: now + 1 * days,
+        checkOut: now + 4 * days,
+        expireAt: now + 5 * days,
+        bookingAmount: 65000,
+        paymentToken: trvl.address,
+        referrer: referrer.address,
+        policies: [
+          {
+            expireAt: now + 2 * days,
+            refundAmount: 50000,
+          },
+          {
+            expireAt: now + 3 * days,
+            refundAmount: 55000,
+          },
+        ],
+      };
+
+      const value = {
+        bookingId: setting.bookingId,
+        checkIn: setting.checkIn,
+        checkOut: setting.checkOut,
+        expireAt: setting.expireAt,
+        bookingAmount: setting.bookingAmount,
+        paymentToken: setting.paymentToken,
+        referrer: setting.referrer,
+        guest: guest.address,
+        policies: setting.policies,
+      };
+
+      // generate a valid signature
+      const signature = await verifier._signTypedData(domain, types, value);
+
+      await expect(property.connect(guest).book(setting, signature)).emit(
+        property,
+        "NewBooking"
+      );
+
+      const bookingId = setting.bookingId;
+
+      // get balance before executing tx
+      const guestBalanceBefore = await trvl.balanceOf(guest.address);
+      const hostBalanceBefore = await trvl.balanceOf(host.address);
+      const treasuryBalanceBefore = await trvl.balanceOf(treasury.address);
+      const referrerBalanceBefore = await trvl.balanceOf(referrer.address);
+      const contractBalanceBefore = await trvl.balanceOf(property.address);
+
+      // calculate fees and related amounts
+      let bookingInfo = await property.getBookingById(bookingId);
+      const toBePaid = BigNumber.from(
+        setting.bookingAmount - setting.policies[0].refundAmount
+      );
+      const feeRatio = await management.feeNumerator();
+      const referrerFeeRatio = await management.referrerFeeNumerator();
+      const feeDenominator = await management.FEE_DENOMINATOR();
+      const referrerFee = toBePaid.mul(referrerFeeRatio).div(feeDenominator);
+      const fee = toBePaid.mul(feeRatio).div(feeDenominator).sub(referrerFee);
+      const hostRevenue = toBePaid.sub(fee).sub(referrerFee);
+      const remain = BigNumber.from(setting.bookingAmount).sub(toBePaid);
+
+      // 1st policy expireAt + payoutDelay = 1 + 1 = 2 days, so forward evm time to 1 days to exceed 1st refund peroid
+      await increaseTime(1 * days);
+
+      now = (await ethers.provider.getBlock("latest")).timestamp;
+      const txExcecutionTime = now + 1;
+      await expect(property.connect(guest).payout(bookingId))
+        .emit(property, "PayOut")
+        .withArgs(guest.address, bookingId, txExcecutionTime, 1); // 1 = BookingStatus.PARTIAL_PAID
+      
+      // restore EVM time for the next test
+      await decreaseTime(1 * days + 1);
+
+      // check balance after payout
+      const guestBalance = await trvl.balanceOf(guest.address);
+      const hostBalance = await trvl.balanceOf(host.address);
+      const treasuryBalance = await trvl.balanceOf(treasury.address);
+      const referrerBalance = await trvl.balanceOf(referrer.address);
+      const contractBalance = await trvl.balanceOf(property.address);
+
+      expect(guestBalance).deep.equal(guestBalanceBefore);
+      expect(hostBalance).deep.equal(hostBalanceBefore.add(hostRevenue));
+      expect(treasuryBalance).deep.equal(treasuryBalanceBefore.add(fee));
+      expect(referrerBalance).deep.equal(referrerBalanceBefore.add(referrerFee));
+      expect(contractBalance).deep.equal(contractBalanceBefore.sub(toBePaid));
+
+      // check on-chain states
+      bookingInfo = await property.getBookingById(bookingId);
+      expect(bookingInfo.balance).deep.equal(remain);
+    });
+
     it("should revert when making the next payment if remaining balance is insufficient to charge", async () => {
       const bookingId = 3;
       // current setting:
@@ -1875,6 +1975,7 @@ describe("Property test", function () {
         property.connect(guest).payout(bookingId)
       ).to.be.revertedWith("BookingNotFound");
     });
+
   });
 
   describe("Cancel by guest", async () => {
@@ -1916,6 +2017,9 @@ describe("Property test", function () {
     });
 
     it("should cancel a booking when refund policies are available", async () => {
+      // setup referrer fee
+      await management.setReferrerFeeRatio(500);
+
       // make a booking
       const guest = users[2];
       let now = (await ethers.provider.getBlock("latest")).timestamp;
@@ -1926,7 +2030,7 @@ describe("Property test", function () {
         expireAt: now + 5 * days,
         bookingAmount: 85000,
         paymentToken: busd.address,
-        referrer: constants.AddressZero,
+        referrer: referrer.address,
         policies: [
           {
             expireAt: now + 2 * days,
@@ -1976,18 +2080,25 @@ describe("Property test", function () {
       const guestBalanceBefore = await busd.balanceOf(guest.address);
       const hostBalanceBefore = await busd.balanceOf(host.address);
       const treasuryBalanceBefore = await busd.balanceOf(treasury.address);
+      const referrerBalanceBefore = await busd.balanceOf(referrer.address);
       const contractBalanceBefore = await busd.balanceOf(property.address);
 
       // calculate fees and related amounts
       let bookingInfo = await property.getBookingById(bookingId);
       const refund = setting.policies[1].refundAmount;
       const feeRatio = await management.feeNumerator();
+      const referrerRatio = await management.referrerFeeNumerator();
       const feeDenominator = await management.FEE_DENOMINATOR();
+      const referrerFee = bookingInfo.balance
+        .sub(refund)
+        .mul(referrerRatio)
+        .div(feeDenominator);
       const fee = bookingInfo.balance
         .sub(refund)
         .mul(feeRatio)
-        .div(feeDenominator);
-      const hostRevenue = bookingInfo.balance.sub(refund).sub(fee);
+        .div(feeDenominator)
+        .sub(referrerFee);
+      const hostRevenue = bookingInfo.balance.sub(refund).sub(fee).sub(referrerFee);
 
       now = (await ethers.provider.getBlock("latest")).timestamp;
       txExcecutionTime = now + 1;
@@ -2000,11 +2111,13 @@ describe("Property test", function () {
       const guestBalance = await busd.balanceOf(guest.address);
       const hostBalance = await busd.balanceOf(host.address);
       const treasuryBalance = await busd.balanceOf(treasury.address);
+      const referrerBalance = await busd.balanceOf(referrer.address);
       const contractBalance = await busd.balanceOf(property.address);
 
       expect(guestBalance).deep.equal(guestBalanceBefore.add(refund));
       expect(hostBalance).deep.equal(hostBalanceBefore.add(hostRevenue));
       expect(treasuryBalance).deep.equal(treasuryBalanceBefore.add(fee));
+      expect(referrerBalance).deep.equal(referrerBalanceBefore.add(referrerFee));
       expect(contractBalance).deep.equal(
         contractBalanceBefore.sub(bookingInfo.balance)
       );
@@ -2363,7 +2476,7 @@ describe("Property test", function () {
 
     it("should get total bookings", async () => {
       const res = await property.totalBookings();
-      expect(res).deep.equal(9);
+      expect(res).deep.equal(10);
     });
   });
 });
