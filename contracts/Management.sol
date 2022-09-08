@@ -6,7 +6,7 @@ import "./interfaces/IManagement.sol";
 
 error ZeroAddress();
 error InvalidFee();
-error InvalidReferrerFee();
+error InvalidReferralFee();
 error PaymentNotFound();
 error PaymentExisted();
 
@@ -16,8 +16,8 @@ contract Management is IManagement, Ownable {
     // fee = feeNumerator / FEE_DENOMINATOR. Supposed the fee is 25% then feeNumerator is set to 2500
     uint256 public override feeNumerator;
 
-    // referrer = referrerFeeNumerator / FEE_DENOMINATOR.
-    uint256 public override referrerFeeNumerator;
+    // referralFee = referralFeeNumerator / FEE_DENOMINATOR.
+    uint256 public override referralFeeNumerator;
 
     // the period of time a business between booking and paying it
     uint256 public override payoutDelay;
@@ -75,21 +75,21 @@ contract Management is IManagement, Ownable {
     }
 
     /**
-        @notice Set referrer fee ratio
-        @dev Caller must be ADMIN and the referrer fee must not be greater than the overall fee
+        @notice Set referral fee ratio
+        @dev Caller must be ADMIN and the referral fee must not be greater than the overall fee
         @param _feeNumerator the fee numerator
      */
-    function setReferrerFeeRatio(uint256 _feeNumerator)
+    function setReferralFeeRatio(uint256 _feeNumerator)
         external
         override
         onlyOwner
     {
-        if (_feeNumerator > FEE_DENOMINATOR || _feeNumerator > feeNumerator)
-            revert InvalidReferrerFee();
+        if (_feeNumerator > feeNumerator || _feeNumerator + feeNumerator > FEE_DENOMINATOR)
+            revert InvalidReferralFee();
 
-        referrerFeeNumerator = _feeNumerator;
+        referralFeeNumerator = _feeNumerator;
 
-        emit NewReferrerFeeNumerator(_feeNumerator);
+        emit NewReferralFeeNumerator(_feeNumerator);
     }
 
     /**

@@ -253,15 +253,15 @@ contract Property is
 
         // refund to the guest
         uint256 remainingAmount = info.balance - refundAmount;
-        uint256 referrerFee;
+        uint256 referralFee;
         if (info.referrer != address(0)) {
-            referrerFee = ((remainingAmount *
-                management.referrerFeeNumerator()) / FEE_DENOMINATOR);
+            referralFee = ((remainingAmount *
+                management.referralFeeNumerator()) / FEE_DENOMINATOR);
         }
         uint256 fee = (remainingAmount * management.feeNumerator()) /
             FEE_DENOMINATOR -
-            referrerFee;
-        uint256 hostRevenue = remainingAmount - fee - referrerFee;
+            referralFee;
+        uint256 hostRevenue = remainingAmount - fee - referralFee;
 
         // transfer payment and charge fee
         IERC20Upgradeable(info.paymentToken).safeTransfer(
@@ -276,7 +276,7 @@ contract Property is
         if (info.referrer != address(0)) {
             IERC20Upgradeable(info.paymentToken).safeTransfer(
                 info.referrer,
-                referrerFee
+                referralFee
             );
         }
 
@@ -327,16 +327,16 @@ contract Property is
         booking[_bookingId].status = status;
 
         // split the payment
-        uint256 referrerFee;
+        uint256 referralFee;
         if (info.referrer != address(0)) {
-            referrerFee =
-                (toBePaid * management.referrerFeeNumerator()) /
+            referralFee =
+                (toBePaid * management.referralFeeNumerator()) /
                 FEE_DENOMINATOR;
         }
         uint256 fee = (toBePaid * management.feeNumerator()) /
             FEE_DENOMINATOR -
-            referrerFee;
-        uint256 hostRevenue = toBePaid - fee - referrerFee;
+            referralFee;
+        uint256 hostRevenue = toBePaid - fee - referralFee;
 
         // transfer payment and charge fee
         IERC20Upgradeable(info.paymentToken).safeTransfer(host, hostRevenue);
@@ -347,7 +347,7 @@ contract Property is
         if (info.referrer != address(0)) {
             IERC20Upgradeable(info.paymentToken).safeTransfer(
                 info.referrer,
-                referrerFee
+                referralFee
             );
         }
 

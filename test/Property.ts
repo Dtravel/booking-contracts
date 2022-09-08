@@ -1779,7 +1779,7 @@ describe("Property test", function () {
 
     it("should make a partial payout and get correct fee for treasury and referrer", async () => {
       // setup referrer fee
-      await management.setReferrerFeeRatio(500);
+      await management.setReferralFeeRatio(500);
 
       // make a booking
       const guest = users[1];
@@ -1839,11 +1839,11 @@ describe("Property test", function () {
         setting.bookingAmount - setting.policies[0].refundAmount
       );
       const feeRatio = await management.feeNumerator();
-      const referrerFeeRatio = await management.referrerFeeNumerator();
+      const referralFeeRatio = await management.referralFeeNumerator();
       const feeDenominator = await management.FEE_DENOMINATOR();
-      const referrerFee = toBePaid.mul(referrerFeeRatio).div(feeDenominator);
-      const fee = toBePaid.mul(feeRatio).div(feeDenominator).sub(referrerFee);
-      const hostRevenue = toBePaid.sub(fee).sub(referrerFee);
+      const referralFee = toBePaid.mul(referralFeeRatio).div(feeDenominator);
+      const fee = toBePaid.mul(feeRatio).div(feeDenominator).sub(referralFee);
+      const hostRevenue = toBePaid.sub(fee).sub(referralFee);
       const remain = BigNumber.from(setting.bookingAmount).sub(toBePaid);
 
       // 1st policy expireAt + payoutDelay = 1 + 1 = 2 days, so forward evm time to 1 days to exceed 1st refund peroid
@@ -1869,7 +1869,7 @@ describe("Property test", function () {
       expect(hostBalance).deep.equal(hostBalanceBefore.add(hostRevenue));
       expect(treasuryBalance).deep.equal(treasuryBalanceBefore.add(fee));
       expect(referrerBalance).deep.equal(
-        referrerBalanceBefore.add(referrerFee)
+        referrerBalanceBefore.add(referralFee)
       );
       expect(contractBalance).deep.equal(contractBalanceBefore.sub(toBePaid));
 
@@ -2019,7 +2019,7 @@ describe("Property test", function () {
 
     it("should cancel a booking when refund policies are available", async () => {
       // setup referrer fee
-      await management.setReferrerFeeRatio(500);
+      await management.setReferralFeeRatio(500);
 
       // make a booking
       const guest = users[2];
@@ -2088,21 +2088,21 @@ describe("Property test", function () {
       let bookingInfo = await property.getBookingById(bookingId);
       const refund = setting.policies[1].refundAmount;
       const feeRatio = await management.feeNumerator();
-      const referrerRatio = await management.referrerFeeNumerator();
+      const referralRatio = await management.referralFeeNumerator();
       const feeDenominator = await management.FEE_DENOMINATOR();
-      const referrerFee = bookingInfo.balance
+      const referralFee = bookingInfo.balance
         .sub(refund)
-        .mul(referrerRatio)
+        .mul(referralRatio)
         .div(feeDenominator);
       const fee = bookingInfo.balance
         .sub(refund)
         .mul(feeRatio)
         .div(feeDenominator)
-        .sub(referrerFee);
+        .sub(referralFee);
       const hostRevenue = bookingInfo.balance
         .sub(refund)
         .sub(fee)
-        .sub(referrerFee);
+        .sub(referralFee);
 
       now = (await ethers.provider.getBlock("latest")).timestamp;
       txExcecutionTime = now + 1;
@@ -2122,7 +2122,7 @@ describe("Property test", function () {
       expect(hostBalance).deep.equal(hostBalanceBefore.add(hostRevenue));
       expect(treasuryBalance).deep.equal(treasuryBalanceBefore.add(fee));
       expect(referrerBalance).deep.equal(
-        referrerBalanceBefore.add(referrerFee)
+        referrerBalanceBefore.add(referralFee)
       );
       expect(contractBalance).deep.equal(
         contractBalanceBefore.sub(bookingInfo.balance)
