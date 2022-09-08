@@ -148,9 +148,9 @@ contract Property is
         bookingInfo.balance = _setting.bookingAmount;
         bookingInfo.guest = sender;
         bookingInfo.paymentToken = _setting.paymentToken;
-        if (_setting.referrer != address(0)) {      
+        if (_setting.referrer != address(0)) {
             bookingInfo.referrer = _setting.referrer;
-        }   
+        }
         bookingInfo.status = BookingStatus.IN_PROGRESS;
 
         uint256 n = _setting.policies.length;
@@ -179,18 +179,22 @@ contract Property is
         }
 
         {
-            address signer = _hashTypedDataV4(keccak256(abi.encode(
-                BOOKING_SETTING_TYPEHASH,
-                _setting.bookingId,
-                _setting.checkIn,
-                _setting.checkOut,
-                _setting.expireAt,
-                _setting.bookingAmount,
-                _setting.paymentToken,
-                _setting.referrer,
-                _msgSender(),
-                keccak256(abi.encodePacked(policiesHashes))
-            ))).recover(_signature);
+            address signer = _hashTypedDataV4(
+                keccak256(
+                    abi.encode(
+                        BOOKING_SETTING_TYPEHASH,
+                        _setting.bookingId,
+                        _setting.checkIn,
+                        _setting.checkOut,
+                        _setting.expireAt,
+                        _setting.bookingAmount,
+                        _setting.paymentToken,
+                        _setting.referrer,
+                        _msgSender(),
+                        keccak256(abi.encodePacked(policiesHashes))
+                    )
+                )
+            ).recover(_signature);
             if (signer != management.verifier()) revert InvalidSignature();
         }
     }
@@ -249,10 +253,10 @@ contract Property is
 
         // refund to the guest
         uint256 remainingAmount = info.balance - refundAmount;
-        uint256 referrerFee; 
+        uint256 referrerFee;
         if (info.referrer != address(0)) {
-            referrerFee = ((remainingAmount * management.referrerFeeNumerator()) /
-                FEE_DENOMINATOR);
+            referrerFee = ((remainingAmount *
+                management.referrerFeeNumerator()) / FEE_DENOMINATOR);
         }
         uint256 fee = (remainingAmount * management.feeNumerator()) /
             FEE_DENOMINATOR -
@@ -323,9 +327,11 @@ contract Property is
         booking[_bookingId].status = status;
 
         // split the payment
-        uint256 referrerFee; 
-        if ( info.referrer != address(0)) {
-            referrerFee = (toBePaid * management.referrerFeeNumerator()) / FEE_DENOMINATOR;
+        uint256 referrerFee;
+        if (info.referrer != address(0)) {
+            referrerFee =
+                (toBePaid * management.referrerFeeNumerator()) /
+                FEE_DENOMINATOR;
         }
         uint256 fee = (toBePaid * management.feeNumerator()) /
             FEE_DENOMINATOR -
