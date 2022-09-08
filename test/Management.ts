@@ -106,12 +106,12 @@ describe("Management test", function () {
         management.setReferralFeeRatio(currentfeeNumerator.add(100))
       ).to.be.revertedWith("InvalidReferralFee");
       await management.setFeeRatio(6000);
-      await expect(
-        management.setReferralFeeRatio(4000)
-      ).emit(management, "NewReferralFeeNumerator").withArgs(4000);
-      await expect(
-        management.setReferralFeeRatio(5000)
-      ).to.be.revertedWith("InvalidReferralFee");
+      await expect(management.setReferralFeeRatio(4000))
+        .emit(management, "NewReferralFeeNumerator")
+        .withArgs(4000);
+      await expect(management.setReferralFeeRatio(5000)).to.be.revertedWith(
+        "InvalidReferralFee"
+      );
     });
   });
 

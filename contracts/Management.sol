@@ -84,8 +84,10 @@ contract Management is IManagement, Ownable {
         override
         onlyOwner
     {
-        if (_feeNumerator > feeNumerator || _feeNumerator + feeNumerator > FEE_DENOMINATOR)
-            revert InvalidReferralFee();
+        if (
+            _feeNumerator > feeNumerator ||
+            _feeNumerator + feeNumerator > FEE_DENOMINATOR
+        ) revert InvalidReferralFee();
 
         referralFeeNumerator = _feeNumerator;
 
