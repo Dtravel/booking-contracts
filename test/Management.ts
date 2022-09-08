@@ -100,15 +100,19 @@ describe("Management test", function () {
       ).revertedWith("Ownable: caller is not the owner");
     });
 
-    it("should revert when setting incorrect referral fee ratio", async () => {
+    it("should revert when setting referral fee greater than treasury fee", async () => {
       const currentfeeNumerator = await management.feeNumerator();
       await expect(
         management.setReferralFeeRatio(currentfeeNumerator.add(100))
       ).to.be.revertedWith("InvalidReferralFee");
+     
+    });
+
+    it("should revert when setting referral fee and treasury fee exceeding 100%", async () => {
       await management.setFeeRatio(6000);
-      await expect(management.setReferralFeeRatio(4000))
+      await expect(management.setReferralFeeRatio(3999))
         .emit(management, "NewReferralFeeNumerator")
-        .withArgs(4000);
+        .withArgs(3999);
       await expect(management.setReferralFeeRatio(5000)).to.be.revertedWith(
         "InvalidReferralFee"
       );

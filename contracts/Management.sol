@@ -86,7 +86,7 @@ contract Management is IManagement, Ownable {
     {
         if (
             _feeNumerator > feeNumerator ||
-            _feeNumerator + feeNumerator > FEE_DENOMINATOR
+            _feeNumerator + feeNumerator >= FEE_DENOMINATOR
         ) revert InvalidReferralFee();
 
         referralFeeNumerator = _feeNumerator;
