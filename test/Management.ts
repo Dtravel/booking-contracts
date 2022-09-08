@@ -105,7 +105,6 @@ describe("Management test", function () {
       await expect(
         management.setReferralFeeRatio(currentfeeNumerator.add(100))
       ).to.be.revertedWith("InvalidReferralFee");
-     
     });
 
     it("should revert when setting referral fee and treasury fee exceeding 100%", async () => {
