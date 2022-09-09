@@ -36,7 +36,7 @@ contract PropertyV2 is
     address public host;
 
     // host wallet to receive payment
-    address public hostWallet;
+    address public paymentReceiver;
 
     // address of the property's factory
     address public factory;
@@ -100,9 +100,9 @@ contract PropertyV2 is
        @dev    Caller must be HOST or AUTHORIZED
        @param _newWallet new wallet address
      */
-    function updateHostWallet(address _newWallet) external pure override {
+    function updatePaymentReceiver(address _newWallet) external pure override {
         _newWallet;
-        revert("updateHostWallet() upgraded!");
+        revert("updatePaymentReceiver() upgraded!");
     }
 
     /**

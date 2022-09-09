@@ -46,7 +46,7 @@ interface IProperty {
 
     function revokeAuthorized(address _addr) external;
 
-    function updateHostWallet(address _newWallet) external;
+    function updatePaymentReceiver(address _addr) external;
 
     function book(BookingSetting calldata _setting, bytes calldata _signature)
         external;

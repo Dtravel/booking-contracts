@@ -2238,59 +2238,59 @@ describe("Property test", function () {
   });
 
   describe("Update host wallet", async () => {
-    it("should revert when updating host wallet if caller is NOT HOST/AUTHORIZED/OPERATOR", async () => {
+    it("should revert when updating payment receiver if caller is NOT HOST/AUTHORIZED/OPERATOR", async () => {
       const newWallet = users[3];
       await expect(
-        property.updateHostWallet(newWallet.address)
+        property.updatePaymentReceiver(newWallet.address)
       ).to.be.revertedWith("OnlyAuthorized");
     });
 
-    it("should revert when updating host wallet to zero address", async () => {
+    it("should revert when updating payment receiver to zero address", async () => {
       await expect(
-        property.connect(host).updateHostWallet(constants.AddressZero)
+        property.connect(host).updatePaymentReceiver(constants.AddressZero)
       ).to.be.revertedWith("ZeroAddress");
     });
 
-    it("should allow host to update wallet", async () => {
+    it("should allow host to update payment receiver", async () => {
       const newWallet = users[10];
-      await property.connect(host).updateHostWallet(newWallet.address);
+      await property.connect(host).updatePaymentReceiver(newWallet.address);
 
-      const hostWallet = await property.hostWallet();
+      const hostWallet = await property.paymentReceiver();
       expect(hostWallet).deep.equal(newWallet.address);
 
       const checkAuthorized = await property.authorized(newWallet.address);
       expect(checkAuthorized).deep.equal(true);
     });
 
-    it("should allow operator to update wallet", async () => {
+    it("should allow operator to update payment receiver", async () => {
       const newWallet = users[11];
-      await property.connect(operator).updateHostWallet(newWallet.address);
+      await property.connect(operator).updatePaymentReceiver(newWallet.address);
 
-      const hostWallet = await property.hostWallet();
+      const hostWallet = await property.paymentReceiver();
       expect(hostWallet).deep.equal(newWallet.address);
 
       const checkAuthorized = await property.authorized(newWallet.address);
       expect(checkAuthorized).deep.equal(true);
     });
 
-    it("should allow authorized address to update new wallet", async () => {
+    it("should allow authorized address to update payment receiver", async () => {
       const authorizedUser = users[11];
       const newWallet = host;
       await property
         .connect(authorizedUser)
-        .updateHostWallet(newWallet.address);
+        .updatePaymentReceiver(newWallet.address);
 
-      const hostWallet = await property.hostWallet();
+      const hostWallet = await property.paymentReceiver();
       expect(hostWallet).deep.equal(newWallet.address);
 
       const checkAuthorized = await property.authorized(newWallet.address);
       expect(checkAuthorized).deep.equal(true);
     });
 
-    it("should revert when updating a wallet that has already set up", async () => {
+    it("should revert when updating payment receiver that has already set up", async () => {
       await expect(
-        property.connect(host).updateHostWallet(host.address)
-      ).to.be.revertedWith("WalletSetAlready");
+        property.connect(host).updatePaymentReceiver(host.address)
+      ).to.be.revertedWith("PaymentReceiverExisted");
     });
 
     it("should transfer to new host wallet when paying out after host updates wallet", async () => {
@@ -2337,7 +2337,7 @@ describe("Property test", function () {
 
       // host update new wallet
       const newHostWallet = users[10];
-      await property.connect(host).updateHostWallet(newHostWallet.address);
+      await property.connect(host).updatePaymentReceiver(newHostWallet.address);
 
       // create a new booking after host updates wallet
       const guest2 = users[1];
@@ -2403,15 +2403,15 @@ describe("Property test", function () {
       await increaseTime(4 * days);
 
       now = (await ethers.provider.getBlock("latest")).timestamp;
-      let txExcecutionTime = now + 1;
+      let txExecutionTime = now + 1;
       await expect(property.connect(guest1).payout(setting1.bookingId))
         .emit(property, "PayOut")
-        .withArgs(guest1.address, setting1.bookingId, txExcecutionTime, 2); // 2 = BookingStatus.FULLY_PAID
+        .withArgs(guest1.address, setting1.bookingId, txExecutionTime, 2); // 2 = BookingStatus.FULLY_PAID
 
-      txExcecutionTime++;
+      txExecutionTime++;
       await expect(property.connect(guest2).payout(setting2.bookingId))
         .emit(property, "PayOut")
-        .withArgs(guest2.address, setting2.bookingId, txExcecutionTime, 2); // 2 = BookingStatus.FULLY_PAID
+        .withArgs(guest2.address, setting2.bookingId, txExecutionTime, 2); // 2 = BookingStatus.FULLY_PAID
 
       // restore EVM time
       await decreaseTime(4 * days + 1);

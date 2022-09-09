@@ -15,7 +15,7 @@ error OnlyHost();
 error OnlyAuthorized();
 error GrantedAlready();
 error NotYetGranted();
-error WalletSetAlready();
+error PaymentReceiverExisted();
 
 // service custom errors
 error Unauthorized();
@@ -66,8 +66,8 @@ contract Property is
     // host of the property
     address public host;
 
-    // host wallet to receive payment
-    address public hostWallet;
+    // address to receive payment
+    address public paymentReceiver;
 
     // address of the property's factory
     address public factory;
@@ -92,7 +92,7 @@ contract Property is
 
         propertyId = _propertyId;
         host = _host;
-        hostWallet = _host;
+        paymentReceiver = _host;
         factory = _msgSender();
         management = IManagement(_management);
     }
@@ -126,22 +126,22 @@ contract Property is
     /**
        @notice Update host wallet
        @dev    Caller must be HOST or AUTHORIZED
-       @param _newWallet new wallet address
+       @param _addr new wallet address
      */
-    function updateHostWallet(address _newWallet) external override {
+    function updatePaymentReceiver(address _addr) external {
         address msgSender = _msgSender();
         if (
             msgSender != host &&
             msgSender != management.operator() &&
             !authorized[msgSender]
         ) revert OnlyAuthorized();
-        if (_newWallet == address(0)) revert ZeroAddress();
-        if (_newWallet == hostWallet) revert WalletSetAlready();
+        if (_addr == address(0)) revert ZeroAddress();
+        if (_addr == paymentReceiver) revert PaymentReceiverExisted();
 
-        hostWallet = _newWallet;
+        paymentReceiver = _addr;
 
         // also grant authority to this new wallet
-        authorized[_newWallet] = true;
+        authorized[_addr] = true;
     }
 
     /**
@@ -175,7 +175,7 @@ contract Property is
         bookingInfo.balance = _setting.bookingAmount;
         bookingInfo.guest = sender;
         bookingInfo.paymentToken = _setting.paymentToken;
-        bookingInfo.paymentReceiver = hostWallet;
+        bookingInfo.paymentReceiver = paymentReceiver;
         bookingInfo.status = BookingStatus.IN_PROGRESS;
 
         uint256 n = _setting.policies.length;
