@@ -527,6 +527,8 @@ describe("Property test", function () {
         ).revertedWith("InvalidSignature");
       });
 
+
+
       it("should revert if there's mismatch between signed message and params - checkIn", async () => {
         const guest = users[1];
         const now = (await ethers.provider.getBlock("latest")).timestamp;
@@ -1679,6 +1681,115 @@ describe("Property test", function () {
       expect(bookingInfo.balance).deep.equal(0);
     });
 
+    it("should make payout with original fee in case of changing fee on management contract", async () => {
+      const originalFee = 1000;
+      const originalReferralFee = 500;
+
+      // setup original fee
+      await management.setFeeRatio(originalFee);
+      await management.setReferralFeeRatio(originalReferralFee);
+
+      // make a booking
+      const guest = users[1];
+      let now = (await ethers.provider.getBlock("latest")).timestamp;
+      const setting = {
+        bookingId: 150,
+        checkIn: now + 1 * days,
+        checkOut: now + 4 * days,
+        expireAt: now + 5 * days,
+        bookingAmount: 65000,
+        paymentToken: trvl.address,
+        referrer: referrer.address,
+        policies: [
+          {
+            expireAt: now + 2 * days,
+            refundAmount: 50000,
+          },
+          {
+            expireAt: now + 3 * days,
+            refundAmount: 55000,
+          },
+        ],
+      };
+
+      const value = {
+        bookingId: setting.bookingId,
+        checkIn: setting.checkIn,
+        checkOut: setting.checkOut,
+        expireAt: setting.expireAt,
+        bookingAmount: setting.bookingAmount,
+        paymentToken: setting.paymentToken,
+        referrer: setting.referrer,
+        guest: guest.address,
+        policies: setting.policies,
+      };
+
+      // generate a valid signature
+      const signature = await verifier._signTypedData(domain, types, value);
+
+      await expect(property.connect(guest).book(setting, signature)).emit(
+        property,
+        "NewBooking"
+      );
+
+      // change fee
+      await management.setFeeRatio(1200);
+      await management.setReferralFeeRatio(600);
+
+      const bookingId = setting.bookingId;
+
+      // get balance before executing tx
+      const guestBalanceBefore = await trvl.balanceOf(guest.address);
+      const hostBalanceBefore = await trvl.balanceOf(host.address);
+      const treasuryBalanceBefore = await trvl.balanceOf(treasury.address);
+      const referrerBalanceBefore = await trvl.balanceOf(referrer.address);
+      const contractBalanceBefore = await trvl.balanceOf(property.address);
+
+      // calculate fees and related amounts
+      let bookingInfo = await property.getBookingById(bookingId);
+      const toBePaid = BigNumber.from(
+        setting.bookingAmount - setting.policies[0].refundAmount
+      );
+      const feeRatio = originalFee;
+      const referralFeeRatio = originalReferralFee;
+      const feeDenominator = await management.FEE_DENOMINATOR();
+      const referralFee = toBePaid.mul(referralFeeRatio).div(feeDenominator);
+      const fee = toBePaid.mul(feeRatio).div(feeDenominator).sub(referralFee);
+      const hostRevenue = toBePaid.sub(fee).sub(referralFee);
+      const remain = BigNumber.from(setting.bookingAmount).sub(toBePaid);
+
+      // 1st policy expireAt + payoutDelay = 1 + 1 = 2 days, so forward evm time to 1 days to exceed 1st refund peroid
+      await increaseTime(1 * days);
+
+      now = (await ethers.provider.getBlock("latest")).timestamp;
+      const txExecutionTime = now + 1;
+      await expect(property.connect(guest).payout(bookingId))
+        .emit(property, "PayOut")
+        .withArgs(guest.address, bookingId, txExecutionTime, 1); // 1 = BookingStatus.PARTIAL_PAID
+
+      // restore EVM time for the next test
+      await decreaseTime(1 * days + 1);
+
+      // check balance after payout
+      const guestBalance = await trvl.balanceOf(guest.address);
+      const hostBalance = await trvl.balanceOf(host.address);
+      const treasuryBalance = await trvl.balanceOf(treasury.address);
+      const referrerBalance = await trvl.balanceOf(referrer.address);
+      const contractBalance = await trvl.balanceOf(property.address);
+
+      expect(guestBalance).deep.equal(guestBalanceBefore);
+      expect(hostBalance).deep.equal(hostBalanceBefore.add(hostRevenue));
+      expect(treasuryBalance).deep.equal(treasuryBalanceBefore.add(fee));
+      expect(referrerBalance).deep.equal(
+        referrerBalanceBefore.add(referralFee)
+      );
+      expect(contractBalance).deep.equal(contractBalanceBefore.sub(toBePaid));
+
+      // check on-chain states
+      bookingInfo = await property.getBookingById(bookingId);
+      expect(bookingInfo.balance).deep.equal(remain);
+    });
+
     it("should revert when paying for a fully-paid booking", async () => {
       const bookingId = 2;
       await expect(property.payout(bookingId)).revertedWith(
@@ -2233,6 +2344,119 @@ describe("Property test", function () {
       expect(bookingInfo.balance).deep.equal(0);
       expect(bookingInfo.status).deep.equal(3); // GUEST_CANCELLED
     });
+
+    it("should cancel booking with original fee in case of changing fee on management contract",async () => {
+
+      const originalFee = 1000;
+      const originalReferralFee = 500;
+
+      // setup original fee
+      await management.setFeeRatio(originalFee);
+      await management.setReferralFeeRatio(originalReferralFee);
+
+      // make a booking
+      const guest = users[2];
+      let now = (await ethers.provider.getBlock("latest")).timestamp;
+      const setting = {
+        bookingId: 151,
+        checkIn: now + 1 * days,
+        checkOut: now + 4 * days,
+        expireAt: now + 5 * days,
+        bookingAmount: 85000,
+        paymentToken: busd.address,
+        referrer: constants.AddressZero,
+        policies: [
+          {
+            expireAt: now + 2 * days,
+            refundAmount: 50000,
+          },
+          {
+            expireAt: now + 3 * days,
+            refundAmount: 15000,
+          },
+        ],
+      };
+
+      const value = {
+        bookingId: setting.bookingId,
+        checkIn: setting.checkIn,
+        checkOut: setting.checkOut,
+        expireAt: setting.expireAt,
+        bookingAmount: setting.bookingAmount,
+        paymentToken: setting.paymentToken,
+        referrer: setting.referrer,
+        guest: guest.address,
+        policies: setting.policies,
+      };
+
+      // generate a valid signature
+      const signature = await verifier._signTypedData(domain, types, value);
+
+      await expect(property.connect(guest).book(setting, signature)).emit(
+        property,
+        "NewBooking"
+      );
+
+
+      // change fee
+      await management.setFeeRatio(1200);
+      await management.setReferralFeeRatio(600);
+
+      const bookingId = setting.bookingId;
+
+      await increaseTime(1 * days);
+
+      now = (await ethers.provider.getBlock("latest")).timestamp;
+      let txExecutionTime = now + 1;
+
+      await expect(property.connect(guest).payout(bookingId))
+        .emit(property, "PayOut")
+        .withArgs(guest.address, bookingId, txExecutionTime, 1); // 1 = BookingStatus.PARTIAL_PAID
+
+      await increaseTime(5 * days);
+
+      // get balance before executing cancel tx
+      const guestBalanceBefore = await busd.balanceOf(guest.address);
+      const hostBalanceBefore = await busd.balanceOf(host.address);
+      const treasuryBalanceBefore = await busd.balanceOf(treasury.address);
+      const contractBalanceBefore = await busd.balanceOf(property.address);
+
+      // calculate fees and related amounts
+      let bookingInfo = await property.getBookingById(bookingId);
+      const refund = 0;
+      const feeRatio = originalFee;
+      const feeDenominator = await management.FEE_DENOMINATOR();
+      const fee = bookingInfo.balance
+        .sub(refund)
+        .mul(feeRatio)
+        .div(feeDenominator);
+      const hostRevenue = bookingInfo.balance.sub(refund).sub(fee);
+
+      now = (await ethers.provider.getBlock("latest")).timestamp;
+      txExecutionTime = now + 1;
+
+      await expect(property.connect(guest).cancel(bookingId))
+        .emit(property, "GuestCancelled")
+        .withArgs(guest.address, bookingId, txExecutionTime);
+
+      // check balance after guest cancelled
+      const guestBalance = await busd.balanceOf(guest.address);
+      const hostBalance = await busd.balanceOf(host.address);
+      const treasuryBalance = await busd.balanceOf(treasury.address);
+      const contractBalance = await busd.balanceOf(property.address);
+
+      expect(guestBalance).deep.equal(guestBalanceBefore);
+      expect(hostBalance).deep.equal(hostBalanceBefore.add(hostRevenue));
+      expect(treasuryBalance).deep.equal(treasuryBalanceBefore.add(fee));
+      expect(contractBalance).deep.equal(
+        contractBalanceBefore.sub(bookingInfo.balance)
+      );
+
+      // check booking states
+      bookingInfo = await property.getBookingById(setting.bookingId);
+      expect(bookingInfo.balance).deep.equal(0);
+      expect(bookingInfo.status).deep.equal(3); // GUEST_CANCELLED
+    });
   });
 
   describe("Cancel by host", async () => {
@@ -2677,9 +2901,9 @@ describe("Property test", function () {
     });
 
     it("should get total bookings", async () => {
-      // created booking Ids = [1, 2, 3, ... 10, 11, 149]
+      // created booking Ids = [1, 2, 3, ... 10, 11, 149, 150, 151]
       const res = await property.totalBookings();
-      expect(res).deep.equal(12);
+      expect(res).deep.equal(14);
     });
   });
 });
