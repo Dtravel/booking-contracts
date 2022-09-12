@@ -80,7 +80,7 @@ contract PropertyV2 is
        @dev    Caller must be Owner
        @param _addr authorized address
      */
-    function grantAuthorized(address _addr) external pure override {
+    function grantAuthorized(address _addr) external pure {
         _addr;
         revert("grantAuthorized() upgraded!");
     }
@@ -90,7 +90,7 @@ contract PropertyV2 is
        @dev    Caller must be Owner
        @param _addr authorized address
      */
-    function revokeAuthorized(address _addr) external pure override {
+    function revokeAuthorized(address _addr) external pure {
         _addr;
         revert("revokeAuthorized() upgraded!");
     }
@@ -100,7 +100,7 @@ contract PropertyV2 is
        @dev    Caller must be HOST or AUTHORIZED
        @param _newWallet new wallet address
      */
-    function updatePaymentReceiver(address _newWallet) external pure override {
+    function updatePaymentReceiver(address _newWallet) external pure {
         _newWallet;
         revert("updatePaymentReceiver() upgraded!");
     }
@@ -114,7 +114,6 @@ contract PropertyV2 is
     function book(BookingSetting calldata _setting, bytes calldata _signature)
         external
         pure
-        override
     {
         _setting;
         _signature;
@@ -126,7 +125,7 @@ contract PropertyV2 is
         @dev    Caller must be the booking owner
         @param  _bookingId the booking id to cancel
      */
-    function cancel(uint256 _bookingId) external pure override {
+    function cancel(uint256 _bookingId) external pure {
         _bookingId;
         revert("cancel() upgraded!");
     }
@@ -136,7 +135,7 @@ contract PropertyV2 is
         @dev    Caller must be the booking owner
         @param  _bookingId the booking id to pay out
      */
-    function payout(uint256 _bookingId) external pure override {
+    function payout(uint256 _bookingId) external pure {
         _bookingId;
         revert("payout() upgraded!");
     }
@@ -146,7 +145,7 @@ contract PropertyV2 is
         @dev    Caller must be the host or authorized addresses
         @param  _bookingId the booking id to cancel
      */
-    function cancelByHost(uint256 _bookingId) external pure override {
+    function cancelByHost(uint256 _bookingId) external pure {
         _bookingId;
         revert("cancelByHost() upgraded!");
     }
@@ -158,7 +157,6 @@ contract PropertyV2 is
     function getBookingById(uint256 _id)
         external
         view
-        override
         returns (BookingInfo memory)
     {
         require(_id == 0, "getBookingById() upgraded!");
@@ -168,7 +166,7 @@ contract PropertyV2 is
     /**
         @notice Get the total number of bookings
      */
-    function totalBookings() external view override returns (uint256) {
+    function totalBookings() external view returns (uint256) {
         require(bookingIds.length > 100, "totalBookings() upgraded!");
         return bookingIds.length;
     }

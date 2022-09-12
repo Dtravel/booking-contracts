@@ -7,10 +7,6 @@ import "./interfaces/IFactory.sol";
 import "./interfaces/IManagement.sol";
 import "./interfaces/IProperty.sol";
 
-error ZeroAddress();
-error OnlyOperator();
-error PropertyExisted();
-
 contract Factory is IFactory, OwnableUpgradeable {
     // linked management instance
     IManagement public management;
@@ -22,8 +18,8 @@ contract Factory is IFactory, OwnableUpgradeable {
     mapping(uint256 => address) public property;
 
     function init(address _management, address _beacon) external initializer {
-        if (_management == address(0)) revert ZeroAddress();
-        if (_beacon == address(0)) revert ZeroAddress();
+        require(_management != address(0), "ZeroAddress");
+        require(_beacon != address(0), "ZeroAddress");
 
         __Ownable_init();
         management = IManagement(_management);
@@ -38,12 +34,11 @@ contract Factory is IFactory, OwnableUpgradeable {
      */
     function createProperty(uint256 _propertyId, address _host)
         external
-        override
         returns (address _property)
     {
-        if (_msgSender() != management.operator()) revert OnlyOperator();
-        if (_host == address(0)) revert ZeroAddress();
-        if (property[_propertyId] != address(0)) revert PropertyExisted();
+        require(_msgSender() == management.operator(), "OnlyOperator");
+        require(_host != address(0), "ZeroAddress");
+        require(property[_propertyId] == address(0), "PropertyExisted");
 
         BeaconProxy proxy = new BeaconProxy(
             propertyBeacon,

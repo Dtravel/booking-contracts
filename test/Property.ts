@@ -157,20 +157,20 @@ describe("Property test", function () {
 
       await expect(
         property.connect(admin).grantAuthorized(authorizedAddress)
-      ).to.be.revertedWith("OnlyHost");
+      ).revertedWith("OnlyHost");
     });
 
     it("should revert when granting authorized role for zero address", async () => {
       await expect(
         property.connect(host).grantAuthorized(constants.AddressZero)
-      ).to.be.revertedWith("ZeroAddress");
+      ).revertedWith("ZeroAddress");
     });
 
     it("should revert when granting role for granted address", async () => {
       const gratedAddress = users[1].address;
       await expect(
         property.connect(host).grantAuthorized(gratedAddress)
-      ).to.be.revertedWith("GrantedAlready");
+      ).revertedWith("GrantedAlready");
     });
   });
 
@@ -180,20 +180,20 @@ describe("Property test", function () {
 
       await expect(
         property.connect(admin).revokeAuthorized(authorizedAddress)
-      ).to.be.revertedWith("OnlyHost");
+      ).revertedWith("OnlyHost");
     });
 
     it("should revert when revoking authorized role for zero address", async () => {
       await expect(
         property.connect(host).revokeAuthorized(constants.AddressZero)
-      ).to.be.revertedWith("ZeroAddress");
+      ).revertedWith("ZeroAddress");
     });
 
     it("should revert when revoking role for ungranted address", async () => {
       const ungratedAddress = users[2].address;
       await expect(
         property.connect(host).revokeAuthorized(ungratedAddress)
-      ).to.be.revertedWith("NotYetGranted");
+      ).revertedWith("NotYetGranted");
     });
 
     it("should revoke authorized if caller is HOST", async () => {
@@ -231,7 +231,7 @@ describe("Property test", function () {
         const signature = utils.randomBytes(65);
         await expect(
           property.connect(guest).book(setting, signature)
-        ).to.be.revertedWith("RequestExpired");
+        ).revertedWith("RequestExpired");
       });
 
       it("should revert if check in time is invalid", async () => {
@@ -256,7 +256,7 @@ describe("Property test", function () {
         const signature = utils.randomBytes(65);
         await expect(
           property.connect(guest).book(setting, signature)
-        ).to.be.revertedWith("InvalidCheckIn");
+        ).revertedWith("InvalidCheckIn");
       });
 
       it("should revert if check out time is invalid", async () => {
@@ -281,7 +281,7 @@ describe("Property test", function () {
         const signature = utils.randomBytes(65);
         await expect(
           property.connect(guest).book(setting, signature)
-        ).to.be.revertedWith("InvalidCheckOut");
+        ).revertedWith("InvalidCheckOut");
       });
 
       it("should revert if cancellation policies is empty", async () => {
@@ -301,7 +301,7 @@ describe("Property test", function () {
         const signature = utils.randomBytes(65);
         await expect(
           property.connect(guest).book(setting, signature)
-        ).to.be.revertedWith("EmptyPolicies");
+        ).revertedWith("EmptyPolicies");
       });
 
       it("should revert if booking amount is less than refund amount", async () => {
@@ -330,7 +330,7 @@ describe("Property test", function () {
         const signature = utils.randomBytes(65);
         await expect(
           property.connect(guest).book(setting, signature)
-        ).to.be.revertedWith("InvalidBookingAmount");
+        ).revertedWith("InvalidBookingAmount");
       });
 
       it("should revert if policy has incorrect expiry", async () => {
@@ -359,7 +359,7 @@ describe("Property test", function () {
         const signature = utils.randomBytes(65);
         await expect(
           property.connect(guest).book(setting, signature)
-        ).to.be.revertedWith("InvalidPolicy");
+        ).revertedWith("InvalidPolicy");
       });
 
       it("should revert if booking id already exists", async () => {
@@ -419,7 +419,7 @@ describe("Property test", function () {
 
         await expect(
           property.connect(guest).book(setting, signature)
-        ).to.be.revertedWith("BookingExisted");
+        ).revertedWith("BookingExisted");
       });
 
       it("should revert if payment token is not supported", async () => {
@@ -449,7 +449,7 @@ describe("Property test", function () {
 
         await expect(
           property.connect(guest).book(setting, signature)
-        ).to.be.revertedWith("InvalidPayment");
+        ).revertedWith("InvalidPayment");
       });
     });
 
@@ -524,7 +524,7 @@ describe("Property test", function () {
 
         await expect(
           property.connect(guest).book(setting, signature)
-        ).to.be.revertedWith("InvalidSignature");
+        ).revertedWith("InvalidSignature");
       });
 
       it("should revert if there's mismatch between signed message and params - checkIn", async () => {
@@ -567,7 +567,7 @@ describe("Property test", function () {
 
         await expect(
           property.connect(guest).book(setting, signature)
-        ).to.be.revertedWith("InvalidSignature");
+        ).revertedWith("InvalidSignature");
       });
 
       it("should revert if there's mismatch between signed message and params - checkOut", async () => {
@@ -610,7 +610,7 @@ describe("Property test", function () {
 
         await expect(
           property.connect(guest).book(setting, signature)
-        ).to.be.revertedWith("InvalidSignature");
+        ).revertedWith("InvalidSignature");
       });
 
       it("should revert if there's mismatch between signed message and params - expireAt", async () => {
@@ -653,7 +653,7 @@ describe("Property test", function () {
 
         await expect(
           property.connect(guest).book(setting, signature)
-        ).to.be.revertedWith("InvalidSignature");
+        ).revertedWith("InvalidSignature");
       });
 
       it("should revert if there's mismatch between signed message and params - bookingAmount", async () => {
@@ -696,7 +696,7 @@ describe("Property test", function () {
 
         await expect(
           property.connect(guest).book(setting, signature)
-        ).to.be.revertedWith("InvalidSignature");
+        ).revertedWith("InvalidSignature");
       });
 
       it("should revert if there's mismatch between signed message and params - paymentToken", async () => {
@@ -739,7 +739,7 @@ describe("Property test", function () {
 
         await expect(
           property.connect(guest).book(setting, signature)
-        ).to.be.revertedWith("InvalidSignature");
+        ).revertedWith("InvalidSignature");
       });
 
       it("should revert if there's mismatch between signed message and params - policies", async () => {
@@ -782,7 +782,7 @@ describe("Property test", function () {
 
         await expect(
           property.connect(guest).book(setting, signature)
-        ).to.be.revertedWith("InvalidSignature");
+        ).revertedWith("InvalidSignature");
       });
 
       it("should revert if signed message is missing params - bookingId", async () => {
@@ -844,7 +844,7 @@ describe("Property test", function () {
 
         await expect(
           property.connect(guest).book(setting, signature)
-        ).to.be.revertedWith("InvalidSignature");
+        ).revertedWith("InvalidSignature");
       });
 
       it("should revert if signed message is missing params - checkIn", async () => {
@@ -906,7 +906,7 @@ describe("Property test", function () {
 
         await expect(
           property.connect(guest).book(setting, signature)
-        ).to.be.revertedWith("InvalidSignature");
+        ).revertedWith("InvalidSignature");
       });
 
       it("should revert if signed message is missing params - checkOut", async () => {
@@ -968,7 +968,7 @@ describe("Property test", function () {
 
         await expect(
           property.connect(guest).book(setting, signature)
-        ).to.be.revertedWith("InvalidSignature");
+        ).revertedWith("InvalidSignature");
       });
 
       it("should revert if signed message is missing params - expireAt", async () => {
@@ -1030,7 +1030,7 @@ describe("Property test", function () {
 
         await expect(
           property.connect(guest).book(setting, signature)
-        ).to.be.revertedWith("InvalidSignature");
+        ).revertedWith("InvalidSignature");
       });
 
       it("should revert if signed message is missing params - bookingAmount", async () => {
@@ -1092,7 +1092,7 @@ describe("Property test", function () {
 
         await expect(
           property.connect(guest).book(setting, signature)
-        ).to.be.revertedWith("InvalidSignature");
+        ).revertedWith("InvalidSignature");
       });
 
       it("should revert if signed message is missing params - paymentToken", async () => {
@@ -1154,7 +1154,7 @@ describe("Property test", function () {
 
         await expect(
           property.connect(guest).book(setting, signature)
-        ).to.be.revertedWith("InvalidSignature");
+        ).revertedWith("InvalidSignature");
       });
 
       it("should revert if signed message is missing params - guest", async () => {
@@ -1216,7 +1216,7 @@ describe("Property test", function () {
 
         await expect(
           property.connect(guest).book(setting, signature)
-        ).to.be.revertedWith("InvalidSignature");
+        ).revertedWith("InvalidSignature");
       });
 
       it("should revert if signed message is missing params - policies", async () => {
@@ -1274,7 +1274,7 @@ describe("Property test", function () {
 
         await expect(
           property.connect(guest).book(setting, signature)
-        ).to.be.revertedWith("InvalidSignature");
+        ).revertedWith("InvalidSignature");
       });
 
       it("should revert if signed message with wrong domain data - name", async () => {
@@ -1328,7 +1328,7 @@ describe("Property test", function () {
 
         await expect(
           property.connect(guest).book(setting, signature)
-        ).to.be.revertedWith("InvalidSignature");
+        ).revertedWith("InvalidSignature");
       });
 
       it("should revert if signed message with wrong domain data - version", async () => {
@@ -1382,7 +1382,7 @@ describe("Property test", function () {
 
         await expect(
           property.connect(guest).book(setting, signature)
-        ).to.be.revertedWith("InvalidSignature");
+        ).revertedWith("InvalidSignature");
       });
 
       it("should revert if signed message with wrong domain data - chainId", async () => {
@@ -1436,7 +1436,7 @@ describe("Property test", function () {
 
         await expect(
           property.connect(guest).book(setting, signature)
-        ).to.be.revertedWith("InvalidSignature");
+        ).revertedWith("InvalidSignature");
       });
 
       it("should revert if signed message with wrong domain data - verifyingContract", async () => {
@@ -1490,7 +1490,7 @@ describe("Property test", function () {
 
         await expect(
           property.connect(guest).book(setting, signature)
-        ).to.be.revertedWith("InvalidSignature");
+        ).revertedWith("InvalidSignature");
       });
 
       it("should revert if signer of message is not VERIFIER", async () => {
@@ -1533,7 +1533,7 @@ describe("Property test", function () {
 
         await expect(
           property.connect(guest).book(setting, signature)
-        ).to.be.revertedWith("InvalidSignature");
+        ).revertedWith("InvalidSignature");
       });
     });
 
@@ -1655,10 +1655,10 @@ describe("Property test", function () {
       await increaseTime(4 * days);
 
       const now = (await ethers.provider.getBlock("latest")).timestamp;
-      const txExcecutionTime = now + 1;
+      const txExecutionTime = now + 1;
       await expect(property.connect(guest).payout(bookingId))
         .emit(property, "PayOut")
-        .withArgs(guest.address, bookingId, txExcecutionTime, 2); // 2 = BookingStatus.FULLY_PAID
+        .withArgs(guest.address, bookingId, txExecutionTime, 2); // 2 = BookingStatus.FULLY_PAID
 
       // restore EVM time
       await decreaseTime(4 * days + 1);
@@ -1681,7 +1681,7 @@ describe("Property test", function () {
 
     it("should revert when paying for a fully-paid booking", async () => {
       const bookingId = 2;
-      await expect(property.payout(bookingId)).to.be.revertedWith(
+      await expect(property.payout(bookingId)).revertedWith(
         "PaidOrCancelledAlready"
       );
     });
@@ -1753,10 +1753,10 @@ describe("Property test", function () {
       await increaseTime(1 * days);
 
       now = (await ethers.provider.getBlock("latest")).timestamp;
-      const txExcecutionTime = now + 1;
+      const txExecutionTime = now + 1;
       await expect(property.connect(guest).payout(bookingId))
         .emit(property, "PayOut")
-        .withArgs(guest.address, bookingId, txExcecutionTime, 1); // 1 = BookingStatus.PARTIAL_PAID
+        .withArgs(guest.address, bookingId, txExecutionTime, 1); // 1 = BookingStatus.PARTIAL_PAID
 
       // skip restoring EVM time for the next test
       // await decreaseTime(1 * days + 1);
@@ -1850,10 +1850,10 @@ describe("Property test", function () {
       await increaseTime(1 * days);
 
       now = (await ethers.provider.getBlock("latest")).timestamp;
-      const txExcecutionTime = now + 1;
+      const txExecutionTime = now + 1;
       await expect(property.connect(guest).payout(bookingId))
         .emit(property, "PayOut")
-        .withArgs(guest.address, bookingId, txExcecutionTime, 1); // 1 = BookingStatus.PARTIAL_PAID
+        .withArgs(guest.address, bookingId, txExecutionTime, 1); // 1 = BookingStatus.PARTIAL_PAID
 
       // restore EVM time for the next test
       await decreaseTime(1 * days + 1);
@@ -1902,9 +1902,9 @@ describe("Property test", function () {
       // 2rd policy expiry + payoutDelay = 3 + 1 = 4 days, so forward evm time to 3.5 days to exceed 2rd refund peroid
       await increaseTime(2.5 * days);
 
-      await expect(
-        property.connect(guest).payout(bookingId)
-      ).to.be.revertedWith("InsufficientBalance");
+      await expect(property.connect(guest).payout(bookingId)).revertedWith(
+        "InsufficientBalance"
+      );
 
       // restore EVM time
       await decreaseTime(1 * days + 1 + 2.5 * days + 1); // previous test + this test evm time
@@ -1958,24 +1958,24 @@ describe("Property test", function () {
 
       await increaseTime(1 * days);
       now = (await ethers.provider.getBlock("latest")).timestamp;
-      const txExcecutionTime = now + 1;
+      const txExecutionTime = now + 1;
       await expect(property.connect(guest).payout(bookingId))
         .emit(property, "PayOut")
-        .withArgs(guest.address, bookingId, txExcecutionTime, 1); // 1 = BookingStatus.PARTIAL_PAID
+        .withArgs(guest.address, bookingId, txExecutionTime, 1); // 1 = BookingStatus.PARTIAL_PAID
 
       await increaseTime(1 * days);
-      await expect(
-        property.connect(guest).payout(bookingId)
-      ).to.be.revertedWith("NotPaidEnough");
+      await expect(property.connect(guest).payout(bookingId)).revertedWith(
+        "NotPaidEnough"
+      );
     });
 
     it("should revert when paying out on booking that does not exist", async () => {
       const guest = users[1];
       const bookingId = 100;
 
-      await expect(
-        property.connect(guest).payout(bookingId)
-      ).to.be.revertedWith("BookingNotFound");
+      await expect(property.connect(guest).payout(bookingId)).revertedWith(
+        "BookingNotFound"
+      );
     });
   });
 
@@ -1984,27 +1984,27 @@ describe("Property test", function () {
       const guest = users[1];
       const bookingId = 101;
 
-      await expect(
-        property.connect(guest).cancel(bookingId)
-      ).to.be.revertedWith("InvalidGuest");
+      await expect(property.connect(guest).cancel(bookingId)).revertedWith(
+        "InvalidGuest"
+      );
     });
 
     it("should revert when guest cancels the other people's bookings", async () => {
       const guest = users[2];
       const bookingId = 1;
 
-      await expect(
-        property.connect(guest).cancel(bookingId)
-      ).to.be.revertedWith("InvalidGuest");
+      await expect(property.connect(guest).cancel(bookingId)).revertedWith(
+        "InvalidGuest"
+      );
     });
 
     it("should revert when guest cancels a fully-paid bookings", async () => {
       const guest = users[1];
       const bookingId = 2;
 
-      await expect(
-        property.connect(guest).cancel(bookingId)
-      ).to.be.revertedWith("PaidOrCancelledAlready");
+      await expect(property.connect(guest).cancel(bookingId)).revertedWith(
+        "PaidOrCancelledAlready"
+      );
     });
 
     it("should revert when guest cancels a cancelled bookings", async () => {
@@ -2012,9 +2012,9 @@ describe("Property test", function () {
       const bookingId = 1;
 
       await property.connect(guest).cancel(bookingId);
-      await expect(
-        property.connect(guest).cancel(bookingId)
-      ).to.be.revertedWith("PaidOrCancelledAlready");
+      await expect(property.connect(guest).cancel(bookingId)).revertedWith(
+        "PaidOrCancelledAlready"
+      );
     });
 
     it("should cancel a booking when refund policies are available", async () => {
@@ -2069,11 +2069,11 @@ describe("Property test", function () {
       await increaseTime(1 * days);
 
       now = (await ethers.provider.getBlock("latest")).timestamp;
-      let txExcecutionTime = now + 1;
+      let txExecutionTime = now + 1;
 
       await expect(property.connect(guest).payout(bookingId))
         .emit(property, "PayOut")
-        .withArgs(guest.address, bookingId, txExcecutionTime, 1); // 1 = BookingStatus.PARTIAL_PAID
+        .withArgs(guest.address, bookingId, txExecutionTime, 1); // 1 = BookingStatus.PARTIAL_PAID
 
       await increaseTime(1.5 * days);
 
@@ -2105,11 +2105,11 @@ describe("Property test", function () {
         .sub(referralFee);
 
       now = (await ethers.provider.getBlock("latest")).timestamp;
-      txExcecutionTime = now + 1;
+      txExecutionTime = now + 1;
 
       await expect(property.connect(guest).cancel(bookingId))
         .emit(property, "GuestCancelled")
-        .withArgs(guest.address, bookingId, txExcecutionTime);
+        .withArgs(guest.address, bookingId, txExecutionTime);
 
       // check balance after guest cancelled
       const guestBalance = await busd.balanceOf(guest.address);
@@ -2183,11 +2183,11 @@ describe("Property test", function () {
       await increaseTime(1 * days);
 
       now = (await ethers.provider.getBlock("latest")).timestamp;
-      let txExcecutionTime = now + 1;
+      let txExecutionTime = now + 1;
 
       await expect(property.connect(guest).payout(bookingId))
         .emit(property, "PayOut")
-        .withArgs(guest.address, bookingId, txExcecutionTime, 1); // 1 = BookingStatus.PARTIAL_PAID
+        .withArgs(guest.address, bookingId, txExecutionTime, 1); // 1 = BookingStatus.PARTIAL_PAID
 
       await increaseTime(5 * days);
 
@@ -2209,11 +2209,11 @@ describe("Property test", function () {
       const hostRevenue = bookingInfo.balance.sub(refund).sub(fee);
 
       now = (await ethers.provider.getBlock("latest")).timestamp;
-      txExcecutionTime = now + 1;
+      txExecutionTime = now + 1;
 
       await expect(property.connect(guest).cancel(bookingId))
         .emit(property, "GuestCancelled")
-        .withArgs(guest.address, bookingId, txExcecutionTime);
+        .withArgs(guest.address, bookingId, txExecutionTime);
 
       // check balance after guest cancelled
       const guestBalance = await busd.balanceOf(guest.address);
@@ -2240,28 +2240,28 @@ describe("Property test", function () {
       const bookingId = 200;
       await expect(
         property.connect(users[3]).cancelByHost(bookingId)
-      ).to.be.revertedWith("Unauthorized");
+      ).revertedWith("Unauthorized");
     });
 
     it("should revert when cancelling a non-existing booking", async () => {
       const bookingId = 200;
-      await expect(
-        property.connect(host).cancelByHost(bookingId)
-      ).to.be.revertedWith("BookingNotFound");
+      await expect(property.connect(host).cancelByHost(bookingId)).revertedWith(
+        "BookingNotFound"
+      );
     });
 
     it("should revert when cancelling a fully-paid booking", async () => {
       const bookingId = 2;
-      await expect(
-        property.connect(host).cancelByHost(bookingId)
-      ).to.be.revertedWith("PaidOrCancelledAlready");
+      await expect(property.connect(host).cancelByHost(bookingId)).revertedWith(
+        "PaidOrCancelledAlready"
+      );
     });
 
     it("should revert when cancelling a cancelled booking", async () => {
       const bookingId = 6;
-      await expect(
-        property.connect(host).cancelByHost(bookingId)
-      ).to.be.revertedWith("PaidOrCancelledAlready");
+      await expect(property.connect(host).cancelByHost(bookingId)).revertedWith(
+        "PaidOrCancelledAlready"
+      );
     });
 
     it("should cancelled by host", async () => {
@@ -2303,10 +2303,10 @@ describe("Property test", function () {
       // generate a valid signature
       const signature = await verifier._signTypedData(domain, types, value);
 
-      let txExcecutionTime = now + 1;
+      let txExecutionTime = now + 1;
       await expect(property.connect(guest).book(setting, signature))
         .emit(property, "NewBooking")
-        .withArgs(guest.address, setting.bookingId, txExcecutionTime);
+        .withArgs(guest.address, setting.bookingId, txExecutionTime);
 
       // get balance before executing cancel tx
       const guestBalanceBefore = await busd.balanceOf(guest.address);
@@ -2316,11 +2316,11 @@ describe("Property test", function () {
       const refund = setting.bookingAmount;
 
       now = (await ethers.provider.getBlock("latest")).timestamp;
-      txExcecutionTime = now + 1;
+      txExecutionTime = now + 1;
 
       await expect(property.connect(host).cancelByHost(setting.bookingId))
         .emit(property, "HostCancelled")
-        .withArgs(host.address, setting.bookingId, txExcecutionTime);
+        .withArgs(host.address, setting.bookingId, txExecutionTime);
 
       // check balance after guest cancelled
       const guestBalance = await busd.balanceOf(guest.address);
@@ -2383,10 +2383,10 @@ describe("Property test", function () {
       // generate a valid signature
       const signature = await verifier._signTypedData(domain, types, value);
 
-      let txExcecutionTime = now + 1;
+      let txExecutionTime = now + 1;
       await expect(property.connect(guest).book(setting, signature))
         .emit(property, "NewBooking")
-        .withArgs(guest.address, setting.bookingId, txExcecutionTime);
+        .withArgs(guest.address, setting.bookingId, txExecutionTime);
 
       // get balance before executing cancel tx
       const guestBalanceBefore = await busd.balanceOf(guest.address);
@@ -2396,11 +2396,11 @@ describe("Property test", function () {
       const refund = setting.bookingAmount;
 
       now = (await ethers.provider.getBlock("latest")).timestamp;
-      txExcecutionTime = now + 1;
+      txExecutionTime = now + 1;
 
       await expect(property.connect(authorized).cancelByHost(setting.bookingId))
         .emit(property, "HostCancelled")
-        .withArgs(authorized.address, setting.bookingId, txExcecutionTime);
+        .withArgs(authorized.address, setting.bookingId, txExecutionTime);
 
       // check balance after guest cancelled
       const guestBalance = await busd.balanceOf(guest.address);
@@ -2426,13 +2426,13 @@ describe("Property test", function () {
       const newWallet = users[3];
       await expect(
         property.updatePaymentReceiver(newWallet.address)
-      ).to.be.revertedWith("OnlyAuthorized");
+      ).revertedWith("OnlyAuthorized");
     });
 
     it("should revert when updating payment receiver to zero address", async () => {
       await expect(
         property.connect(host).updatePaymentReceiver(constants.AddressZero)
-      ).to.be.revertedWith("ZeroAddress");
+      ).revertedWith("ZeroAddress");
     });
 
     it("should allow host to update payment receiver", async () => {
@@ -2474,7 +2474,7 @@ describe("Property test", function () {
     it("should revert when updating payment receiver that has already set up", async () => {
       await expect(
         property.connect(host).updatePaymentReceiver(host.address)
-      ).to.be.revertedWith("PaymentReceiverExisted");
+      ).revertedWith("PaymentReceiverExisted");
     });
 
     it("should transfer to new host wallet when paying out after host updates wallet", async () => {
@@ -2657,10 +2657,10 @@ describe("Property test", function () {
       // generate a valid signature
       const signature = await verifier._signTypedData(domain, types, value);
 
-      const txExcecutionTime = now + 1;
+      const txExecutionTime = now + 1;
       await expect(property.connect(guest).book(setting, signature))
         .emit(property, "NewBooking")
-        .withArgs(guest.address, setting.bookingId, txExcecutionTime);
+        .withArgs(guest.address, setting.bookingId, txExecutionTime);
 
       const bookingInfo = await property.getBookingById(setting.bookingId);
       expect(bookingInfo.checkIn).deep.equal(setting.checkIn);
