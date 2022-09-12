@@ -8,7 +8,7 @@ import {
   Property,
   PropertyV2,
 } from "../typechain";
-import { Contract, utils } from "ethers";
+import { Contract, utils, constants } from "ethers";
 
 describe("Property test", function () {
   let management: Management;
@@ -166,6 +166,7 @@ describe("Property test", function () {
         expireAt: now - 1 * days,
         bookingAmount: 55000,
         paymentToken: busd.address,
+        referrer: constants.AddressZero,
         guest: guest.address,
         policies: [
           {
