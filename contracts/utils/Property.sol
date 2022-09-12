@@ -12,8 +12,10 @@ import "../interfaces/IProperty.sol";
 // common custom errors
 error ZeroAddress();
 error OnlyHost();
+error OnlyAuthorized();
 error GrantedAlready();
 error NotYetGranted();
+error PaymentReceiverExisted();
 
 // service custom errors
 error Unauthorized();
@@ -64,6 +66,9 @@ contract Property is
     // host of the property
     address public host;
 
+    // address to receive payment
+    address public paymentReceiver;
+
     // address of the property's factory
     address public factory;
 
@@ -87,6 +92,7 @@ contract Property is
 
         propertyId = _propertyId;
         host = _host;
+        paymentReceiver = _host;
         factory = _msgSender();
         management = IManagement(_management);
     }
@@ -115,6 +121,27 @@ contract Property is
         if (!authorized[_addr]) revert NotYetGranted();
 
         authorized[_addr] = false;
+    }
+
+    /**
+       @notice Update host wallet
+       @dev    Caller must be HOST or AUTHORIZED
+       @param _addr new wallet address
+     */
+    function updatePaymentReceiver(address _addr) external {
+        address msgSender = _msgSender();
+        if (
+            msgSender != host &&
+            msgSender != management.operator() &&
+            !authorized[msgSender]
+        ) revert OnlyAuthorized();
+        if (_addr == address(0)) revert ZeroAddress();
+        if (_addr == paymentReceiver) revert PaymentReceiverExisted();
+
+        paymentReceiver = _addr;
+
+        // also grant authority to this new wallet
+        authorized[_addr] = true;
     }
 
     /**
@@ -148,6 +175,7 @@ contract Property is
         bookingInfo.balance = _setting.bookingAmount;
         bookingInfo.guest = sender;
         bookingInfo.paymentToken = _setting.paymentToken;
+        bookingInfo.paymentReceiver = paymentReceiver;
         if (_setting.referrer != address(0)) {
             bookingInfo.referrer = _setting.referrer;
         }
@@ -268,7 +296,10 @@ contract Property is
             info.guest,
             refundAmount
         );
-        IERC20Upgradeable(info.paymentToken).safeTransfer(host, hostRevenue);
+        IERC20Upgradeable(info.paymentToken).safeTransfer(
+            info.paymentReceiver,
+            hostRevenue
+        );
         IERC20Upgradeable(info.paymentToken).safeTransfer(
             management.treasury(),
             fee
@@ -339,7 +370,10 @@ contract Property is
         uint256 hostRevenue = toBePaid - fee - referralFee;
 
         // transfer payment and charge fee
-        IERC20Upgradeable(info.paymentToken).safeTransfer(host, hostRevenue);
+        IERC20Upgradeable(info.paymentToken).safeTransfer(
+            info.paymentReceiver,
+            hostRevenue
+        );
         IERC20Upgradeable(info.paymentToken).safeTransfer(
             management.treasury(),
             fee
