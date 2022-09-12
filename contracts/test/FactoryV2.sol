@@ -48,6 +48,7 @@ contract FactoryV2 is IFactory, OwnableUpgradeable {
         _propertyId;
         _host;
         _property;
+        // solhint-disable-next-line
         revert("Factory has been upgraded successfully!");
     }
 }

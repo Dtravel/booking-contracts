@@ -102,6 +102,7 @@ contract PropertyV2 is
      */
     function updatePaymentReceiver(address _newWallet) external pure {
         _newWallet;
+        // solhint-disable-next-line
         revert("updatePaymentReceiver() upgraded!");
     }
 
