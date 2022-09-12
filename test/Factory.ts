@@ -56,7 +56,7 @@ describe("Factory test", function () {
             initializer: "init",
           }
         )
-      ).to.be.revertedWith("ZeroAddress");
+      ).revertedWith("ZeroAddress");
     });
 
     it("should revert when deploy with beacon address is zero", async () => {
@@ -69,7 +69,7 @@ describe("Factory test", function () {
             initializer: "init",
           }
         )
-      ).to.be.revertedWith("ZeroAddress");
+      ).revertedWith("ZeroAddress");
     });
 
     it("should deploy factory contract using proxy pattern", async () => {
@@ -90,7 +90,7 @@ describe("Factory test", function () {
       const host = users[0];
       await expect(
         factory.connect(verifier).createProperty(propertyId, host.address)
-      ).to.be.revertedWith("OnlyOperator");
+      ).revertedWith("OnlyOperator");
     });
 
     it("should revert when creating property if host address is zero", async () => {
@@ -98,7 +98,7 @@ describe("Factory test", function () {
       const host = constants.AddressZero;
       await expect(
         factory.connect(operator).createProperty(propertyId, host)
-      ).to.be.revertedWith("ZeroAddress");
+      ).revertedWith("ZeroAddress");
     });
 
     it("should create property if caller is OPERATOR", async () => {
@@ -137,7 +137,7 @@ describe("Factory test", function () {
       const host = users[2];
       await expect(
         factory.connect(operator).createProperty(propertyId, host.address)
-      ).to.be.revertedWith("PropertyExisted");
+      ).revertedWith("PropertyExisted");
     });
 
     it("should able to create valid properties", async () => {

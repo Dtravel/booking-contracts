@@ -5,7 +5,6 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 import "../interfaces/IFactory.sol";
 import "../interfaces/IManagement.sol";
-import "../utils/Property.sol";
 
 contract FactoryV2 is IFactory, OwnableUpgradeable {
     // linked management instance
@@ -44,12 +43,12 @@ contract FactoryV2 is IFactory, OwnableUpgradeable {
     function createProperty(uint256 _propertyId, address _host)
         external
         pure
-        override
         returns (address _property)
     {
         _propertyId;
         _host;
         _property;
+        // solhint-disable-next-line
         revert("Factory has been upgraded successfully!");
     }
 }
