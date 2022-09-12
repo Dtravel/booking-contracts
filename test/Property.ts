@@ -2421,6 +2421,202 @@ describe("Property test", function () {
     });
   });
 
+  describe("Update host wallet", async () => {
+    it("should revert when updating payment receiver if caller is NOT HOST/AUTHORIZED/OPERATOR", async () => {
+      const newWallet = users[3];
+      await expect(
+        property.updatePaymentReceiver(newWallet.address)
+      ).to.be.revertedWith("OnlyAuthorized");
+    });
+
+    it("should revert when updating payment receiver to zero address", async () => {
+      await expect(
+        property.connect(host).updatePaymentReceiver(constants.AddressZero)
+      ).to.be.revertedWith("ZeroAddress");
+    });
+
+    it("should allow host to update payment receiver", async () => {
+      const newWallet = users[10];
+      await property.connect(host).updatePaymentReceiver(newWallet.address);
+
+      const hostWallet = await property.paymentReceiver();
+      expect(hostWallet).deep.equal(newWallet.address);
+
+      const checkAuthorized = await property.authorized(newWallet.address);
+      expect(checkAuthorized).deep.equal(true);
+    });
+
+    it("should allow operator to update payment receiver", async () => {
+      const newWallet = users[11];
+      await property.connect(operator).updatePaymentReceiver(newWallet.address);
+
+      const hostWallet = await property.paymentReceiver();
+      expect(hostWallet).deep.equal(newWallet.address);
+
+      const checkAuthorized = await property.authorized(newWallet.address);
+      expect(checkAuthorized).deep.equal(true);
+    });
+
+    it("should allow authorized address to update payment receiver", async () => {
+      const authorizedUser = users[11];
+      const newWallet = host;
+      await property
+        .connect(authorizedUser)
+        .updatePaymentReceiver(newWallet.address);
+
+      const hostWallet = await property.paymentReceiver();
+      expect(hostWallet).deep.equal(newWallet.address);
+
+      const checkAuthorized = await property.authorized(newWallet.address);
+      expect(checkAuthorized).deep.equal(true);
+    });
+
+    it("should revert when updating payment receiver that has already set up", async () => {
+      await expect(
+        property.connect(host).updatePaymentReceiver(host.address)
+      ).to.be.revertedWith("PaymentReceiverExisted");
+    });
+
+    it("should transfer to new host wallet when paying out after host updates wallet", async () => {
+      // create a booking
+      const guest1 = users[1];
+      let now = (await ethers.provider.getBlock("latest")).timestamp;
+      const setting1 = {
+        bookingId: 10,
+        checkIn: now + 1 * days,
+        checkOut: now + 2 * days,
+        expireAt: now + 3 * days,
+        bookingAmount: 65000,
+        paymentToken: trvl.address,
+        referrer: constants.AddressZero,
+        policies: [
+          {
+            expireAt: now,
+            refundAmount: 48000,
+          },
+          {
+            expireAt: now + 1 * days,
+            refundAmount: 35000,
+          },
+        ],
+      };
+
+      let value = {
+        bookingId: setting1.bookingId,
+        checkIn: setting1.checkIn,
+        checkOut: setting1.checkOut,
+        expireAt: setting1.expireAt,
+        bookingAmount: setting1.bookingAmount,
+        paymentToken: setting1.paymentToken,
+        referrer: setting1.referrer,
+        guest: guest1.address,
+        policies: setting1.policies,
+      };
+
+      // generate a valid signature
+      let signature = await verifier._signTypedData(domain, types, value);
+
+      await expect(property.connect(guest1).book(setting1, signature)).emit(
+        property,
+        "NewBooking"
+      );
+
+      // host update new wallet
+      const newHostWallet = users[10];
+      await property.connect(host).updatePaymentReceiver(newHostWallet.address);
+
+      // create a new booking after host updates wallet
+      const guest2 = users[1];
+      const setting2 = {
+        bookingId: 11,
+        checkIn: now + 1 * days,
+        checkOut: now + 2 * days,
+        expireAt: now + 3 * days,
+        bookingAmount: 85000,
+        paymentToken: trvl.address,
+        referrer: constants.AddressZero,
+        policies: [
+          {
+            expireAt: now,
+            refundAmount: 48000,
+          },
+          {
+            expireAt: now + 1 * days,
+            refundAmount: 35000,
+          },
+        ],
+      };
+
+      value = {
+        bookingId: setting2.bookingId,
+        checkIn: setting2.checkIn,
+        checkOut: setting2.checkOut,
+        expireAt: setting2.expireAt,
+        bookingAmount: setting2.bookingAmount,
+        paymentToken: setting2.paymentToken,
+        referrer: setting2.referrer,
+        guest: guest2.address,
+        policies: setting2.policies,
+      };
+
+      // generate a valid signature
+      signature = await verifier._signTypedData(domain, types, value);
+
+      await expect(property.connect(guest2).book(setting2, signature)).emit(
+        property,
+        "NewBooking"
+      );
+
+      // get balances of old and new host wallet before guest making payouts
+      const oldWalletBalanceBefore = await trvl.balanceOf(host.address);
+      const newWalletBalanceBefore = await trvl.balanceOf(
+        newHostWallet.address
+      );
+
+      // calculate fees and related amounts for booking 1 (id = 10)
+      const booking1Info = await property.getBookingById(setting1.bookingId);
+      let toBePaid = booking1Info.balance;
+      const feeRatio = await management.feeNumerator();
+      const feeDenominator = await management.FEE_DENOMINATOR();
+      let fee = toBePaid.mul(feeRatio).div(feeDenominator);
+      const oldHostRevenue = toBePaid.sub(fee);
+
+      // calculate fees and related amounts for booking 2 (id = 11)
+      const booking2Info = await property.getBookingById(setting2.bookingId);
+      toBePaid = booking2Info.balance;
+      fee = toBePaid.mul(feeRatio).div(feeDenominator);
+      const newHostRevenue = toBePaid.sub(fee);
+
+      // guests make payouts
+      await increaseTime(4 * days);
+
+      now = (await ethers.provider.getBlock("latest")).timestamp;
+      let txExecutionTime = now + 1;
+      await expect(property.connect(guest1).payout(setting1.bookingId))
+        .emit(property, "PayOut")
+        .withArgs(guest1.address, setting1.bookingId, txExecutionTime, 2); // 2 = BookingStatus.FULLY_PAID
+
+      txExecutionTime++;
+      await expect(property.connect(guest2).payout(setting2.bookingId))
+        .emit(property, "PayOut")
+        .withArgs(guest2.address, setting2.bookingId, txExecutionTime, 2); // 2 = BookingStatus.FULLY_PAID
+
+      // restore EVM time
+      await decreaseTime(4 * days + 1);
+
+      // check balances old and new host wallets
+      const oldWalletBalance = await trvl.balanceOf(host.address);
+      expect(oldWalletBalance).deep.equal(
+        oldWalletBalanceBefore.add(oldHostRevenue)
+      );
+
+      const newWalletBalance = await trvl.balanceOf(newHostWallet.address);
+      expect(newWalletBalance).deep.equal(
+        newWalletBalanceBefore.add(newHostRevenue)
+      );
+    });
+  });
+
   describe("View booking", async () => {
     it("should get booking by id", async () => {
       // make a booking
@@ -2481,8 +2677,9 @@ describe("Property test", function () {
     });
 
     it("should get total bookings", async () => {
+      // created booking Ids = [1, 2, 3, ... 10, 11, 149]
       const res = await property.totalBookings();
-      expect(res).deep.equal(10);
+      expect(res).deep.equal(12);
     });
   });
 });
