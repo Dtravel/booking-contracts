@@ -13,6 +13,7 @@ interface IProperty {
         uint256 balance;
         address guest;
         address paymentToken;
+        address referrer;
         BookingStatus status;
         CancellationPolicy[] policies;
     }
@@ -32,6 +33,7 @@ interface IProperty {
         uint256 expireAt;
         uint256 bookingAmount;
         address paymentToken;
+        address referrer;
         CancellationPolicy[] policies;
     }
 

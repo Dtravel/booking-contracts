@@ -15,6 +15,7 @@ describe("Management test", function () {
   let users: SignerWithAddress[];
 
   const feeNumerator = 1000; // 1000 / 10000 = 10%
+  const referralFeeNumerator = 500; // 500 / 10000 = 5%
   const FEE_DENOMINATOR = 10000;
   const days = 24 * 3600;
   const payoutDelay = 2 * days;
@@ -76,6 +77,43 @@ describe("Management test", function () {
     it("should revert when setting incorrect fee ratio", async () => {
       await expect(management.setFeeRatio(20000)).to.be.revertedWith(
         "InvalidFee"
+      );
+    });
+  });
+
+  describe("Update referral fee ratio", async () => {
+    it("should set referral fee ratio if caller is ADMIN", async () => {
+      await expect(management.setReferralFeeRatio(referralFeeNumerator))
+        .emit(management, "NewReferralFeeNumerator")
+        .withArgs(referralFeeNumerator);
+    });
+
+    it("should get referral fee numerator", async () => {
+      const currentReferralFeeDenominator =
+        await management.referralFeeNumerator();
+      expect(currentReferralFeeDenominator).deep.equal(referralFeeNumerator);
+    });
+
+    it("should revert when setting referral fee ratio if caller is not ADMIN", async () => {
+      await expect(
+        management.connect(operator).setReferralFeeRatio(100)
+      ).revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("should revert when setting referral fee greater than treasury fee", async () => {
+      const currentfeeNumerator = await management.feeNumerator();
+      await expect(
+        management.setReferralFeeRatio(currentfeeNumerator.add(100))
+      ).to.be.revertedWith("InvalidReferralFee");
+    });
+
+    it("should revert when setting referral fee and treasury fee exceeding 100%", async () => {
+      await management.setFeeRatio(6000);
+      await expect(management.setReferralFeeRatio(3999))
+        .emit(management, "NewReferralFeeNumerator")
+        .withArgs(3999);
+      await expect(management.setReferralFeeRatio(5000)).to.be.revertedWith(
+        "InvalidReferralFee"
       );
     });
   });

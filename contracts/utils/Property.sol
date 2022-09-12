@@ -51,9 +51,9 @@ contract Property is
     // keccak256("CancellationPolicy(uint256 expireAt,uint256 refundAmount)");
     bytes32 private constant CANCELLATION_POLICY_TYPEHASH =
         0x71ed7adc2b3cc6f42e80ad08652651cbc6e0fd93b50d04298efafcfb6570f246;
-    // keccak256("Msg(uint256 bookingId,uint256 checkIn,uint256 checkOut,uint256 expireAt,uint256 bookingAmount,address paymentToken,address guest,CancellationPolicy[] policies)CancellationPolicy(uint256 expireAt,uint256 refundAmount)");
+    // keccak256("Msg(uint256 bookingId,uint256 checkIn,uint256 checkOut,uint256 expireAt,uint256 bookingAmount,address paymentToken,address referrer,address guest,CancellationPolicy[] policies)CancellationPolicy(uint256 expireAt,uint256 refundAmount)");
     bytes32 private constant BOOKING_SETTING_TYPEHASH =
-        0xe4407dbd9325b17ca1c7a742f4052c9f26c12dd2a9244d379e156f6522aa5cb6;
+        0x4299a080339bf90a75c045ad1230a6e716fe5314d953e0dcca074f146cfd96a5;
 
     // the property ID
     uint256 public propertyId;
@@ -148,6 +148,9 @@ contract Property is
         bookingInfo.balance = _setting.bookingAmount;
         bookingInfo.guest = sender;
         bookingInfo.paymentToken = _setting.paymentToken;
+        if (_setting.referrer != address(0)) {
+            bookingInfo.referrer = _setting.referrer;
+        }
         bookingInfo.status = BookingStatus.IN_PROGRESS;
 
         uint256 n = _setting.policies.length;
@@ -175,22 +178,25 @@ contract Property is
             );
         }
 
-        address signer = _hashTypedDataV4(
-            keccak256(
-                abi.encode(
-                    BOOKING_SETTING_TYPEHASH,
-                    _setting.bookingId,
-                    _setting.checkIn,
-                    _setting.checkOut,
-                    _setting.expireAt,
-                    _setting.bookingAmount,
-                    _setting.paymentToken,
-                    _msgSender(),
-                    keccak256(abi.encodePacked(policiesHashes))
+        {
+            address signer = _hashTypedDataV4(
+                keccak256(
+                    abi.encode(
+                        BOOKING_SETTING_TYPEHASH,
+                        _setting.bookingId,
+                        _setting.checkIn,
+                        _setting.checkOut,
+                        _setting.expireAt,
+                        _setting.bookingAmount,
+                        _setting.paymentToken,
+                        _setting.referrer,
+                        _msgSender(),
+                        keccak256(abi.encodePacked(policiesHashes))
+                    )
                 )
-            )
-        ).recover(_signature);
-        if (signer != management.verifier()) revert InvalidSignature();
+            ).recover(_signature);
+            if (signer != management.verifier()) revert InvalidSignature();
+        }
     }
 
     function _validateSetting(BookingSetting calldata _setting) private {
@@ -246,9 +252,16 @@ contract Property is
         }
 
         // refund to the guest
-        uint256 fee = ((info.balance - refundAmount) *
-            management.feeNumerator()) / FEE_DENOMINATOR;
-        uint256 hostRevenue = info.balance - refundAmount - fee;
+        uint256 remainingAmount = info.balance - refundAmount;
+        uint256 referralFee;
+        if (info.referrer != address(0)) {
+            referralFee = ((remainingAmount *
+                management.referralFeeNumerator()) / FEE_DENOMINATOR);
+        }
+        uint256 fee = (remainingAmount * management.feeNumerator()) /
+            FEE_DENOMINATOR -
+            referralFee;
+        uint256 hostRevenue = remainingAmount - fee - referralFee;
 
         // transfer payment and charge fee
         IERC20Upgradeable(info.paymentToken).safeTransfer(
@@ -260,6 +273,12 @@ contract Property is
             management.treasury(),
             fee
         );
+        if (info.referrer != address(0)) {
+            IERC20Upgradeable(info.paymentToken).safeTransfer(
+                info.referrer,
+                referralFee
+            );
+        }
 
         // update booking storage
         booking[_bookingId].status = BookingStatus.GUEST_CANCELLED;
@@ -308,8 +327,16 @@ contract Property is
         booking[_bookingId].status = status;
 
         // split the payment
-        uint256 fee = (toBePaid * management.feeNumerator()) / FEE_DENOMINATOR;
-        uint256 hostRevenue = toBePaid - fee;
+        uint256 referralFee;
+        if (info.referrer != address(0)) {
+            referralFee =
+                (toBePaid * management.referralFeeNumerator()) /
+                FEE_DENOMINATOR;
+        }
+        uint256 fee = (toBePaid * management.feeNumerator()) /
+            FEE_DENOMINATOR -
+            referralFee;
+        uint256 hostRevenue = toBePaid - fee - referralFee;
 
         // transfer payment and charge fee
         IERC20Upgradeable(info.paymentToken).safeTransfer(host, hostRevenue);
@@ -317,6 +344,12 @@ contract Property is
             management.treasury(),
             fee
         );
+        if (info.referrer != address(0)) {
+            IERC20Upgradeable(info.paymentToken).safeTransfer(
+                info.referrer,
+                referralFee
+            );
+        }
 
         emit PayOut(info.guest, _bookingId, current, status);
     }
