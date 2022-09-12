@@ -4,9 +4,6 @@ pragma solidity ^0.8.4;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/IManagement.sol";
 
-error ZeroAddress();
-error InvalidFee();
-error InvalidReferralFee();
 error PaymentNotFound();
 error PaymentExisted();
 
@@ -14,25 +11,25 @@ contract Management is IManagement, Ownable {
     uint256 public constant FEE_DENOMINATOR = 10**4;
 
     // fee = feeNumerator / FEE_DENOMINATOR. Supposed the fee is 25% then feeNumerator is set to 2500
-    uint256 public override feeNumerator;
+    uint256 public feeNumerator;
 
     // referralFee = referralFeeNumerator / FEE_DENOMINATOR.
-    uint256 public override referralFeeNumerator;
+    uint256 public referralFeeNumerator;
 
     // the period of time a business between booking and paying it
-    uint256 public override payoutDelay;
+    uint256 public payoutDelay;
 
     // the address that have an authority to deploy Property contracts
-    address public override operator;
+    address public operator;
 
     // the treasury address that receives fee and payments
-    address public override treasury;
+    address public treasury;
 
     // the verifier address to verify signatures
-    address public override verifier;
+    address public verifier;
 
     // list of supported payment ERC20 tokens
-    mapping(address => bool) public override paymentToken;
+    mapping(address => bool) public paymentToken;
 
     constructor(
         uint256 _feeNumerator,
@@ -57,7 +54,7 @@ contract Management is IManagement, Ownable {
        @notice Get admin address or contract owner
        @dev    Caller can be ANYONE
      */
-    function admin() external view override returns (address) {
+    function admin() external view returns (address) {
         return owner();
     }
 
@@ -66,8 +63,8 @@ contract Management is IManagement, Ownable {
         @dev Caller must be ADMIN
         @param _feeNumerator the fee numerator
     */
-    function setFeeRatio(uint256 _feeNumerator) external override onlyOwner {
-        if (_feeNumerator > FEE_DENOMINATOR) revert InvalidFee();
+    function setFeeRatio(uint256 _feeNumerator) external onlyOwner {
+        require(_feeNumerator < FEE_DENOMINATOR, "InvalidFee");
 
         feeNumerator = _feeNumerator;
 
@@ -79,15 +76,12 @@ contract Management is IManagement, Ownable {
         @dev Caller must be ADMIN and the referral fee must not be greater than the overall fee
         @param _feeNumerator the fee numerator
      */
-    function setReferralFeeRatio(uint256 _feeNumerator)
-        external
-        override
-        onlyOwner
-    {
-        if (
-            _feeNumerator > feeNumerator ||
-            _feeNumerator + feeNumerator >= FEE_DENOMINATOR
-        ) revert InvalidReferralFee();
+    function setReferralFeeRatio(uint256 _feeNumerator) external onlyOwner {
+        require(
+            _feeNumerator < feeNumerator &&
+                _feeNumerator + feeNumerator < FEE_DENOMINATOR,
+            "InvalidReferralFee"
+        );
 
         referralFeeNumerator = _feeNumerator;
 
@@ -99,7 +93,7 @@ contract Management is IManagement, Ownable {
         @dev Caller must be ADMIN
         @param _period the payment delay period
     */
-    function setPayoutDelay(uint256 _period) external override onlyOwner {
+    function setPayoutDelay(uint256 _period) external onlyOwner {
         payoutDelay = _period;
 
         emit NewPayoutDelay(_period);
@@ -110,8 +104,8 @@ contract Management is IManagement, Ownable {
        @dev    Caller must be ADMIN
        @param _newOperator Address of new manager
      */
-    function setOperator(address _newOperator) external override onlyOwner {
-        if (_newOperator == address(0)) revert ZeroAddress();
+    function setOperator(address _newOperator) external onlyOwner {
+        require(_newOperator != address(0), "ZeroAddress");
 
         operator = _newOperator;
 
@@ -123,8 +117,8 @@ contract Management is IManagement, Ownable {
        @dev    Caller must be ADMIN
        @param _newTreasury Address of new treasury
      */
-    function setTreasury(address _newTreasury) external override onlyOwner {
-        if (_newTreasury == address(0)) revert ZeroAddress();
+    function setTreasury(address _newTreasury) external onlyOwner {
+        require(_newTreasury != address(0), "ZeroAddress");
 
         treasury = _newTreasury;
 
@@ -136,8 +130,8 @@ contract Management is IManagement, Ownable {
        @dev    Caller must be ADMIN
        @param _newVerifier Address of new verifier
      */
-    function setVerifier(address _newVerifier) external override onlyOwner {
-        if (_newVerifier == address(0)) revert ZeroAddress();
+    function setVerifier(address _newVerifier) external onlyOwner {
+        require(_newVerifier != address(0), "ZeroAddress");
 
         verifier = _newVerifier;
 
@@ -149,9 +143,9 @@ contract Management is IManagement, Ownable {
        @dev    Caller must be ADMIN
        @param _token new token address
      */
-    function addPayment(address _token) external override onlyOwner {
-        if (_token == address(0)) revert ZeroAddress();
-        if (paymentToken[_token]) revert PaymentExisted();
+    function addPayment(address _token) external onlyOwner {
+        require(_token != address(0), "ZeroAddress");
+        require(!paymentToken[_token], "PaymentExisted");
 
         paymentToken[_token] = true;
 
@@ -163,9 +157,9 @@ contract Management is IManagement, Ownable {
        @dev    Caller must be ADMIN
        @param _token token address to remove
      */
-    function removePayment(address _token) external override onlyOwner {
-        if (_token == address(0)) revert ZeroAddress();
-        if (!paymentToken[_token]) revert PaymentNotFound();
+    function removePayment(address _token) external onlyOwner {
+        require(_token != address(0), "ZeroAddress");
+        require(paymentToken[_token], "PaymentNotFound");
 
         paymentToken[_token] = false;
 

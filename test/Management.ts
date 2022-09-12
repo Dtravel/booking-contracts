@@ -75,9 +75,7 @@ describe("Management test", function () {
     });
 
     it("should revert when setting incorrect fee ratio", async () => {
-      await expect(management.setFeeRatio(20000)).to.be.revertedWith(
-        "InvalidFee"
-      );
+      await expect(management.setFeeRatio(20000)).revertedWith("InvalidFee");
     });
   });
 
@@ -104,7 +102,7 @@ describe("Management test", function () {
       const currentfeeNumerator = await management.feeNumerator();
       await expect(
         management.setReferralFeeRatio(currentfeeNumerator.add(100))
-      ).to.be.revertedWith("InvalidReferralFee");
+      ).revertedWith("InvalidReferralFee");
     });
 
     it("should revert when setting referral fee and treasury fee exceeding 100%", async () => {
@@ -112,7 +110,7 @@ describe("Management test", function () {
       await expect(management.setReferralFeeRatio(3999))
         .emit(management, "NewReferralFeeNumerator")
         .withArgs(3999);
-      await expect(management.setReferralFeeRatio(5000)).to.be.revertedWith(
+      await expect(management.setReferralFeeRatio(5000)).revertedWith(
         "InvalidReferralFee"
       );
     });
@@ -160,9 +158,9 @@ describe("Management test", function () {
     });
 
     it("should revert when setting operator by address zero", async () => {
-      await expect(
-        management.setOperator(constants.AddressZero)
-      ).to.be.revertedWith("ZeroAddress");
+      await expect(management.setOperator(constants.AddressZero)).revertedWith(
+        "ZeroAddress"
+      );
     });
   });
 
@@ -185,9 +183,9 @@ describe("Management test", function () {
     });
 
     it("should revert when setting treasury by address zero", async () => {
-      await expect(
-        management.setTreasury(constants.AddressZero)
-      ).to.be.revertedWith("ZeroAddress");
+      await expect(management.setTreasury(constants.AddressZero)).revertedWith(
+        "ZeroAddress"
+      );
     });
   });
 
@@ -210,9 +208,9 @@ describe("Management test", function () {
     });
 
     it("should revert when setting verifier by address zero", async () => {
-      await expect(
-        management.setVerifier(constants.AddressZero)
-      ).to.be.revertedWith("ZeroAddress");
+      await expect(management.setVerifier(constants.AddressZero)).revertedWith(
+        "ZeroAddress"
+      );
     });
   });
 
@@ -239,13 +237,13 @@ describe("Management test", function () {
       });
 
       it("should revert when adding address zero to payment tokens", async () => {
-        await expect(
-          management.addPayment(constants.AddressZero)
-        ).to.be.revertedWith("ZeroAddress");
+        await expect(management.addPayment(constants.AddressZero)).revertedWith(
+          "ZeroAddress"
+        );
       });
 
       it("should revert when adding an existing payment token", async () => {
-        await expect(management.addPayment(trvl.address)).to.be.revertedWith(
+        await expect(management.addPayment(trvl.address)).revertedWith(
           "PaymentExisted"
         );
       });
@@ -270,13 +268,13 @@ describe("Management test", function () {
       it("should revert when adding address zero to payment tokens", async () => {
         await expect(
           management.removePayment(constants.AddressZero)
-        ).to.be.revertedWith("ZeroAddress");
+        ).revertedWith("ZeroAddress");
       });
 
       it("should revert when remove an unsupported payment token", async () => {
         await expect(
           management.removePayment(paymentToken.address)
-        ).to.be.revertedWith("PaymentNotFound");
+        ).revertedWith("PaymentNotFound");
       });
     });
   });

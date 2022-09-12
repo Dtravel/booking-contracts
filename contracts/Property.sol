@@ -6,39 +6,8 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "../interfaces/IManagement.sol";
-import "../interfaces/IProperty.sol";
-
-// common custom errors
-error ZeroAddress();
-error OnlyHost();
-error OnlyAuthorized();
-error GrantedAlready();
-error NotYetGranted();
-error PaymentReceiverExisted();
-
-// service custom errors
-error Unauthorized();
-error BookingNotFound();
-error PaidOrCancelledAlready();
-
-// booking() custom errors
-error RequestExpired();
-error InvalidCheckIn();
-error InvalidCheckOut();
-error EmptyPolicies();
-error InvalidBookingAmount();
-error InvalidPolicy();
-error BookingExisted();
-error InvalidPayment();
-error InvalidSignature();
-
-// payout() custom errors
-error InsufficientBalance();
-error NotPaidEnough();
-
-// cancel custom errors
-error InvalidGuest();
+import "./interfaces/IManagement.sol";
+import "./interfaces/IProperty.sol";
 
 contract Property is
     IProperty,
@@ -85,7 +54,7 @@ contract Property is
         uint256 _propertyId,
         address _host,
         address _management
-    ) external override initializer {
+    ) external initializer {
         __Ownable_init();
         __EIP712_init("Booking_Property", "1");
         __ReentrancyGuard_init();
@@ -102,10 +71,10 @@ contract Property is
        @dev    Caller must be Owner
        @param _addr authorized address
      */
-    function grantAuthorized(address _addr) external override {
-        if (_msgSender() != host) revert OnlyHost();
-        if (_addr == address(0)) revert ZeroAddress();
-        if (authorized[_addr]) revert GrantedAlready();
+    function grantAuthorized(address _addr) external {
+        require(_msgSender() == host, "OnlyHost");
+        require(_addr != address(0), "ZeroAddress");
+        require(!authorized[_addr], "GrantedAlready");
 
         authorized[_addr] = true;
     }
@@ -115,10 +84,10 @@ contract Property is
        @dev    Caller must be Owner
        @param _addr authorized address
      */
-    function revokeAuthorized(address _addr) external override {
-        if (_msgSender() != host) revert OnlyHost();
-        if (_addr == address(0)) revert ZeroAddress();
-        if (!authorized[_addr]) revert NotYetGranted();
+    function revokeAuthorized(address _addr) external {
+        require(_msgSender() == host, "OnlyHost");
+        require(_addr != address(0), "ZeroAddress");
+        require(authorized[_addr], "NotYetGranted");
 
         authorized[_addr] = false;
     }
@@ -130,13 +99,14 @@ contract Property is
      */
     function updatePaymentReceiver(address _addr) external {
         address msgSender = _msgSender();
-        if (
-            msgSender != host &&
-            msgSender != management.operator() &&
-            !authorized[msgSender]
-        ) revert OnlyAuthorized();
-        if (_addr == address(0)) revert ZeroAddress();
-        if (_addr == paymentReceiver) revert PaymentReceiverExisted();
+        require(
+            msgSender == host ||
+                msgSender == management.operator() ||
+                authorized[msgSender],
+            "OnlyAuthorized"
+        );
+        require(_addr != address(0), "ZeroAddress");
+        require(_addr != paymentReceiver, "PaymentReceiverExisted");
 
         paymentReceiver = _addr;
 
@@ -152,7 +122,6 @@ contract Property is
      */
     function book(BookingSetting calldata _setting, bytes calldata _signature)
         external
-        override
         nonReentrant
     {
         _validateSetting(_setting);
@@ -223,7 +192,7 @@ contract Property is
                     )
                 )
             ).recover(_signature);
-            if (signer != management.verifier()) revert InvalidSignature();
+            require(signer == management.verifier(), "InvalidSignature");
         }
     }
 
@@ -231,32 +200,41 @@ contract Property is
         uint256 current = block.timestamp;
 
         // validate input params
-        if (_setting.expireAt <= current) revert RequestExpired();
+        require(_setting.expireAt > current, "RequestExpired");
 
-        if (_setting.checkIn + 1 days < current) revert InvalidCheckIn();
+        require(_setting.checkIn + 1 days >= current, "InvalidCheckIn");
 
-        if (_setting.checkOut < _setting.checkIn + 1 days)
-            revert InvalidCheckOut();
+        require(
+            _setting.checkOut >= _setting.checkIn + 1 days,
+            "InvalidCheckOut"
+        );
 
         uint256 n = _setting.policies.length;
-        if (n == 0) revert EmptyPolicies();
+        require(n > 0, "EmptyPolicies");
         for (uint256 i = 0; i < n; i++) {
-            if (_setting.bookingAmount < _setting.policies[i].refundAmount)
-                revert InvalidBookingAmount();
+            require(
+                _setting.bookingAmount >= _setting.policies[i].refundAmount,
+                "InvalidBookingAmount"
+            );
 
             if (i < n - 1)
-                if (
-                    _setting.policies[i].expireAt >=
-                    _setting.policies[i + 1].expireAt
-                ) revert InvalidPolicy();
+                require(
+                    _setting.policies[i].expireAt <
+                        _setting.policies[i + 1].expireAt,
+                    "InvalidPolicy"
+                );
         }
 
         // validate states
-        if (booking[_setting.bookingId].guest != address(0))
-            revert BookingExisted();
+        require(
+            booking[_setting.bookingId].guest == address(0),
+            "BookingExisted"
+        );
 
-        if (!management.paymentToken(_setting.paymentToken))
-            revert InvalidPayment();
+        require(
+            management.paymentToken(_setting.paymentToken),
+            "InvalidPayment"
+        );
     }
 
     /**
@@ -264,10 +242,10 @@ contract Property is
         @dev    Caller must be the booking owner
         @param  _bookingId the booking id to cancel
      */
-    function cancel(uint256 _bookingId) external override nonReentrant {
+    function cancel(uint256 _bookingId) external nonReentrant {
         BookingInfo memory info = booking[_bookingId];
-        if (_msgSender() != info.guest) revert InvalidGuest();
-        if (info.balance == 0) revert PaidOrCancelledAlready();
+        require(_msgSender() == info.guest, "InvalidGuest");
+        require(info.balance > 0, "PaidOrCancelledAlready");
 
         uint256 refundAmount;
         uint256 n = info.policies.length;
@@ -323,10 +301,10 @@ contract Property is
         @dev    Caller can be ANYONE
         @param  _bookingId the booking id to pay out
      */
-    function payout(uint256 _bookingId) external override nonReentrant {
+    function payout(uint256 _bookingId) external nonReentrant {
         BookingInfo memory info = booking[_bookingId];
-        if (info.guest == address(0)) revert BookingNotFound();
-        if (info.balance == 0) revert PaidOrCancelledAlready();
+        require(info.guest != address(0), "BookingNotFound");
+        require(info.balance > 0, "PaidOrCancelledAlready");
 
         uint256 toBePaid;
         uint256 n = info.policies.length;
@@ -339,15 +317,17 @@ contract Property is
         } else {
             for (uint256 i = 0; i < n; i++) {
                 if (info.policies[i].expireAt + delay >= current) {
-                    if (info.balance < info.policies[i].refundAmount)
-                        revert InsufficientBalance();
+                    require(
+                        info.balance >= info.policies[i].refundAmount,
+                        "InsufficientBalance"
+                    );
                     toBePaid = info.balance - info.policies[i].refundAmount;
                     break;
                 }
             }
         }
 
-        if (toBePaid == 0) revert NotPaidEnough();
+        require(toBePaid > 0, "NotPaidEnough");
 
         // update booking storage
         uint256 remain = info.balance - toBePaid;
@@ -393,13 +373,13 @@ contract Property is
         @dev    Caller must be the host or authorized addresses
         @param  _bookingId the booking id to cancel
      */
-    function cancelByHost(uint256 _bookingId) external override nonReentrant {
+    function cancelByHost(uint256 _bookingId) external nonReentrant {
         address sender = _msgSender();
-        if (sender != host && !authorized[sender]) revert Unauthorized();
+        require(sender == host || authorized[sender], "Unauthorized");
 
         BookingInfo memory info = booking[_bookingId];
-        if (info.guest == address(0)) revert BookingNotFound();
-        if (info.balance == 0) revert PaidOrCancelledAlready();
+        require(info.guest != address(0), "BookingNotFound");
+        require(info.balance > 0, "PaidOrCancelledAlready");
 
         // refund to the guest
         IERC20Upgradeable(info.paymentToken).safeTransfer(
@@ -421,7 +401,6 @@ contract Property is
     function getBookingById(uint256 _id)
         external
         view
-        override
         returns (BookingInfo memory)
     {
         return booking[_id];
@@ -430,7 +409,7 @@ contract Property is
     /**
         @notice Get the total number of bookings
      */
-    function totalBookings() external view override returns (uint256) {
+    function totalBookings() external view returns (uint256) {
         return bookingIds.length;
     }
 }
