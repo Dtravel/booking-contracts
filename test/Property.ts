@@ -527,8 +527,6 @@ describe("Property test", function () {
         ).revertedWith("InvalidSignature");
       });
 
-
-
       it("should revert if there's mismatch between signed message and params - checkIn", async () => {
         const guest = users[1];
         const now = (await ethers.provider.getBlock("latest")).timestamp;
@@ -2345,8 +2343,7 @@ describe("Property test", function () {
       expect(bookingInfo.status).deep.equal(3); // GUEST_CANCELLED
     });
 
-    it("should cancel booking with original fee in case of changing fee on management contract",async () => {
-
+    it("should cancel booking with original fee in case of changing fee on management contract", async () => {
       const originalFee = 1000;
       const originalReferralFee = 500;
 
@@ -2396,7 +2393,6 @@ describe("Property test", function () {
         property,
         "NewBooking"
       );
-
 
       // change fee
       await management.setFeeRatio(1200);
