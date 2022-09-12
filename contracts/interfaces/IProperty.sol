@@ -11,6 +11,8 @@ interface IProperty {
         uint256 checkIn;
         uint256 checkOut;
         uint256 balance;
+        uint256 feeNumerator;
+        uint256 referralFeeNumerator;
         address guest;
         address paymentToken;
         address paymentReceiver;
