@@ -266,8 +266,8 @@ contract Property is
         uint256 remainingAmount = info.balance - refundAmount;
         uint256 referralFee;
         if (info.referrer != address(0)) {
-            referralFee = ((remainingAmount *
-                info.referralFeeNumerator) / FEE_DENOMINATOR);
+            referralFee = ((remainingAmount * info.referralFeeNumerator) /
+                FEE_DENOMINATOR);
         }
         uint256 fee = (remainingAmount * info.feeNumerator) /
             FEE_DENOMINATOR -
