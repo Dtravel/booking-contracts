@@ -138,20 +138,17 @@ contract Property is
         );
 
         // Update a new booking record
-        uint256 referralFeeNumerator = management.referralFeeNumerator();
         BookingInfo storage bookingInfo = booking[_setting.bookingId];
         bookingInfo.checkIn = _setting.checkIn;
         bookingInfo.checkOut = _setting.checkOut;
         bookingInfo.balance = _setting.bookingAmount;
         bookingInfo.feeNumerator = management.feeNumerator();
-        if (referralFeeNumerator != 0) {
-            bookingInfo.referralFeeNumerator = referralFeeNumerator;
-        }
         bookingInfo.guest = sender;
         bookingInfo.paymentToken = _setting.paymentToken;
         bookingInfo.paymentReceiver = paymentReceiver;
         if (_setting.referrer != address(0)) {
             bookingInfo.referrer = _setting.referrer;
+            bookingInfo.referralFeeNumerator = management.referralFeeNumerator();
         }
         bookingInfo.status = BookingStatus.IN_PROGRESS;
 
