@@ -148,7 +148,8 @@ contract Property is
         bookingInfo.paymentReceiver = paymentReceiver;
         if (_setting.referrer != address(0)) {
             bookingInfo.referrer = _setting.referrer;
-            bookingInfo.referralFeeNumerator = management.referralFeeNumerator();
+            bookingInfo.referralFeeNumerator = management
+                .referralFeeNumerator();
         }
         bookingInfo.status = BookingStatus.IN_PROGRESS;
 
