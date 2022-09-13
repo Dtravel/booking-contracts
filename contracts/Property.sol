@@ -142,11 +142,14 @@ contract Property is
         bookingInfo.checkIn = _setting.checkIn;
         bookingInfo.checkOut = _setting.checkOut;
         bookingInfo.balance = _setting.bookingAmount;
+        bookingInfo.feeNumerator = management.feeNumerator();
         bookingInfo.guest = sender;
         bookingInfo.paymentToken = _setting.paymentToken;
         bookingInfo.paymentReceiver = paymentReceiver;
         if (_setting.referrer != address(0)) {
             bookingInfo.referrer = _setting.referrer;
+            bookingInfo.referralFeeNumerator = management
+                .referralFeeNumerator();
         }
         bookingInfo.status = BookingStatus.IN_PROGRESS;
 
@@ -261,10 +264,10 @@ contract Property is
         uint256 remainingAmount = info.balance - refundAmount;
         uint256 referralFee;
         if (info.referrer != address(0)) {
-            referralFee = ((remainingAmount *
-                management.referralFeeNumerator()) / FEE_DENOMINATOR);
+            referralFee = ((remainingAmount * info.referralFeeNumerator) /
+                FEE_DENOMINATOR);
         }
-        uint256 fee = (remainingAmount * management.feeNumerator()) /
+        uint256 fee = (remainingAmount * info.feeNumerator) /
             FEE_DENOMINATOR -
             referralFee;
         uint256 hostRevenue = remainingAmount - fee - referralFee;
@@ -341,10 +344,10 @@ contract Property is
         uint256 referralFee;
         if (info.referrer != address(0)) {
             referralFee =
-                (toBePaid * management.referralFeeNumerator()) /
+                (toBePaid * info.referralFeeNumerator) /
                 FEE_DENOMINATOR;
         }
-        uint256 fee = (toBePaid * management.feeNumerator()) /
+        uint256 fee = (toBePaid * info.feeNumerator) /
             FEE_DENOMINATOR -
             referralFee;
         uint256 hostRevenue = toBePaid - fee - referralFee;
