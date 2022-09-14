@@ -296,7 +296,15 @@ contract Property is
         booking[_bookingId].status = BookingStatus.GUEST_CANCELLED;
         booking[_bookingId].balance = 0;
 
-        emit GuestCancelled(info.guest, _bookingId, current);
+        emit GuestCancelled(
+            info.guest,
+            _bookingId,
+            current,
+            refundAmount,
+            hostRevenue,
+            fee,
+            referralFee
+        );
     }
 
     /**
@@ -368,7 +376,15 @@ contract Property is
             );
         }
 
-        emit PayOut(info.guest, _bookingId, current, status);
+        emit PayOut(
+            info.guest,
+            _bookingId,
+            current,
+            hostRevenue,
+            fee,
+            referralFee,
+            status
+        );
     }
 
     /**
@@ -394,7 +410,7 @@ contract Property is
         booking[_bookingId].status = BookingStatus.HOST_CANCELLED;
         booking[_bookingId].balance = 0;
 
-        emit HostCancelled(sender, _bookingId, block.timestamp);
+        emit HostCancelled(sender, _bookingId, block.timestamp, info.balance);
     }
 
     /**
