@@ -1658,7 +1658,15 @@ describe("Property test", function () {
       const txExecutionTime = now + 1;
       await expect(property.connect(guest).payout(bookingId))
         .emit(property, "PayOut")
-        .withArgs(guest.address, bookingId, txExecutionTime, 2); // 2 = BookingStatus.FULLY_PAID
+        .withArgs(
+          guest.address,
+          bookingId,
+          txExecutionTime,
+          hostRevenue,
+          fee,
+          0,
+          2
+        ); // 2 = BookingStatus.FULLY_PAID
 
       // restore EVM time
       await decreaseTime(4 * days + 1);
@@ -1763,7 +1771,15 @@ describe("Property test", function () {
       const txExecutionTime = now + 1;
       await expect(property.connect(guest).payout(bookingId))
         .emit(property, "PayOut")
-        .withArgs(guest.address, bookingId, txExecutionTime, 1); // 1 = BookingStatus.PARTIAL_PAID
+        .withArgs(
+          guest.address,
+          bookingId,
+          txExecutionTime,
+          hostRevenue,
+          fee,
+          referralFee,
+          1
+        ); // 1 = BookingStatus.PARTIAL_PAID
 
       // restore EVM time for the next test
       await decreaseTime(1 * days + 1);
@@ -1865,7 +1881,15 @@ describe("Property test", function () {
       const txExecutionTime = now + 1;
       await expect(property.connect(guest).payout(bookingId))
         .emit(property, "PayOut")
-        .withArgs(guest.address, bookingId, txExecutionTime, 1); // 1 = BookingStatus.PARTIAL_PAID
+        .withArgs(
+          guest.address,
+          bookingId,
+          txExecutionTime,
+          hostRevenue,
+          fee,
+          0,
+          1
+        ); // 1 = BookingStatus.PARTIAL_PAID
 
       // skip restoring EVM time for the next test
       // await decreaseTime(1 * days + 1);
@@ -1962,7 +1986,15 @@ describe("Property test", function () {
       const txExecutionTime = now + 1;
       await expect(property.connect(guest).payout(bookingId))
         .emit(property, "PayOut")
-        .withArgs(guest.address, bookingId, txExecutionTime, 1); // 1 = BookingStatus.PARTIAL_PAID
+        .withArgs(
+          guest.address,
+          bookingId,
+          txExecutionTime,
+          hostRevenue,
+          fee,
+          referralFee,
+          1
+        ); // 1 = BookingStatus.PARTIAL_PAID
 
       // restore EVM time for the next test
       await decreaseTime(1 * days + 1);
@@ -2063,14 +2095,31 @@ describe("Property test", function () {
         "NewBooking"
       );
 
+      // calculate fees and related amounts
       const bookingId = setting.bookingId;
+      const toBePaid = BigNumber.from(
+        setting.bookingAmount - setting.policies[0].refundAmount
+      );
+      const feeRatio = await management.feeNumerator();
+      const feeDenominator = await management.FEE_DENOMINATOR();
+      const fee = toBePaid.mul(feeRatio).div(feeDenominator);
+      const hostRevenue = toBePaid.sub(fee);
 
       await increaseTime(1 * days);
       now = (await ethers.provider.getBlock("latest")).timestamp;
       const txExecutionTime = now + 1;
+
       await expect(property.connect(guest).payout(bookingId))
         .emit(property, "PayOut")
-        .withArgs(guest.address, bookingId, txExecutionTime, 1); // 1 = BookingStatus.PARTIAL_PAID
+        .withArgs(
+          guest.address,
+          bookingId,
+          txExecutionTime,
+          hostRevenue,
+          fee,
+          0,
+          1
+        ); // 1 = BookingStatus.PARTIAL_PAID
 
       await increaseTime(1 * days);
       await expect(property.connect(guest).payout(bookingId)).revertedWith(
@@ -2175,6 +2224,17 @@ describe("Property test", function () {
 
       const bookingId = setting.bookingId;
 
+      // calculate fees and related amounts
+      const toBePaid = BigNumber.from(
+        setting.bookingAmount - setting.policies[0].refundAmount
+      );
+      const feeRatio = await management.feeNumerator();
+      const referralRatio = await management.referralFeeNumerator();
+      const feeDenominator = await management.FEE_DENOMINATOR();
+      let referralFee = toBePaid.mul(referralRatio).div(feeDenominator);
+      let fee = toBePaid.mul(feeRatio).div(feeDenominator).sub(referralFee);
+      let hostRevenue = toBePaid.sub(fee).sub(referralFee);
+
       await increaseTime(1 * days);
 
       now = (await ethers.provider.getBlock("latest")).timestamp;
@@ -2182,7 +2242,15 @@ describe("Property test", function () {
 
       await expect(property.connect(guest).payout(bookingId))
         .emit(property, "PayOut")
-        .withArgs(guest.address, bookingId, txExecutionTime, 1); // 1 = BookingStatus.PARTIAL_PAID
+        .withArgs(
+          guest.address,
+          bookingId,
+          txExecutionTime,
+          hostRevenue,
+          fee,
+          referralFee,
+          1
+        ); // 1 = BookingStatus.PARTIAL_PAID
 
       await increaseTime(1.5 * days);
 
@@ -2196,29 +2264,31 @@ describe("Property test", function () {
       // calculate fees and related amounts
       let bookingInfo = await property.getBookingById(bookingId);
       const refund = setting.policies[1].refundAmount;
-      const feeRatio = await management.feeNumerator();
-      const referralRatio = await management.referralFeeNumerator();
-      const feeDenominator = await management.FEE_DENOMINATOR();
-      const referralFee = bookingInfo.balance
+      referralFee = bookingInfo.balance
         .sub(refund)
         .mul(referralRatio)
         .div(feeDenominator);
-      const fee = bookingInfo.balance
+      fee = bookingInfo.balance
         .sub(refund)
         .mul(feeRatio)
         .div(feeDenominator)
         .sub(referralFee);
-      const hostRevenue = bookingInfo.balance
-        .sub(refund)
-        .sub(fee)
-        .sub(referralFee);
+      hostRevenue = bookingInfo.balance.sub(refund).sub(fee).sub(referralFee);
 
       now = (await ethers.provider.getBlock("latest")).timestamp;
       txExecutionTime = now + 1;
 
       await expect(property.connect(guest).cancel(bookingId))
         .emit(property, "GuestCancelled")
-        .withArgs(guest.address, bookingId, txExecutionTime);
+        .withArgs(
+          guest.address,
+          bookingId,
+          txExecutionTime,
+          refund,
+          hostRevenue,
+          fee,
+          referralFee
+        );
 
       // check balance after guest cancelled
       const guestBalance = await busd.balanceOf(guest.address);
@@ -2288,6 +2358,14 @@ describe("Property test", function () {
       );
 
       const bookingId = setting.bookingId;
+      // calculate fees and related amounts
+      const toBePaid = BigNumber.from(
+        setting.bookingAmount - setting.policies[0].refundAmount
+      );
+      const feeRatio = await management.feeNumerator();
+      const feeDenominator = await management.FEE_DENOMINATOR();
+      let fee = toBePaid.mul(feeRatio).div(feeDenominator);
+      let hostRevenue = toBePaid.sub(fee);
 
       await increaseTime(1 * days);
 
@@ -2296,7 +2374,15 @@ describe("Property test", function () {
 
       await expect(property.connect(guest).payout(bookingId))
         .emit(property, "PayOut")
-        .withArgs(guest.address, bookingId, txExecutionTime, 1); // 1 = BookingStatus.PARTIAL_PAID
+        .withArgs(
+          guest.address,
+          bookingId,
+          txExecutionTime,
+          hostRevenue,
+          fee,
+          0,
+          1
+        ); // 1 = BookingStatus.PARTIAL_PAID
 
       await increaseTime(5 * days);
 
@@ -2309,20 +2395,23 @@ describe("Property test", function () {
       // calculate fees and related amounts
       let bookingInfo = await property.getBookingById(bookingId);
       const refund = 0;
-      const feeRatio = await management.feeNumerator();
-      const feeDenominator = await management.FEE_DENOMINATOR();
-      const fee = bookingInfo.balance
-        .sub(refund)
-        .mul(feeRatio)
-        .div(feeDenominator);
-      const hostRevenue = bookingInfo.balance.sub(refund).sub(fee);
+      fee = bookingInfo.balance.sub(refund).mul(feeRatio).div(feeDenominator);
+      hostRevenue = bookingInfo.balance.sub(refund).sub(fee);
 
       now = (await ethers.provider.getBlock("latest")).timestamp;
       txExecutionTime = now + 1;
 
       await expect(property.connect(guest).cancel(bookingId))
         .emit(property, "GuestCancelled")
-        .withArgs(guest.address, bookingId, txExecutionTime);
+        .withArgs(
+          guest.address,
+          bookingId,
+          txExecutionTime,
+          refund,
+          hostRevenue,
+          fee,
+          0
+        );
 
       // check balance after guest cancelled
       const guestBalance = await busd.balanceOf(guest.address);
@@ -2399,6 +2488,14 @@ describe("Property test", function () {
       await management.setReferralFeeRatio(600);
 
       const bookingId = setting.bookingId;
+      // calculate fees and related amounts
+      const toBePaid = BigNumber.from(
+        setting.bookingAmount - setting.policies[0].refundAmount
+      );
+      const feeRatio = originalFee;
+      const feeDenominator = await management.FEE_DENOMINATOR();
+      let fee = toBePaid.mul(feeRatio).div(feeDenominator);
+      let hostRevenue = toBePaid.sub(fee);
 
       await increaseTime(1 * days);
 
@@ -2407,7 +2504,15 @@ describe("Property test", function () {
 
       await expect(property.connect(guest).payout(bookingId))
         .emit(property, "PayOut")
-        .withArgs(guest.address, bookingId, txExecutionTime, 1); // 1 = BookingStatus.PARTIAL_PAID
+        .withArgs(
+          guest.address,
+          bookingId,
+          txExecutionTime,
+          hostRevenue,
+          fee,
+          0,
+          1
+        ); // 1 = BookingStatus.PARTIAL_PAID
 
       await increaseTime(5 * days);
 
@@ -2420,20 +2525,23 @@ describe("Property test", function () {
       // calculate fees and related amounts
       let bookingInfo = await property.getBookingById(bookingId);
       const refund = 0;
-      const feeRatio = originalFee;
-      const feeDenominator = await management.FEE_DENOMINATOR();
-      const fee = bookingInfo.balance
-        .sub(refund)
-        .mul(feeRatio)
-        .div(feeDenominator);
-      const hostRevenue = bookingInfo.balance.sub(refund).sub(fee);
+      fee = bookingInfo.balance.sub(refund).mul(feeRatio).div(feeDenominator);
+      hostRevenue = bookingInfo.balance.sub(refund).sub(fee);
 
       now = (await ethers.provider.getBlock("latest")).timestamp;
       txExecutionTime = now + 1;
 
       await expect(property.connect(guest).cancel(bookingId))
         .emit(property, "GuestCancelled")
-        .withArgs(guest.address, bookingId, txExecutionTime);
+        .withArgs(
+          guest.address,
+          bookingId,
+          txExecutionTime,
+          refund,
+          hostRevenue,
+          fee,
+          0
+        );
 
       // check balance after guest cancelled
       const guestBalance = await busd.balanceOf(guest.address);
@@ -2540,7 +2648,7 @@ describe("Property test", function () {
 
       await expect(property.connect(host).cancelByHost(setting.bookingId))
         .emit(property, "HostCancelled")
-        .withArgs(host.address, setting.bookingId, txExecutionTime);
+        .withArgs(host.address, setting.bookingId, txExecutionTime, refund);
 
       // check balance after guest cancelled
       const guestBalance = await busd.balanceOf(guest.address);
@@ -2620,7 +2728,12 @@ describe("Property test", function () {
 
       await expect(property.connect(authorized).cancelByHost(setting.bookingId))
         .emit(property, "HostCancelled")
-        .withArgs(authorized.address, setting.bookingId, txExecutionTime);
+        .withArgs(
+          authorized.address,
+          setting.bookingId,
+          txExecutionTime,
+          refund
+        );
 
       // check balance after guest cancelled
       const guestBalance = await busd.balanceOf(guest.address);
@@ -2798,14 +2911,14 @@ describe("Property test", function () {
       let toBePaid = booking1Info.balance;
       const feeRatio = await management.feeNumerator();
       const feeDenominator = await management.FEE_DENOMINATOR();
-      let fee = toBePaid.mul(feeRatio).div(feeDenominator);
-      const oldHostRevenue = toBePaid.sub(fee);
+      const fee1 = toBePaid.mul(feeRatio).div(feeDenominator);
+      const oldHostRevenue = toBePaid.sub(fee1);
 
       // calculate fees and related amounts for booking 2 (id = 11)
       const booking2Info = await property.getBookingById(setting2.bookingId);
       toBePaid = booking2Info.balance;
-      fee = toBePaid.mul(feeRatio).div(feeDenominator);
-      const newHostRevenue = toBePaid.sub(fee);
+      const fee2 = toBePaid.mul(feeRatio).div(feeDenominator);
+      const newHostRevenue = toBePaid.sub(fee2);
 
       // guests make payouts
       await increaseTime(4 * days);
@@ -2814,12 +2927,28 @@ describe("Property test", function () {
       let txExecutionTime = now + 1;
       await expect(property.connect(guest1).payout(setting1.bookingId))
         .emit(property, "PayOut")
-        .withArgs(guest1.address, setting1.bookingId, txExecutionTime, 2); // 2 = BookingStatus.FULLY_PAID
+        .withArgs(
+          guest1.address,
+          setting1.bookingId,
+          txExecutionTime,
+          oldHostRevenue,
+          fee1,
+          0,
+          2
+        ); // 2 = BookingStatus.FULLY_PAID
 
       txExecutionTime++;
       await expect(property.connect(guest2).payout(setting2.bookingId))
         .emit(property, "PayOut")
-        .withArgs(guest2.address, setting2.bookingId, txExecutionTime, 2); // 2 = BookingStatus.FULLY_PAID
+        .withArgs(
+          guest2.address,
+          setting2.bookingId,
+          txExecutionTime,
+          newHostRevenue,
+          fee2,
+          0,
+          2
+        ); // 2 = BookingStatus.FULLY_PAID
 
       // restore EVM time
       await decreaseTime(4 * days + 1);
