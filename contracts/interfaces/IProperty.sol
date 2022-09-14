@@ -74,19 +74,27 @@ interface IProperty {
     event GuestCancelled(
         address indexed guest,
         uint256 indexed bookingId,
-        uint256 cancelledAt
+        uint256 cancelledAt,
+        uint256 guestAmount,
+        uint256 hostAmount,
+        uint256 treasuryAmount,
+        uint256 referrerAmount
     );
 
     event HostCancelled(
         address indexed host,
         uint256 indexed bookingId,
-        uint256 cancelledAt
+        uint256 cancelledAt,
+        uint256 guestAmount
     );
 
     event PayOut(
         address indexed guest,
         uint256 indexed bookingId,
         uint256 payAt,
+        uint256 hostAmount,
+        uint256 treasuryAmount,
+        uint256 referrerAmount,
         BookingStatus status
     );
 }
