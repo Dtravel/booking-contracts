@@ -6,9 +6,9 @@ dotenv.config();
 async function main() {
   if (network.name === "testnet") {
     const [admin] = await ethers.getSigners();
-    const operator = process.env.OPERATOR_ADDRESS!;
-    const treasury = process.env.TREASURY_ADDRESS!;
-    const verifier = process.env.VERIFIER_ADDRESS!;
+    const operator = process.env.OPERATOR_ADDR!;
+    const treasury = process.env.TREASURY_ADDR!;
+    const verifier = process.env.VERIFIER_ADDR!;
     console.log("=========== Imported addresses ========");
     console.log("- Admin           : ", admin.address);
     console.log("- Operator        : ", operator);
