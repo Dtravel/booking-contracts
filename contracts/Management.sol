@@ -33,6 +33,7 @@ contract Management is IManagement, Ownable {
 
     constructor(
         uint256 _feeNumerator,
+        uint256 _referralFeeNumerator,
         uint256 _paymentDelay,
         address _operator,
         address _treasury,
@@ -40,6 +41,7 @@ contract Management is IManagement, Ownable {
         address[] memory _tokens
     ) {
         feeNumerator = _feeNumerator;
+        referralFeeNumerator = _referralFeeNumerator;
         payoutDelay = _paymentDelay;
         operator = _operator;
         treasury = _treasury;

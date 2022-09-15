@@ -15,6 +15,7 @@ describe("Factory test", function () {
   let propertyBeacon: Contract;
 
   const feeNumerator = 1000; // 1000 / 10000 = 10%
+  const referralFeeNumerator = 500; // 500 / 10000 = 5%
   const days = 24 * 3600;
   const payoutDelay = 1 * days;
 
@@ -29,6 +30,7 @@ describe("Factory test", function () {
     const managementFactory = await ethers.getContractFactory("Management");
     management = await managementFactory.deploy(
       feeNumerator,
+      referralFeeNumerator,
       payoutDelay,
       operator.address,
       treasury.address,
