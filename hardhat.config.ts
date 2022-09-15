@@ -35,12 +35,7 @@ const config: HardhatUserConfig = {
       gasPrice: 20000000000,
       accounts:
         process.env.PRIVATE_KEY !== undefined
-          ? [
-              process.env.ADMIN_PRIVATE_KEY!,
-              process.env.OPERATOR_ADDRESS!,
-              process.env.TREAUSURY_ADDRESS!,
-              process.env.VERIFIER_ADDRESS!,
-            ]
+          ? [process.env.ADMIN_PRIVATE_KEY!]
           : [],
     },
     mainnet: {
@@ -49,12 +44,7 @@ const config: HardhatUserConfig = {
       gasPrice: 20000000000,
       accounts:
         process.env.PRIVATE_KEY !== undefined
-          ? [
-              process.env.ADMIN_PRIVATE_KEY!,
-              process.env.OPERATOR_ADDRESS!,
-              process.env.TREAUSURY_ADDRESS!,
-              process.env.VERIFIER_ADDRESS!,
-            ]
+          ? [process.env.ADMIN_PRIVATE_KEY!]
           : [],
     },
   },

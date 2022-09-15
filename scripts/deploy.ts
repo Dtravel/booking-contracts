@@ -5,12 +5,15 @@ dotenv.config();
 
 async function main() {
   if (network.name === "testnet") {
-    const [admin, operator, treasury, verifier] = await ethers.getSigners();
+    const [admin] = await ethers.getSigners();
+    const operator = process.env.OPERATOR_ADDRESS!;
+    const treasury = process.env.TREASURY_ADDRESS!;
+    const verifier = process.env.VERIFIER_ADDRESS!;
     console.log("=========== Imported addresses ========");
     console.log("- Admin           : ", admin.address);
-    console.log("- Operator        : ", operator.address);
-    console.log("- Treasury        : ", treasury.address);
-    console.log("- Verifier        : ", verifier.address);
+    console.log("- Operator        : ", operator);
+    console.log("- Treasury        : ", treasury);
+    console.log("- Verifier        : ", verifier);
 
     console.log("\n=========== START DEPLOYING ===========");
     const feeNumerator = 1000;
@@ -33,9 +36,9 @@ async function main() {
       feeNumerator,
       referralFeeNumerator,
       payoutDelay,
-      operator.address,
-      treasury.address,
-      verifier.address,
+      operator,
+      treasury,
+      verifier,
       [trvl.address, busd.address]
     );
     console.log("- Management      : ", management.address);
