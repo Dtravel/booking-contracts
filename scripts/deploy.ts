@@ -14,6 +14,7 @@ async function main() {
 
     console.log("\n=========== START DEPLOYING ===========");
     const feeNumerator = 1000;
+    const referralFeeNumerator = 500;
     const days = 24 * 3600;
     const payoutDelay = 1 * days;
 
@@ -30,6 +31,7 @@ async function main() {
     const managementFactory = await ethers.getContractFactory("Management");
     const management = await managementFactory.deploy(
       feeNumerator,
+      referralFeeNumerator,
       payoutDelay,
       operator.address,
       treasury.address,
