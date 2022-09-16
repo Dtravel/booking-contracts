@@ -34,6 +34,7 @@ describe("Management test", function () {
     const managementFactory = await ethers.getContractFactory("Management");
     management = await managementFactory.deploy(
       feeNumerator,
+      referralFeeNumerator,
       payoutDelay,
       constants.AddressZero,
       constants.AddressZero,

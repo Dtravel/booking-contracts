@@ -34,14 +34,18 @@ const config: HardhatUserConfig = {
       chainId: 97,
       gasPrice: 20000000000,
       accounts:
-        process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+        process.env.ADMIN_PRIVATE_KEY !== undefined
+          ? [process.env.ADMIN_PRIVATE_KEY!]
+          : [],
     },
     mainnet: {
       url: "https://bsc-dataseed.binance.org/",
       chainId: 56,
       gasPrice: 20000000000,
       accounts:
-        process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+        process.env.ADMIN_PRIVATE_KEY !== undefined
+          ? [process.env.ADMIN_PRIVATE_KEY!]
+          : [],
     },
   },
   gasReporter: {
@@ -49,7 +53,7 @@ const config: HardhatUserConfig = {
     currency: "USD",
   },
   etherscan: {
-    apiKey: process.env.ETHERSCAN_API_KEY,
+    apiKey: process.env.BSCSCAN_API_KEY,
   },
 };
 

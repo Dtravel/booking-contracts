@@ -55,7 +55,7 @@ yarn test:coverage
 1. Config `.env`
 ```
 ADMIN_PRIVATE_KEY=<admin private key>
-OPERATOR_PRIVATE_KEY=<minter private key>
+OPERATOR_ADDR=<minter private key>
 TREASURY_ADDR=<treasury address>
 VERIFIER_ADDR=<treasury address>
 ```
