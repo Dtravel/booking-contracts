@@ -84,3 +84,14 @@ $ yarn upgrade:testnet:property
 
 $ yarn upgrade:mainnet:property
 ```
+
+## Additional tasks CLI
+```
+$ npx hardhat --help
+
+get-accounts       	 Prints the list of accounts
+get-balance:testnet	 Get ERC20 balance by a given address on local/testnet
+mint:testnet       	 Mint tokens to a specific address on local/testnet
+update-fee         	 Update booking fee
+update-referral-fee	 Update referral fee
+```
