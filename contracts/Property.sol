@@ -112,6 +112,8 @@ contract Property is
 
         // also grant authority to this new wallet
         authorized[_addr] = true;
+
+        emit NewPaymentReceiver(_addr);
     }
 
     /**
