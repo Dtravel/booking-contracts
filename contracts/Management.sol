@@ -4,9 +4,6 @@ pragma solidity ^0.8.4;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/IManagement.sol";
 
-error PaymentNotFound();
-error PaymentExisted();
-
 contract Management is IManagement, Ownable {
     uint256 public constant FEE_DENOMINATOR = 10**4;
 

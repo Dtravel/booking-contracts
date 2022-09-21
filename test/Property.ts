@@ -2756,7 +2756,7 @@ describe("Property test", function () {
     });
   });
 
-  describe("Update payment receiver for host", async () => {
+  describe("Update payment receiver", async () => {
     it("should revert when updating payment receiver if caller is NOT HOST/AUTHORIZED/OPERATOR", async () => {
       const newPaymentReceiver = users[3];
       await expect(
