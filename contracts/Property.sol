@@ -94,24 +94,22 @@ contract Property is
 
     /**
        @notice Update host wallet
-       @dev    Caller must be HOST or AUTHORIZED
-       @param _addr new wallet address
+       @dev    Caller must be HOST or OPERATOR
+       @param _addr new payment receiver address
      */
     function updatePaymentReceiver(address _addr) external {
         address msgSender = _msgSender();
         require(
-            msgSender == host ||
-                msgSender == management.operator() ||
-                authorized[msgSender],
-            "OnlyAuthorized"
+            msgSender == host || msgSender == management.operator(),
+            "OnlyHostOrOperator"
         );
         require(_addr != address(0), "ZeroAddress");
         require(_addr != paymentReceiver, "PaymentReceiverExisted");
 
         paymentReceiver = _addr;
 
-        // also grant authority to this new wallet
-        authorized[_addr] = true;
+        // also transfer host
+        host = _addr;
 
         emit NewPaymentReceiver(_addr);
     }
