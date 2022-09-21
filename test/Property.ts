@@ -2756,11 +2756,11 @@ describe("Property test", function () {
     });
   });
 
-  describe("Update host wallet", async () => {
+  describe("Update payment receiver for host", async () => {
     it("should revert when updating payment receiver if caller is NOT HOST/AUTHORIZED/OPERATOR", async () => {
-      const newWallet = users[3];
+      const newPaymentReceiver = users[3];
       await expect(
-        property.updatePaymentReceiver(newWallet.address)
+        property.updatePaymentReceiver(newPaymentReceiver.address)
       ).revertedWith("OnlyAuthorized");
     });
 
@@ -2771,38 +2771,58 @@ describe("Property test", function () {
     });
 
     it("should allow host to update payment receiver", async () => {
-      const newWallet = users[10];
-      await property.connect(host).updatePaymentReceiver(newWallet.address);
+      const newPaymentReceiver = users[10];
+      await expect(
+        property.connect(host).updatePaymentReceiver(newPaymentReceiver.address)
+      )
+        .emit(property, "NewPaymentReceiver")
+        .withArgs(newPaymentReceiver.address);
 
-      const hostWallet = await property.paymentReceiver();
-      expect(hostWallet).deep.equal(newWallet.address);
+      const paymentReceiver = await property.paymentReceiver();
+      expect(paymentReceiver).deep.equal(newPaymentReceiver.address);
 
-      const checkAuthorized = await property.authorized(newWallet.address);
+      const checkAuthorized = await property.authorized(
+        newPaymentReceiver.address
+      );
       expect(checkAuthorized).deep.equal(true);
     });
 
     it("should allow operator to update payment receiver", async () => {
-      const newWallet = users[11];
-      await property.connect(operator).updatePaymentReceiver(newWallet.address);
+      const newPaymentReceiver = users[11];
+      await expect(
+        property
+          .connect(operator)
+          .updatePaymentReceiver(newPaymentReceiver.address)
+      )
+        .emit(property, "NewPaymentReceiver")
+        .withArgs(newPaymentReceiver.address);
 
-      const hostWallet = await property.paymentReceiver();
-      expect(hostWallet).deep.equal(newWallet.address);
+      const paymentReceiver = await property.paymentReceiver();
+      expect(paymentReceiver).deep.equal(newPaymentReceiver.address);
 
-      const checkAuthorized = await property.authorized(newWallet.address);
+      const checkAuthorized = await property.authorized(
+        newPaymentReceiver.address
+      );
       expect(checkAuthorized).deep.equal(true);
     });
 
     it("should allow authorized address to update payment receiver", async () => {
       const authorizedUser = users[11];
-      const newWallet = host;
-      await property
-        .connect(authorizedUser)
-        .updatePaymentReceiver(newWallet.address);
+      const newPaymentReceiver = host;
+      await expect(
+        property
+          .connect(authorizedUser)
+          .updatePaymentReceiver(newPaymentReceiver.address)
+      )
+        .emit(property, "NewPaymentReceiver")
+        .withArgs(newPaymentReceiver.address);
 
-      const hostWallet = await property.paymentReceiver();
-      expect(hostWallet).deep.equal(newWallet.address);
+      const paymentReceiver = await property.paymentReceiver();
+      expect(paymentReceiver).deep.equal(newPaymentReceiver.address);
 
-      const checkAuthorized = await property.authorized(newWallet.address);
+      const checkAuthorized = await property.authorized(
+        newPaymentReceiver.address
+      );
       expect(checkAuthorized).deep.equal(true);
     });
 

@@ -65,6 +65,8 @@ interface IProperty {
 
     function totalBookings() external view returns (uint256);
 
+    event NewPaymentReceiver(address indexed paymentReceiver);
+
     event NewBooking(
         address indexed guest,
         uint256 indexed bookingId,
