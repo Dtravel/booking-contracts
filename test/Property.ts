@@ -2849,14 +2849,14 @@ describe("Property test", function () {
         "NewBooking"
       );
 
-      // host update new payment receiver
+      // update new host
       const currentHost = users[11];
       const newHost = host;
       await property.connect(currentHost).updateHost(newHost.address);
 
       const oldHost = currentHost;
 
-      // create a new booking after updating payment receiver
+      // create a new booking after updating host
       const guest2 = users[1];
       const setting2 = {
         bookingId: 11,
