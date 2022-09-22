@@ -2759,18 +2759,16 @@ describe("Property test", function () {
   describe("Update host", async () => {
     it("should revert when updating host if caller is NOT HOST/OPERATOR", async () => {
       const newHost = users[3];
-      await expect(
-        property.updateHost(newHost.address)
-      ).revertedWith("OnlyHostOrOperator");
+      await expect(property.updateHost(newHost.address)).revertedWith(
+        "OnlyHostOrOperator"
+      );
     });
 
     it("should revert when updating host if caller is authorized address", async () => {
       const authorizedUser = users[11];
       const newHost = users[3];
       await expect(
-        property
-          .connect(authorizedUser)
-          .updateHost(newHost.address)
+        property.connect(authorizedUser).updateHost(newHost.address)
       ).revertedWith("OnlyHostOrOperator");
     });
 
@@ -2782,9 +2780,7 @@ describe("Property test", function () {
 
     it("should allow host to update host", async () => {
       const newHost = users[10];
-      await expect(
-        property.connect(host).updateHost(newHost.address)
-      )
+      await expect(property.connect(host).updateHost(newHost.address))
         .emit(property, "NewHost")
         .withArgs(newHost.address);
 
@@ -2794,11 +2790,7 @@ describe("Property test", function () {
 
     it("should allow operator to update host", async () => {
       const newHost = users[11];
-      await expect(
-        property
-          .connect(operator)
-          .updateHost(newHost.address)
-      )
+      await expect(property.connect(operator).updateHost(newHost.address))
         .emit(property, "NewHost")
         .withArgs(newHost.address);
 
@@ -2860,9 +2852,7 @@ describe("Property test", function () {
       // host update new payment receiver
       const currentHost = users[11];
       const newHost = host;
-      await property
-        .connect(currentHost)
-        .updateHost(newHost.address);
+      await property.connect(currentHost).updateHost(newHost.address);
 
       const oldHost = currentHost;
 

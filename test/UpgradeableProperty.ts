@@ -149,13 +149,13 @@ describe("Property test", function () {
     });
 
     it("should upgrade updateHost()", async () => {
-      await expect(
-        upgradedProperty1.updateHost(users[3].address)
-      ).revertedWith("updateHost() upgraded!");
+      await expect(upgradedProperty1.updateHost(users[3].address)).revertedWith(
+        "updateHost() upgraded!"
+      );
 
-      await expect(
-        upgradedProperty2.updateHost(users[3].address)
-      ).revertedWith("updateHost() upgraded!");
+      await expect(upgradedProperty2.updateHost(users[3].address)).revertedWith(
+        "updateHost() upgraded!"
+      );
     });
 
     it("should upgrade book()", async () => {
