@@ -3,6 +3,29 @@ import { ethers, upgrades } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Management, ERC20Test, Factory } from "../typechain";
 import { constants, Contract } from "ethers";
+import {
+  defaultAbiCoder,
+  getAddress,
+  keccak256,
+  solidityPack,
+  toUtf8Bytes,
+} from "ethers/lib/utils";
+
+const computeCreate2Address = (
+  saltHex: string,
+  bytecode: string,
+  deployer: string
+) => {
+  return getAddress(
+    "0x" +
+      keccak256(
+        solidityPack(
+          ["bytes", "address", "bytes32", "bytes32"],
+          ["0xff", deployer, saltHex, keccak256(bytecode)]
+        )
+      ).slice(-40)
+  );
+};
 
 describe("Factory test", function () {
   let management: Management;
@@ -107,6 +130,38 @@ describe("Factory test", function () {
       const inputPropertyId = 1;
       const inputHost = users[0];
 
+      // compute offchain address before deploying a new property
+      const salt = keccak256(
+        solidityPack(
+          ["uint256", "bytes32"],
+          [inputPropertyId, keccak256(toUtf8Bytes("BOOKING_V2"))]
+        )
+      );
+
+      const ABI = [
+        "function init(uint256 _propertyId,address _host,address _management)",
+      ];
+      const functionSelector = new ethers.utils.Interface(ABI);
+      const data = functionSelector.encodeFunctionData("init", [
+        inputPropertyId,
+        inputHost.address,
+        management.address,
+      ]);
+
+      const encodedParams = defaultAbiCoder
+        .encode(["address", "bytes"], [propertyBeacon.address, data])
+        .slice(2);
+
+      const BeaconProxyFactory = await ethers.getContractFactory("BeaconProxy");
+      const constructorByteCode = `${BeaconProxyFactory.bytecode}${encodedParams}`;
+
+      const offchainComputed = computeCreate2Address(
+        salt,
+        constructorByteCode,
+        factory.address
+      );
+
+      // create new property
       const tx = await factory
         .connect(operator)
         .createProperty(inputPropertyId, inputHost.address);
@@ -132,6 +187,9 @@ describe("Factory test", function () {
       // check on-chain states
       const propertyAddr = await factory.property(propertyId);
       expect(propertyAddr).deep.equal(createdProperty.address);
+
+      // compare off-chain computed address with on-chain address
+      expect(offchainComputed).deep.equal(propertyAddr);
     });
 
     it("should revert when creating an existing property", async () => {
@@ -147,6 +205,40 @@ describe("Factory test", function () {
         const inputPropertyId = i;
         const inputHost = users[i];
 
+        // compute offchain address before deploying a new property
+        const salt = keccak256(
+          solidityPack(
+            ["uint256", "bytes32"],
+            [inputPropertyId, keccak256(toUtf8Bytes("BOOKING_V2"))]
+          )
+        );
+
+        const ABI = [
+          "function init(uint256 _propertyId,address _host,address _management)",
+        ];
+        const functionSelector = new ethers.utils.Interface(ABI);
+        const data = functionSelector.encodeFunctionData("init", [
+          inputPropertyId,
+          inputHost.address,
+          management.address,
+        ]);
+
+        const encodedParams = defaultAbiCoder
+          .encode(["address", "bytes"], [propertyBeacon.address, data])
+          .slice(2);
+
+        const BeaconProxyFactory = await ethers.getContractFactory(
+          "BeaconProxy"
+        );
+        const constructorByteCode = `${BeaconProxyFactory.bytecode}${encodedParams}`;
+
+        const offchainComputed = computeCreate2Address(
+          salt,
+          constructorByteCode,
+          factory.address
+        );
+
+        // create new property
         const tx = await factory
           .connect(operator)
           .createProperty(inputPropertyId, inputHost.address);
@@ -175,6 +267,9 @@ describe("Factory test", function () {
         // check on-chain states
         const propertyAddr = await factory.property(propertyId);
         expect(propertyAddr).deep.equal(createdProperty.address);
+
+        // compare off-chain computed address with on-chain address
+        expect(offchainComputed).deep.equal(propertyAddr);
       }
     });
   });
