@@ -91,7 +91,7 @@ contract Property is
     /**
        @notice Update host wallet
        @dev    Caller must be HOST or OPERATOR
-       @param _addr new payment receiver address
+       @param _addr new host address
      */
     function updateHost(address _addr) external {
         address msgSender = _msgSender();
