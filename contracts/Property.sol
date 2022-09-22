@@ -35,9 +35,6 @@ contract Property is
     // host of the property
     address public host;
 
-    // address to receive payment
-    address public paymentReceiver;
-
     // address of the property's factory
     address public factory;
 
@@ -61,7 +58,6 @@ contract Property is
 
         propertyId = _propertyId;
         host = _host;
-        paymentReceiver = _host;
         factory = _msgSender();
         management = IManagement(_management);
     }
@@ -94,26 +90,21 @@ contract Property is
 
     /**
        @notice Update host wallet
-       @dev    Caller must be HOST or AUTHORIZED
-       @param _addr new wallet address
+       @dev    Caller must be HOST or OPERATOR
+       @param _addr new host address
      */
-    function updatePaymentReceiver(address _addr) external {
+    function updateHost(address _addr) external {
         address msgSender = _msgSender();
         require(
-            msgSender == host ||
-                msgSender == management.operator() ||
-                authorized[msgSender],
-            "OnlyAuthorized"
+            msgSender == host || msgSender == management.operator(),
+            "OnlyHostOrOperator"
         );
         require(_addr != address(0), "ZeroAddress");
-        require(_addr != paymentReceiver, "PaymentReceiverExisted");
+        require(_addr != host, "HostExisted");
 
-        paymentReceiver = _addr;
+        host = _addr;
 
-        // also grant authority to this new wallet
-        authorized[_addr] = true;
-
-        emit NewPaymentReceiver(_addr);
+        emit NewHost(_addr);
     }
 
     /**
@@ -147,7 +138,7 @@ contract Property is
         bookingInfo.feeNumerator = management.feeNumerator();
         bookingInfo.guest = sender;
         bookingInfo.paymentToken = _setting.paymentToken;
-        bookingInfo.paymentReceiver = paymentReceiver;
+        bookingInfo.paymentReceiver = host;
         if (_setting.referrer != address(0)) {
             bookingInfo.referrer = _setting.referrer;
             bookingInfo.referralFeeNumerator = management

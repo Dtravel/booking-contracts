@@ -35,9 +35,6 @@ contract PropertyV2 is
     // host of the property
     address public host;
 
-    // host wallet to receive payment
-    address public paymentReceiver;
-
     // address of the property's factory
     address public factory;
 
@@ -100,10 +97,10 @@ contract PropertyV2 is
        @dev    Caller must be HOST or AUTHORIZED
        @param _newWallet new wallet address
      */
-    function updatePaymentReceiver(address _newWallet) external pure {
+    function updateHost(address _newWallet) external pure {
         _newWallet;
         // solhint-disable-next-line
-        revert("updatePaymentReceiver() upgraded!");
+        revert("updateHost() upgraded!");
     }
 
     /**

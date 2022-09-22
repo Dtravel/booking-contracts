@@ -2756,80 +2756,53 @@ describe("Property test", function () {
     });
   });
 
-  describe("Update payment receiver", async () => {
-    it("should revert when updating payment receiver if caller is NOT HOST/AUTHORIZED/OPERATOR", async () => {
-      const newPaymentReceiver = users[3];
-      await expect(
-        property.updatePaymentReceiver(newPaymentReceiver.address)
-      ).revertedWith("OnlyAuthorized");
+  describe("Update host", async () => {
+    it("should revert when updating host if caller is NOT HOST/OPERATOR", async () => {
+      const newHost = users[3];
+      await expect(property.updateHost(newHost.address)).revertedWith(
+        "OnlyHostOrOperator"
+      );
     });
 
-    it("should revert when updating payment receiver to zero address", async () => {
+    it("should revert when updating host if caller is authorized address", async () => {
+      const authorizedUser = users[11];
+      const newHost = users[3];
       await expect(
-        property.connect(host).updatePaymentReceiver(constants.AddressZero)
+        property.connect(authorizedUser).updateHost(newHost.address)
+      ).revertedWith("OnlyHostOrOperator");
+    });
+
+    it("should revert when updating host to zero address", async () => {
+      await expect(
+        property.connect(host).updateHost(constants.AddressZero)
       ).revertedWith("ZeroAddress");
     });
 
-    it("should allow host to update payment receiver", async () => {
-      const newPaymentReceiver = users[10];
-      await expect(
-        property.connect(host).updatePaymentReceiver(newPaymentReceiver.address)
-      )
-        .emit(property, "NewPaymentReceiver")
-        .withArgs(newPaymentReceiver.address);
+    it("should allow host to update host", async () => {
+      const newHost = users[10];
+      await expect(property.connect(host).updateHost(newHost.address))
+        .emit(property, "NewHost")
+        .withArgs(newHost.address);
 
-      const paymentReceiver = await property.paymentReceiver();
-      expect(paymentReceiver).deep.equal(newPaymentReceiver.address);
-
-      const checkAuthorized = await property.authorized(
-        newPaymentReceiver.address
-      );
-      expect(checkAuthorized).deep.equal(true);
+      const newHostResult = await property.host();
+      expect(newHostResult).deep.equal(newHost.address);
     });
 
-    it("should allow operator to update payment receiver", async () => {
-      const newPaymentReceiver = users[11];
-      await expect(
-        property
-          .connect(operator)
-          .updatePaymentReceiver(newPaymentReceiver.address)
-      )
-        .emit(property, "NewPaymentReceiver")
-        .withArgs(newPaymentReceiver.address);
+    it("should allow operator to update host", async () => {
+      const newHost = users[11];
+      await expect(property.connect(operator).updateHost(newHost.address))
+        .emit(property, "NewHost")
+        .withArgs(newHost.address);
 
-      const paymentReceiver = await property.paymentReceiver();
-      expect(paymentReceiver).deep.equal(newPaymentReceiver.address);
-
-      const checkAuthorized = await property.authorized(
-        newPaymentReceiver.address
-      );
-      expect(checkAuthorized).deep.equal(true);
+      const newHostResult = await property.host();
+      expect(newHostResult).deep.equal(newHost.address);
     });
 
-    it("should allow authorized address to update payment receiver", async () => {
-      const authorizedUser = users[11];
-      const newPaymentReceiver = host;
+    it("should revert when updating host that has already set up", async () => {
+      const newHost = users[11];
       await expect(
-        property
-          .connect(authorizedUser)
-          .updatePaymentReceiver(newPaymentReceiver.address)
-      )
-        .emit(property, "NewPaymentReceiver")
-        .withArgs(newPaymentReceiver.address);
-
-      const paymentReceiver = await property.paymentReceiver();
-      expect(paymentReceiver).deep.equal(newPaymentReceiver.address);
-
-      const checkAuthorized = await property.authorized(
-        newPaymentReceiver.address
-      );
-      expect(checkAuthorized).deep.equal(true);
-    });
-
-    it("should revert when updating payment receiver that has already set up", async () => {
-      await expect(
-        property.connect(host).updatePaymentReceiver(host.address)
-      ).revertedWith("PaymentReceiverExisted");
+        property.connect(newHost).updateHost(newHost.address)
+      ).revertedWith("HostExisted");
     });
 
     it("should transfer to new host wallet when paying out after host updates wallet", async () => {
@@ -2876,11 +2849,14 @@ describe("Property test", function () {
         "NewBooking"
       );
 
-      // host update new wallet
-      const newHostWallet = users[10];
-      await property.connect(host).updatePaymentReceiver(newHostWallet.address);
+      // update new host
+      const currentHost = users[11];
+      const newHost = host;
+      await property.connect(currentHost).updateHost(newHost.address);
 
-      // create a new booking after host updates wallet
+      const oldHost = currentHost;
+
+      // create a new booking after updating host
       const guest2 = users[1];
       const setting2 = {
         bookingId: 11,
@@ -2923,10 +2899,8 @@ describe("Property test", function () {
       );
 
       // get balances of old and new host wallet before guest making payouts
-      const oldWalletBalanceBefore = await trvl.balanceOf(host.address);
-      const newWalletBalanceBefore = await trvl.balanceOf(
-        newHostWallet.address
-      );
+      const oldHostBalanceBefore = await trvl.balanceOf(oldHost.address);
+      const newHostBalanceBefore = await trvl.balanceOf(newHost.address);
 
       // calculate fees and related amounts for booking 1 (id = 10)
       const booking1Info = await property.getBookingById(setting1.bookingId);
@@ -2975,15 +2949,15 @@ describe("Property test", function () {
       // restore EVM time
       await decreaseTime(4 * days + 1);
 
-      // check balances old and new host wallets
-      const oldWalletBalance = await trvl.balanceOf(host.address);
-      expect(oldWalletBalance).deep.equal(
-        oldWalletBalanceBefore.add(oldHostRevenue)
+      // check balances old and new payment reiver
+      const oldHostBalance = await trvl.balanceOf(oldHost.address);
+      expect(oldHostBalance).deep.equal(
+        oldHostBalanceBefore.add(oldHostRevenue)
       );
 
-      const newWalletBalance = await trvl.balanceOf(newHostWallet.address);
-      expect(newWalletBalance).deep.equal(
-        newWalletBalanceBefore.add(newHostRevenue)
+      const newHostBalance = await trvl.balanceOf(newHost.address);
+      expect(newHostBalance).deep.equal(
+        newHostBalanceBefore.add(newHostRevenue)
       );
     });
   });
