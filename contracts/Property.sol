@@ -35,9 +35,6 @@ contract Property is
     // host of the property
     address public host;
 
-    // address to receive payment
-    address public paymentReceiver;
-
     // address of the property's factory
     address public factory;
 
@@ -61,7 +58,6 @@ contract Property is
 
         propertyId = _propertyId;
         host = _host;
-        paymentReceiver = _host;
         factory = _msgSender();
         management = IManagement(_management);
     }
@@ -142,7 +138,7 @@ contract Property is
         bookingInfo.feeNumerator = management.feeNumerator();
         bookingInfo.guest = sender;
         bookingInfo.paymentToken = _setting.paymentToken;
-        bookingInfo.paymentReceiver = paymentReceiver;
+        bookingInfo.paymentReceiver = host;
         if (_setting.referrer != address(0)) {
             bookingInfo.referrer = _setting.referrer;
             bookingInfo.referralFeeNumerator = management
