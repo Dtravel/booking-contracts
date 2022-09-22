@@ -2,12 +2,15 @@
 pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/Create2Upgradeable.sol";
 import "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 import "./interfaces/IFactory.sol";
 import "./interfaces/IManagement.sol";
 import "./interfaces/IProperty.sol";
 
 contract Factory is IFactory, OwnableUpgradeable {
+    bytes32 public constant VERSION = keccak256("BOOKING_V2");
+
     // linked management instance
     IManagement public management;
 
@@ -40,17 +43,22 @@ contract Factory is IFactory, OwnableUpgradeable {
         require(_host != address(0), "ZeroAddress");
         require(property[_propertyId] == address(0), "PropertyExisted");
 
-        BeaconProxy proxy = new BeaconProxy(
-            propertyBeacon,
-            abi.encodeWithSelector(
-                IProperty.init.selector,
-                _propertyId,
-                _host,
-                address(management)
+        bytes32 salt = keccak256(abi.encodePacked(_propertyId, VERSION));
+
+        bytes memory bytecode = abi.encodePacked(
+            type(BeaconProxy).creationCode,
+            abi.encode(
+                propertyBeacon,
+                abi.encodeWithSelector(
+                    IProperty.init.selector,
+                    _propertyId,
+                    _host,
+                    address(management)
+                )
             )
         );
 
-        _property = address(proxy);
+        _property = Create2Upgradeable.deploy(0, salt, bytecode);
         property[_propertyId] = _property;
 
         emit NewProperty(_propertyId, _property, _host);
