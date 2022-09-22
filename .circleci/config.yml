@@ -1,6 +1,4 @@
 version: 2.1
-orbs:
-  node: circleci/node@5.0.2
 executors:
   docker-executor:
     docker:
