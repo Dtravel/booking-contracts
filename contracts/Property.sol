@@ -97,21 +97,18 @@ contract Property is
        @dev    Caller must be HOST or OPERATOR
        @param _addr new payment receiver address
      */
-    function updatePaymentReceiver(address _addr) external {
+    function updateHost(address _addr) external {
         address msgSender = _msgSender();
         require(
             msgSender == host || msgSender == management.operator(),
             "OnlyHostOrOperator"
         );
         require(_addr != address(0), "ZeroAddress");
-        require(_addr != paymentReceiver, "PaymentReceiverExisted");
+        require(_addr != host, "HostExisted");
 
-        paymentReceiver = _addr;
-
-        // also transfer host
         host = _addr;
 
-        emit NewPaymentReceiver(_addr);
+        emit NewHost(_addr);
     }
 
     /**
