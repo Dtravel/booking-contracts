@@ -66,7 +66,7 @@ $ yarn deploy:testnet
 
 ***Note***: After the first deployment succeed, please save and keep file `.oppenzeppelin` private since it's important to upgrade contract later.
 
-## Upgrade smart contract
+## Upgrade smart contracts
 1. Clean cache and precompiled folders to avoid conflict errors
 ```
 $ rm -rf artifacts cache .oppenzeppelin
@@ -75,9 +75,18 @@ $ rm -rf artifacts cache .oppenzeppelin
 3. Update your smart contracts
 4. Update `.env`
 ```
-BEACON_UPGRADE_ADDR=<beacon address>
+FACTORY_PROXY_ADDR=<proxy address>
+
+PROPERTY_BEACON_ADDR=<beacon address>
 ```
-5. Run upgrade via `UpgradeableBeacon` contract
+5. Run upgrade factory via `TransparentUpgradeableProxy` contract
+```
+$ yarn upgrade:testnet:factory
+
+$ yarn upgrade:mainnet:factory
+```
+
+6. Run upgrade all properties via `UpgradeableBeacon` contract
 
 ```
 $ yarn upgrade:testnet:property
