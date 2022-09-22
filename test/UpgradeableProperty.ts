@@ -148,14 +148,14 @@ describe("Property test", function () {
       ).revertedWith("revokeAuthorized() upgraded!");
     });
 
-    it("should upgrade updatePaymentReceiver()", async () => {
+    it("should upgrade updateHost()", async () => {
       await expect(
-        upgradedProperty1.updatePaymentReceiver(users[3].address)
-      ).revertedWith("updatePaymentReceiver() upgraded!");
+        upgradedProperty1.updateHost(users[3].address)
+      ).revertedWith("updateHost() upgraded!");
 
       await expect(
-        upgradedProperty2.updatePaymentReceiver(users[3].address)
-      ).revertedWith("updatePaymentReceiver() upgraded!");
+        upgradedProperty2.updateHost(users[3].address)
+      ).revertedWith("updateHost() upgraded!");
     });
 
     it("should upgrade book()", async () => {
