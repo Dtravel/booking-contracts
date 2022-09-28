@@ -3,28 +3,16 @@ pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "./interfaces/IManagement.sol";
 import "./interfaces/IProperty.sol";
+import "./interfaces/IEIP712.sol";
 
-contract Property is
-    IProperty,
-    OwnableUpgradeable,
-    ReentrancyGuardUpgradeable,
-    EIP712Upgradeable
-{
-    using ECDSAUpgradeable for bytes32;
+contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     uint256 private constant FEE_DENOMINATOR = 10**4;
-    // keccak256("CancellationPolicy(uint256 expireAt,uint256 refundAmount)");
-    bytes32 private constant CANCELLATION_POLICY_TYPEHASH =
-        0x71ed7adc2b3cc6f42e80ad08652651cbc6e0fd93b50d04298efafcfb6570f246;
-    // keccak256("Msg(uint256 bookingId,uint256 checkIn,uint256 checkOut,uint256 expireAt,uint256 bookingAmount,address paymentToken,address referrer,address guest,CancellationPolicy[] policies)CancellationPolicy(uint256 expireAt,uint256 refundAmount)");
-    bytes32 private constant BOOKING_SETTING_TYPEHASH =
-        0x4299a080339bf90a75c045ad1230a6e716fe5314d953e0dcca074f146cfd96a5;
 
     // the property ID
     uint256 public propertyId;
@@ -53,7 +41,6 @@ contract Property is
         address _management
     ) external initializer {
         __Ownable_init();
-        __EIP712_init("Booking_Property", "1");
         __ReentrancyGuard_init();
 
         propertyId = _propertyId;
@@ -120,7 +107,7 @@ contract Property is
         _validateSetting(_setting);
 
         // verify signed message
-        _checkSignature(_setting, _signature);
+        IEIP712(management.eip712()).verify(propertyId, _setting, _signature);
 
         // contract charges booking payment
         address sender = _msgSender();
@@ -153,43 +140,6 @@ contract Property is
         bookingIds.push(_setting.bookingId);
 
         emit NewBooking(sender, _setting.bookingId, block.timestamp);
-    }
-
-    function _checkSignature(
-        BookingSetting calldata _setting,
-        bytes calldata _signature
-    ) private {
-        uint256 n = _setting.policies.length;
-        bytes32[] memory policiesHashes = new bytes32[](n);
-        for (uint256 i; i < n; i++) {
-            policiesHashes[i] = keccak256(
-                abi.encode(
-                    CANCELLATION_POLICY_TYPEHASH,
-                    _setting.policies[i].expireAt,
-                    _setting.policies[i].refundAmount
-                )
-            );
-        }
-
-        {
-            address signer = _hashTypedDataV4(
-                keccak256(
-                    abi.encode(
-                        BOOKING_SETTING_TYPEHASH,
-                        _setting.bookingId,
-                        _setting.checkIn,
-                        _setting.checkOut,
-                        _setting.expireAt,
-                        _setting.bookingAmount,
-                        _setting.paymentToken,
-                        _setting.referrer,
-                        _msgSender(),
-                        keccak256(abi.encodePacked(policiesHashes))
-                    )
-                )
-            ).recover(_signature);
-            require(signer == management.verifier(), "InvalidSignature");
-        }
     }
 
     function _validateSetting(BookingSetting calldata _setting) private {
