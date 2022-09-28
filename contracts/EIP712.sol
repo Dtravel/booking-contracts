@@ -14,9 +14,9 @@ contract EIP712 is EIP712Upgradeable, OwnableUpgradeable {
     // keccak256("CancellationPolicy(uint256 expireAt,uint256 refundAmount)");
     bytes32 private constant CANCELLATION_POLICY_TYPEHASH =
         0x71ed7adc2b3cc6f42e80ad08652651cbc6e0fd93b50d04298efafcfb6570f246;
-    // keccak256("Msg(uint256 bookingId,uint256 checkIn,uint256 checkOut,uint256 expireAt,uint256 bookingAmount,address paymentToken,address referrer,address guest,CancellationPolicy[] policies)CancellationPolicy(uint256 expireAt,uint256 refundAmount)");
+    // keccak256("Msg(uint256 bookingId,uint256 checkIn,uint256 checkOut,uint256 expireAt,uint256 bookingAmount,address paymentToken,address referrer,address guest,address property,CancellationPolicy[] policies)CancellationPolicy(uint256 expireAt,uint256 refundAmount)");
     bytes32 private constant BOOKING_SETTING_TYPEHASH =
-        0x4299a080339bf90a75c045ad1230a6e716fe5314d953e0dcca074f146cfd96a5;
+        0x56c4cd6295f124426ae96b6210625fb14be94a8cb5b0001c745a3ad88b5297c1;
 
     IManagement public management;
 
@@ -39,10 +39,10 @@ contract EIP712 is EIP712Upgradeable, OwnableUpgradeable {
         IProperty.BookingSetting calldata _setting,
         bytes calldata _signature
     ) external {
+        address msgSender = _msgSender();
         require(
-            _msgSender() ==
-                IFactory(management.factory()).property(_propertyId),
-            "Unauthorized"
+            msgSender == IFactory(management.factory()).property(_propertyId),
+            "UnknownProperty"
         );
 
         uint256 n = _setting.policies.length;
@@ -73,6 +73,7 @@ contract EIP712 is EIP712Upgradeable, OwnableUpgradeable {
                             _setting.paymentToken,
                             _setting.referrer,
                             _setting.guest,
+                            msgSender,
                             keccak256(abi.encodePacked(policiesHashes))
                         )
                     )

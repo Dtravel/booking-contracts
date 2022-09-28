@@ -38,6 +38,7 @@ interface IProperty {
         address paymentToken;
         address referrer;
         address guest;
+        address property;
         CancellationPolicy[] policies;
     }
 
