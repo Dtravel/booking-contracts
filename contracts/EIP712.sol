@@ -57,22 +57,28 @@ contract EIP712 is EIP712Upgradeable, OwnableUpgradeable {
             );
         }
 
-        address signer = _hashTypedDataV4(
-            keccak256(
-                abi.encode(
-                    BOOKING_SETTING_TYPEHASH,
-                    _setting.bookingId,
-                    _setting.checkIn,
-                    _setting.checkOut,
-                    _setting.expireAt,
-                    _setting.bookingAmount,
-                    _setting.paymentToken,
-                    _setting.referrer,
-                    _msgSender(),
-                    keccak256(abi.encodePacked(policiesHashes))
+        {
+            address signer = _hashTypedDataV4(
+                keccak256(
+                    bytes.concat(
+                        abi.encode(
+                            BOOKING_SETTING_TYPEHASH,
+                            _setting.bookingId,
+                            _setting.checkIn,
+                            _setting.checkOut,
+                            _setting.expireAt
+                        ),
+                        abi.encode(
+                            _setting.bookingAmount,
+                            _setting.paymentToken,
+                            _setting.referrer,
+                            _setting.guest,
+                            keccak256(abi.encodePacked(policiesHashes))
+                        )
+                    )
                 )
-            )
-        ).recover(_signature);
-        require(signer == management.verifier(), "InvalidSignature");
+            ).recover(_signature);
+            require(signer == management.verifier(), "InvalidSignature");
+        }
     }
 }

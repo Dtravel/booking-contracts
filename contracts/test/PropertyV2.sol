@@ -3,7 +3,6 @@ pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "../interfaces/IManagement.sol";
@@ -12,19 +11,9 @@ import "../interfaces/IProperty.sol";
 contract PropertyV2 is
     IProperty,
     OwnableUpgradeable,
-    ReentrancyGuardUpgradeable,
-    EIP712Upgradeable
+    ReentrancyGuardUpgradeable
 {
-    using ECDSAUpgradeable for bytes32;
     using SafeERC20Upgradeable for IERC20Upgradeable;
-
-    uint256 private constant FEE_DENOMINATOR = 10**4;
-    bytes32 private constant CANCELLATION_POLICY_TYPEHASH =
-        keccak256("CancellationPolicy(uint256 expireAt,uint256 refundAmount)");
-    bytes32 private constant BOOKING_SETTING_TYPEHASH =
-        keccak256(
-            "Msg(uint256 bookingId,uint256 checkIn,uint256 checkOut,uint256 expireAt,uint256 bookingAmount,address paymentToken,address guest,CancellationPolicy[] policies)CancellationPolicy(uint256 expireAt,uint256 refundAmount)"
-        );
 
     // the property ID
     uint256 public propertyId;
@@ -63,7 +52,6 @@ contract PropertyV2 is
         address _management
     ) external initializer {
         __Ownable_init();
-        __EIP712_init("Booking_Property", "1");
         __ReentrancyGuard_init();
 
         propertyId = _propertyId;

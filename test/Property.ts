@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { ethers, network, upgrades } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { Management, ERC20Test, Factory, Property } from "../typechain";
+import { Management, EIP712, ERC20Test, Factory, Property } from "../typechain";
 import { BigNumber, constants, Contract, utils, Wallet } from "ethers";
 
 async function increaseTime(duration: number): Promise<void> {
@@ -20,6 +20,7 @@ describe("Property test", function () {
   let trvl: ERC20Test;
   let fakeToken: ERC20Test;
   let factory: Factory;
+  let eip712: EIP712;
   let property: Property;
   let admin: SignerWithAddress;
   let operator: SignerWithAddress;
@@ -38,7 +39,7 @@ describe("Property test", function () {
 
   // typed data hash for eip-712
   const domain = {
-    name: "Booking_Property",
+    name: "DtravelBooking",
     version: "1",
     chainId: network.config.chainId,
     verifyingContract: "",
@@ -101,6 +102,19 @@ describe("Property test", function () {
         initializer: "init",
       }
     )) as Factory;
+
+    // deploy EIP712
+    const eip712Factory = await ethers.getContractFactory("EIP712");
+    eip712 = (await upgrades.deployProxy(eip712Factory, [management.address], {
+      initializer: "init",
+    })) as EIP712;
+
+    // update domain part
+    domain.verifyingContract = eip712.address;
+
+    // link created contracts
+    await management.setFactory(factory.address);
+    await management.setEIP712(eip712.address);
   });
 
   describe("Get public states", async () => {
@@ -210,6 +224,32 @@ describe("Property test", function () {
 
   describe("Book", async () => {
     describe("Validate setting", async () => {
+      it("should revert if guest is not caller", async () => {
+        const guest = users[1];
+        const now = (await ethers.provider.getBlock("latest")).timestamp;
+        const setting = {
+          bookingId: 1,
+          checkIn: now + 1 * days,
+          checkOut: now + 2 * days,
+          expireAt: now + 3 * days,
+          bookingAmount: 55000,
+          paymentToken: busd.address,
+          referrer: constants.AddressZero,
+          guest: Wallet.createRandom().address,
+          policies: [
+            {
+              expireAt: now,
+              refundAmount: 48000,
+            },
+          ],
+        };
+
+        const signature = utils.randomBytes(65);
+        await expect(
+          property.connect(guest).book(setting, signature)
+        ).revertedWith("InvalidGuest");
+      });
+
       it("should revert if booking request is expired", async () => {
         const guest = users[1];
         const now = (await ethers.provider.getBlock("latest")).timestamp;
@@ -247,6 +287,7 @@ describe("Property test", function () {
           bookingAmount: 55000,
           paymentToken: busd.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
           policies: [
             {
               expireAt: now,
@@ -272,6 +313,7 @@ describe("Property test", function () {
           bookingAmount: 55000,
           paymentToken: busd.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
           policies: [
             {
               expireAt: now,
@@ -297,6 +339,7 @@ describe("Property test", function () {
           bookingAmount: 55000,
           paymentToken: busd.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
           policies: [],
         };
 
@@ -317,6 +360,7 @@ describe("Property test", function () {
           bookingAmount: 55000,
           paymentToken: busd.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
           policies: [
             {
               expireAt: now,
@@ -346,6 +390,7 @@ describe("Property test", function () {
           bookingAmount: 55000,
           paymentToken: busd.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
           policies: [
             {
               expireAt: now + 1 * days,
@@ -388,6 +433,7 @@ describe("Property test", function () {
           bookingAmount: 55000,
           paymentToken: busd.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
           policies: [
             {
               expireAt: now,
@@ -413,7 +459,6 @@ describe("Property test", function () {
         };
 
         // generate a valid signature
-        domain.verifyingContract = property.address;
         const signature = await verifier._signTypedData(domain, types, value);
 
         // create a valid booking in states
@@ -435,6 +480,7 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: fakeToken.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
           policies: [
             {
               expireAt: now,
@@ -467,6 +513,7 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
           policies: [
             {
               expireAt: now,
@@ -497,6 +544,7 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
           policies: [
             {
               expireAt: now,
@@ -540,6 +588,7 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
           policies: [
             {
               expireAt: now,
@@ -583,6 +632,7 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
           policies: [
             {
               expireAt: now,
@@ -626,6 +676,7 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
           policies: [
             {
               expireAt: now,
@@ -669,6 +720,7 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
           policies: [
             {
               expireAt: now,
@@ -712,6 +764,7 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
           policies: [
             {
               expireAt: now,
@@ -755,6 +808,7 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
           policies: [
             {
               expireAt: now,
@@ -798,6 +852,7 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
           policies: [
             {
               expireAt: now,
@@ -860,6 +915,7 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
           policies: [
             {
               expireAt: now,
@@ -922,6 +978,7 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
           policies: [
             {
               expireAt: now,
@@ -984,6 +1041,7 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
           policies: [
             {
               expireAt: now,
@@ -1046,6 +1104,7 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
           policies: [
             {
               expireAt: now,
@@ -1108,6 +1167,7 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
           policies: [
             {
               expireAt: now,
@@ -1170,6 +1230,7 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
           policies: [
             {
               expireAt: now,
@@ -1232,6 +1293,7 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
           policies: [
             {
               expireAt: now,
@@ -1290,6 +1352,7 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
           policies: [
             {
               expireAt: now,
@@ -1306,7 +1369,7 @@ describe("Property test", function () {
           name: "IncorrectName",
           version: "1",
           chainId: network.config.chainId,
-          verifyingContract: property.address,
+          verifyingContract: eip712.address,
         };
 
         const value = {
@@ -1344,6 +1407,7 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
           policies: [
             {
               expireAt: now,
@@ -1360,7 +1424,7 @@ describe("Property test", function () {
           name: "Booking_Property",
           version: "v100",
           chainId: network.config.chainId,
-          verifyingContract: property.address,
+          verifyingContract: eip712.address,
         };
 
         const value = {
@@ -1398,6 +1462,7 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
           policies: [
             {
               expireAt: now,
@@ -1414,7 +1479,7 @@ describe("Property test", function () {
           name: "Booking_Property",
           version: "1",
           chainId: network.config.chainId! + 1,
-          verifyingContract: property.address,
+          verifyingContract: eip712.address,
         };
 
         const value = {
@@ -1452,6 +1517,7 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
           policies: [
             {
               expireAt: now,
@@ -1506,6 +1572,7 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
           policies: [
             {
               expireAt: now,
@@ -1551,6 +1618,7 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
           policies: [
             {
               expireAt: now,
@@ -1708,6 +1776,7 @@ describe("Property test", function () {
         bookingAmount: 65000,
         paymentToken: trvl.address,
         referrer: referrer.address,
+        guest: guest.address,
         policies: [
           {
             expireAt: now + 2 * days,
@@ -1825,6 +1894,7 @@ describe("Property test", function () {
         bookingAmount: 65000,
         paymentToken: trvl.address,
         referrer: constants.AddressZero,
+        guest: guest.address,
         policies: [
           {
             expireAt: now + 2 * days,
@@ -1927,6 +1997,7 @@ describe("Property test", function () {
         bookingAmount: 65000,
         paymentToken: trvl.address,
         referrer: referrer.address,
+        guest: guest.address,
         policies: [
           {
             expireAt: now + 2 * days,
@@ -2065,6 +2136,7 @@ describe("Property test", function () {
         bookingAmount: 65000,
         paymentToken: trvl.address,
         referrer: constants.AddressZero,
+        guest: guest.address,
         policies: [
           {
             expireAt: now + 2 * days,
@@ -2192,6 +2264,7 @@ describe("Property test", function () {
         bookingAmount: 85000,
         paymentToken: busd.address,
         referrer: referrer.address,
+        guest: guest.address,
         policies: [
           {
             expireAt: now + 2 * days,
@@ -2327,6 +2400,7 @@ describe("Property test", function () {
         bookingAmount: 85000,
         paymentToken: busd.address,
         referrer: constants.AddressZero,
+        guest: guest.address,
         policies: [
           {
             expireAt: now + 2 * days,
@@ -2453,6 +2527,7 @@ describe("Property test", function () {
         bookingAmount: 85000,
         paymentToken: busd.address,
         referrer: constants.AddressZero,
+        guest: guest.address,
         policies: [
           {
             expireAt: now + 2 * days,
@@ -2606,6 +2681,7 @@ describe("Property test", function () {
         bookingAmount: 85000,
         paymentToken: busd.address,
         referrer: constants.AddressZero,
+        guest: guest.address,
         policies: [
           {
             expireAt: now + 2 * days,
@@ -2686,6 +2762,7 @@ describe("Property test", function () {
         bookingAmount: 85000,
         paymentToken: busd.address,
         referrer: constants.AddressZero,
+        guest: guest.address,
         policies: [
           {
             expireAt: now + 2 * days,
@@ -2817,6 +2894,7 @@ describe("Property test", function () {
         bookingAmount: 65000,
         paymentToken: trvl.address,
         referrer: constants.AddressZero,
+        guest: guest1.address,
         policies: [
           {
             expireAt: now,
@@ -2866,6 +2944,7 @@ describe("Property test", function () {
         bookingAmount: 85000,
         paymentToken: trvl.address,
         referrer: constants.AddressZero,
+        guest: guest2.address,
         policies: [
           {
             expireAt: now,
@@ -2975,6 +3054,7 @@ describe("Property test", function () {
         bookingAmount: 85000,
         paymentToken: busd.address,
         referrer: constants.AddressZero,
+        guest: guest.address,
         policies: [
           {
             expireAt: now + 2 * days,

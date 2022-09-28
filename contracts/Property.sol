@@ -146,6 +146,8 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         uint256 current = block.timestamp;
 
         // validate input params
+        require(_setting.guest == _msgSender(), "InvalidGuest");
+
         require(_setting.expireAt > current, "RequestExpired");
 
         require(_setting.checkIn + 1 days >= current, "InvalidCheckIn");
