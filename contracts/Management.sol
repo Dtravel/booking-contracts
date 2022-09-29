@@ -25,6 +25,12 @@ contract Management is IManagement, Ownable {
     // the verifier address to verify signatures
     address public verifier;
 
+    // factory contract address
+    address public factory;
+
+    // EIP712 contract address
+    address public eip712;
+
     // list of supported payment ERC20 tokens
     mapping(address => bool) public paymentToken;
 
@@ -135,6 +141,32 @@ contract Management is IManagement, Ownable {
         verifier = _newVerifier;
 
         emit NewVerifier(_newVerifier);
+    }
+
+    /**
+       @notice Set factory contract address
+       @dev    Caller must be ADMIN
+       @param _factory Address of new factory
+     */
+    function setFactory(address _factory) external onlyOwner {
+        require(_factory != address(0), "ZeroAddress");
+
+        factory = _factory;
+
+        emit NewFactory(_factory);
+    }
+
+    /**
+       @notice Set EIP-712 contract address
+       @dev    Caller must be ADMIN
+       @param _eip712 Address of new factory
+     */
+    function setEIP712(address _eip712) external onlyOwner {
+        require(_eip712 != address(0), "ZeroAddress");
+
+        eip712 = _eip712;
+
+        emit NewEIP712(_eip712);
     }
 
     /**

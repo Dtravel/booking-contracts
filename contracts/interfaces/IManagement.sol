@@ -14,6 +14,10 @@ interface IManagement {
 
     function verifier() external returns (address);
 
+    function factory() external returns (address);
+
+    function eip712() external returns (address);
+
     function paymentToken(address) external returns (bool);
 
     function admin() external returns (address);
@@ -30,6 +34,10 @@ interface IManagement {
 
     function setVerifier(address _newVerifier) external;
 
+    function setFactory(address _factory) external;
+
+    function setEIP712(address _eip712) external;
+
     function addPayment(address _token) external;
 
     function removePayment(address _token) external;
@@ -45,6 +53,10 @@ interface IManagement {
     event NewTreasury(address indexed treasury);
 
     event NewVerifier(address indexed verifier);
+
+    event NewFactory(address indexed factory);
+
+    event NewEIP712(address indexed eip712);
 
     event PaymentTokensAdd(address indexed token);
 

@@ -12,6 +12,8 @@ describe("Management test", function () {
   let operator: SignerWithAddress;
   let verifier: SignerWithAddress;
   let treasury: SignerWithAddress;
+  let mockFactory: SignerWithAddress;
+  let mockEIP712: SignerWithAddress;
   let users: SignerWithAddress[];
 
   const feeNumerator = 1000; // 1000 / 10000 = 10%
@@ -21,7 +23,8 @@ describe("Management test", function () {
   const payoutDelay = 2 * days;
 
   before(async () => {
-    [admin, operator, verifier, treasury, ...users] = await ethers.getSigners();
+    [admin, operator, verifier, treasury, mockFactory, mockEIP712, ...users] =
+      await ethers.getSigners();
 
     // deploy mock erc20 for payment
     const mockErc20Factory = await ethers.getContractFactory("ERC20Test");
@@ -210,6 +213,56 @@ describe("Management test", function () {
 
     it("should revert when setting verifier by address zero", async () => {
       await expect(management.setVerifier(constants.AddressZero)).revertedWith(
+        "ZeroAddress"
+      );
+    });
+  });
+
+  describe("Update factory", async () => {
+    it("should set factory if caller is ADMIN", async () => {
+      await expect(management.setFactory(mockFactory.address))
+        .emit(management, "NewFactory")
+        .withArgs(mockFactory.address);
+    });
+
+    it("should get factory address", async () => {
+      const res = await management.factory();
+      expect(res).deep.equal(mockFactory.address);
+    });
+
+    it("should revert when setting factory if caller is not ADMIN", async () => {
+      await expect(
+        management.connect(users[1]).setFactory(Wallet.createRandom().address)
+      ).revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("should revert when setting factory by address zero", async () => {
+      await expect(management.setFactory(constants.AddressZero)).revertedWith(
+        "ZeroAddress"
+      );
+    });
+  });
+
+  describe("Update EIP712", async () => {
+    it("should set EIP712 if caller is ADMIN", async () => {
+      await expect(management.setEIP712(mockEIP712.address))
+        .emit(management, "NewEIP712")
+        .withArgs(mockEIP712.address);
+    });
+
+    it("should get EIP712 address", async () => {
+      const res = await management.eip712();
+      expect(res).deep.equal(mockEIP712.address);
+    });
+
+    it("should revert when setting EIP712 if caller is not ADMIN", async () => {
+      await expect(
+        management.connect(users[1]).setEIP712(Wallet.createRandom().address)
+      ).revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("should revert when setting EIP712 by address zero", async () => {
+      await expect(management.setEIP712(constants.AddressZero)).revertedWith(
         "ZeroAddress"
       );
     });
