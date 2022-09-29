@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { ethers, network, upgrades } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { Management, ERC20Test, Factory, Property } from "../typechain";
+import { Management, EIP712, ERC20Test, Factory, Property } from "../typechain";
 import { BigNumber, constants, Contract, utils, Wallet } from "ethers";
 
 async function increaseTime(duration: number): Promise<void> {
@@ -20,7 +20,9 @@ describe("Property test", function () {
   let trvl: ERC20Test;
   let fakeToken: ERC20Test;
   let factory: Factory;
+  let eip712: EIP712;
   let property: Property;
+  let fakeProperty: Property;
   let admin: SignerWithAddress;
   let operator: SignerWithAddress;
   let verifier: SignerWithAddress;
@@ -38,7 +40,7 @@ describe("Property test", function () {
 
   // typed data hash for eip-712
   const domain = {
-    name: "Booking_Property",
+    name: "DtravelBooking",
     version: "1",
     chainId: network.config.chainId,
     verifyingContract: "",
@@ -54,6 +56,7 @@ describe("Property test", function () {
       { name: "paymentToken", type: "address" },
       { name: "referrer", type: "address" },
       { name: "guest", type: "address" },
+      { name: "property", type: "address" },
       { name: "policies", type: "CancellationPolicy[]" },
     ],
     CancellationPolicy: [
@@ -101,6 +104,29 @@ describe("Property test", function () {
         initializer: "init",
       }
     )) as Factory;
+
+    // deploy EIP712
+    const eip712Factory = await ethers.getContractFactory("EIP712");
+    eip712 = (await upgrades.deployProxy(eip712Factory, [management.address], {
+      initializer: "init",
+    })) as EIP712;
+
+    // update domain part
+    domain.verifyingContract = eip712.address;
+
+    // link created contracts
+    await management.setFactory(factory.address);
+    await management.setEIP712(eip712.address);
+
+    // deploy a fake property
+    fakeProperty = (await upgrades.deployBeaconProxy(
+      propertyBeacon,
+      propertyFactory,
+      [999999, users[9].address, management.address],
+      {
+        initializer: "init",
+      }
+    )) as Property;
   });
 
   describe("Get public states", async () => {
@@ -210,6 +236,60 @@ describe("Property test", function () {
 
   describe("Book", async () => {
     describe("Validate setting", async () => {
+      it("should revert if guest is not caller", async () => {
+        const guest = users[1];
+        const now = (await ethers.provider.getBlock("latest")).timestamp;
+        const setting = {
+          bookingId: 1,
+          checkIn: now + 1 * days,
+          checkOut: now + 2 * days,
+          expireAt: now + 3 * days,
+          bookingAmount: 55000,
+          paymentToken: busd.address,
+          referrer: constants.AddressZero,
+          guest: Wallet.createRandom().address,
+          property: property.address,
+          policies: [
+            {
+              expireAt: now,
+              refundAmount: 48000,
+            },
+          ],
+        };
+
+        const signature = utils.randomBytes(65);
+        await expect(
+          property.connect(guest).book(setting, signature)
+        ).revertedWith("InvalidGuest");
+      });
+
+      it("should revert if property is incorrect", async () => {
+        const guest = users[1];
+        const now = (await ethers.provider.getBlock("latest")).timestamp;
+        const setting = {
+          bookingId: 1,
+          checkIn: now + 1 * days,
+          checkOut: now + 2 * days,
+          expireAt: now + 3 * days,
+          bookingAmount: 55000,
+          paymentToken: busd.address,
+          referrer: constants.AddressZero,
+          guest: guest.address,
+          property: Wallet.createRandom().address,
+          policies: [
+            {
+              expireAt: now,
+              refundAmount: 48000,
+            },
+          ],
+        };
+
+        const signature = utils.randomBytes(65);
+        await expect(
+          property.connect(guest).book(setting, signature)
+        ).revertedWith("InvalidProperty");
+      });
+
       it("should revert if booking request is expired", async () => {
         const guest = users[1];
         const now = (await ethers.provider.getBlock("latest")).timestamp;
@@ -222,6 +302,7 @@ describe("Property test", function () {
           paymentToken: busd.address,
           referrer: constants.AddressZero,
           guest: guest.address,
+          property: property.address,
           policies: [
             {
               expireAt: now,
@@ -247,6 +328,8 @@ describe("Property test", function () {
           bookingAmount: 55000,
           paymentToken: busd.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
           policies: [
             {
               expireAt: now,
@@ -272,6 +355,8 @@ describe("Property test", function () {
           bookingAmount: 55000,
           paymentToken: busd.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
           policies: [
             {
               expireAt: now,
@@ -297,6 +382,8 @@ describe("Property test", function () {
           bookingAmount: 55000,
           paymentToken: busd.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
           policies: [],
         };
 
@@ -317,6 +404,8 @@ describe("Property test", function () {
           bookingAmount: 55000,
           paymentToken: busd.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
           policies: [
             {
               expireAt: now,
@@ -346,6 +435,8 @@ describe("Property test", function () {
           bookingAmount: 55000,
           paymentToken: busd.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
           policies: [
             {
               expireAt: now + 1 * days,
@@ -388,6 +479,8 @@ describe("Property test", function () {
           bookingAmount: 55000,
           paymentToken: busd.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
           policies: [
             {
               expireAt: now,
@@ -400,21 +493,8 @@ describe("Property test", function () {
           ],
         };
 
-        const value = {
-          bookingId: setting.bookingId,
-          checkIn: setting.checkIn,
-          checkOut: setting.checkOut,
-          expireAt: setting.expireAt,
-          bookingAmount: setting.bookingAmount,
-          paymentToken: setting.paymentToken,
-          referrer: setting.referrer,
-          guest: guest.address,
-          policies: setting.policies,
-        };
-
         // generate a valid signature
-        domain.verifyingContract = property.address;
-        const signature = await verifier._signTypedData(domain, types, value);
+        const signature = await verifier._signTypedData(domain, types, setting);
 
         // create a valid booking in states
         await property.connect(guest).book(setting, signature);
@@ -435,6 +515,8 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: fakeToken.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
           policies: [
             {
               expireAt: now,
@@ -456,6 +538,39 @@ describe("Property test", function () {
     });
 
     describe("Verify EIP-712 data", async () => {
+      it("should revert if unknown property calls EIP712 contract to verify message", async () => {
+        const guest = users[1];
+        const now = (await ethers.provider.getBlock("latest")).timestamp;
+        const setting = {
+          bookingId: 2,
+          checkIn: now + 1 * days,
+          checkOut: now + 2 * days,
+          expireAt: now + 3 * days,
+          bookingAmount: 65000,
+          paymentToken: trvl.address,
+          referrer: constants.AddressZero,
+          guest: guest.address,
+          property: fakeProperty.address,
+          policies: [
+            {
+              expireAt: now,
+              refundAmount: 48000,
+            },
+            {
+              expireAt: now + 1 * days,
+              refundAmount: 35000,
+            },
+          ],
+        };
+
+        // generate a valid signature
+        const signature = await verifier._signTypedData(domain, types, setting);
+
+        await expect(
+          fakeProperty.connect(guest).book(setting, signature)
+        ).revertedWith("UnknownProperty");
+      });
+
       it("should revert if signed message is empty", async () => {
         const guest = users[1];
         const now = (await ethers.provider.getBlock("latest")).timestamp;
@@ -467,6 +582,8 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
           policies: [
             {
               expireAt: now,
@@ -497,6 +614,8 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
           policies: [
             {
               expireAt: now,
@@ -510,15 +629,8 @@ describe("Property test", function () {
         };
 
         const value = {
+          ...setting,
           bookingId: 100,
-          checkIn: setting.checkIn,
-          checkOut: setting.checkOut,
-          expireAt: setting.expireAt,
-          bookingAmount: setting.bookingAmount,
-          paymentToken: setting.paymentToken,
-          referrer: setting.referrer,
-          guest: guest.address,
-          policies: setting.policies,
         };
 
         // generate an invalid signature
@@ -540,6 +652,8 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
           policies: [
             {
               expireAt: now,
@@ -553,15 +667,8 @@ describe("Property test", function () {
         };
 
         const value = {
-          bookingId: setting.bookingId,
+          ...setting,
           checkIn: setting.checkIn - 1 * days,
-          checkOut: setting.checkOut,
-          expireAt: setting.expireAt,
-          bookingAmount: setting.bookingAmount,
-          paymentToken: setting.paymentToken,
-          referrer: setting.referrer,
-          guest: guest.address,
-          policies: setting.policies,
         };
 
         // generate an invalid signature
@@ -583,6 +690,8 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
           policies: [
             {
               expireAt: now,
@@ -596,15 +705,8 @@ describe("Property test", function () {
         };
 
         const value = {
-          bookingId: setting.bookingId,
-          checkIn: setting.checkIn,
+          ...setting,
           checkOut: setting.checkOut + 1 * days,
-          expireAt: setting.expireAt,
-          bookingAmount: setting.bookingAmount,
-          paymentToken: setting.paymentToken,
-          referrer: setting.referrer,
-          guest: guest.address,
-          policies: setting.policies,
         };
 
         // generate an invalid signature
@@ -626,6 +728,8 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
           policies: [
             {
               expireAt: now,
@@ -639,15 +743,8 @@ describe("Property test", function () {
         };
 
         const value = {
-          bookingId: setting.bookingId,
-          checkIn: setting.checkIn,
-          checkOut: setting.checkOut,
+          ...setting,
           expireAt: setting.expireAt + 4 * days,
-          bookingAmount: setting.bookingAmount,
-          paymentToken: setting.paymentToken,
-          referrer: setting.referrer,
-          guest: guest.address,
-          policies: setting.policies,
         };
 
         // generate an invalid signature
@@ -669,6 +766,8 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
           policies: [
             {
               expireAt: now,
@@ -682,15 +781,8 @@ describe("Property test", function () {
         };
 
         const value = {
-          bookingId: setting.bookingId,
-          checkIn: setting.checkIn,
-          checkOut: setting.checkOut,
-          expireAt: setting.expireAt,
+          ...setting,
           bookingAmount: 2020,
-          paymentToken: setting.paymentToken,
-          referrer: setting.referrer,
-          guest: guest.address,
-          policies: setting.policies,
         };
 
         // generate an invalid signature
@@ -712,6 +804,8 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
           policies: [
             {
               expireAt: now,
@@ -725,15 +819,122 @@ describe("Property test", function () {
         };
 
         const value = {
-          bookingId: setting.bookingId,
-          checkIn: setting.checkIn,
-          checkOut: setting.checkOut,
-          expireAt: setting.expireAt,
-          bookingAmount: setting.bookingAmount,
+          ...setting,
           paymentToken: busd.address,
-          referrer: setting.referrer,
+        };
+
+        // generate an invalid signature
+        const signature = await verifier._signTypedData(domain, types, value);
+
+        await expect(
+          property.connect(guest).book(setting, signature)
+        ).revertedWith("InvalidSignature");
+      });
+
+      it("should revert if there's mismatch between signed message and params - referrer", async () => {
+        const guest = users[1];
+        const now = (await ethers.provider.getBlock("latest")).timestamp;
+        const setting = {
+          bookingId: 2,
+          checkIn: now + 1 * days,
+          checkOut: now + 2 * days,
+          expireAt: now + 3 * days,
+          bookingAmount: 65000,
+          paymentToken: trvl.address,
+          referrer: constants.AddressZero,
           guest: guest.address,
-          policies: setting.policies,
+          property: property.address,
+          policies: [
+            {
+              expireAt: now,
+              refundAmount: 48000,
+            },
+            {
+              expireAt: now + 1 * days,
+              refundAmount: 35000,
+            },
+          ],
+        };
+
+        const value = {
+          ...setting,
+          referrer: Wallet.createRandom().address,
+        };
+
+        // generate an invalid signature
+        const signature = await verifier._signTypedData(domain, types, value);
+
+        await expect(
+          property.connect(guest).book(setting, signature)
+        ).revertedWith("InvalidSignature");
+      });
+
+      it("should revert if there's mismatch between signed message and params - guest", async () => {
+        const guest = users[1];
+        const now = (await ethers.provider.getBlock("latest")).timestamp;
+        const setting = {
+          bookingId: 2,
+          checkIn: now + 1 * days,
+          checkOut: now + 2 * days,
+          expireAt: now + 3 * days,
+          bookingAmount: 65000,
+          paymentToken: trvl.address,
+          referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
+          policies: [
+            {
+              expireAt: now,
+              refundAmount: 48000,
+            },
+            {
+              expireAt: now + 1 * days,
+              refundAmount: 35000,
+            },
+          ],
+        };
+
+        const value = {
+          ...setting,
+          guest: Wallet.createRandom().address,
+        };
+
+        // generate an invalid signature
+        const signature = await verifier._signTypedData(domain, types, value);
+
+        await expect(
+          property.connect(guest).book(setting, signature)
+        ).revertedWith("InvalidSignature");
+      });
+
+      it("should revert if there's mismatch between signed message and params - property", async () => {
+        const guest = users[1];
+        const now = (await ethers.provider.getBlock("latest")).timestamp;
+        const setting = {
+          bookingId: 2,
+          checkIn: now + 1 * days,
+          checkOut: now + 2 * days,
+          expireAt: now + 3 * days,
+          bookingAmount: 65000,
+          paymentToken: trvl.address,
+          referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
+          policies: [
+            {
+              expireAt: now,
+              refundAmount: 48000,
+            },
+            {
+              expireAt: now + 1 * days,
+              refundAmount: 35000,
+            },
+          ],
+        };
+
+        const value = {
+          ...setting,
+          property: Wallet.createRandom().address,
         };
 
         // generate an invalid signature
@@ -755,6 +956,8 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
           policies: [
             {
               expireAt: now,
@@ -768,14 +971,7 @@ describe("Property test", function () {
         };
 
         const value = {
-          bookingId: setting.bookingId,
-          checkIn: setting.checkIn,
-          checkOut: setting.checkOut,
-          expireAt: setting.expireAt,
-          bookingAmount: setting.bookingAmount,
-          paymentToken: setting.paymentToken,
-          referrer: setting.referrer,
-          guest: guest.address,
+          ...setting,
           policies: [setting.policies[0]],
         };
 
@@ -798,6 +994,8 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
           policies: [
             {
               expireAt: now,
@@ -817,7 +1015,9 @@ describe("Property test", function () {
             { name: "expireAt", type: "uint256" },
             { name: "bookingAmount", type: "uint256" },
             { name: "paymentToken", type: "address" },
+            { name: "referrer", type: "address" },
             { name: "guest", type: "address" },
+            { name: "property", type: "address" },
             { name: "policies", type: "CancellationPolicy[]" },
           ],
           CancellationPolicy: [
@@ -826,16 +1026,7 @@ describe("Property test", function () {
           ],
         };
 
-        const value = {
-          checkIn: setting.checkIn,
-          checkOut: setting.checkOut,
-          expireAt: setting.expireAt,
-          bookingAmount: setting.bookingAmount,
-          paymentToken: setting.paymentToken,
-          referrer: setting.referrer,
-          guest: guest.address,
-          policies: setting.policies,
-        };
+        const { bookingId, ...value } = setting;
 
         // generate an invalid signature
         const signature = await verifier._signTypedData(
@@ -860,6 +1051,8 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
           policies: [
             {
               expireAt: now,
@@ -879,7 +1072,9 @@ describe("Property test", function () {
             { name: "expireAt", type: "uint256" },
             { name: "bookingAmount", type: "uint256" },
             { name: "paymentToken", type: "address" },
+            { name: "referrer", type: "address" },
             { name: "guest", type: "address" },
+            { name: "property", type: "address" },
             { name: "policies", type: "CancellationPolicy[]" },
           ],
           CancellationPolicy: [
@@ -888,16 +1083,7 @@ describe("Property test", function () {
           ],
         };
 
-        const value = {
-          bookingId: setting.bookingId,
-          checkOut: setting.checkOut,
-          expireAt: setting.expireAt,
-          bookingAmount: setting.bookingAmount,
-          paymentToken: setting.paymentToken,
-          referrer: setting.referrer,
-          guest: guest.address,
-          policies: setting.policies,
-        };
+        const { checkIn, ...value } = setting;
 
         // generate an invalid signature
         const signature = await verifier._signTypedData(
@@ -922,6 +1108,8 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
           policies: [
             {
               expireAt: now,
@@ -941,7 +1129,9 @@ describe("Property test", function () {
             { name: "expireAt", type: "uint256" },
             { name: "bookingAmount", type: "uint256" },
             { name: "paymentToken", type: "address" },
+            { name: "referrer", type: "address" },
             { name: "guest", type: "address" },
+            { name: "property", type: "address" },
             { name: "policies", type: "CancellationPolicy[]" },
           ],
           CancellationPolicy: [
@@ -950,16 +1140,7 @@ describe("Property test", function () {
           ],
         };
 
-        const value = {
-          bookingId: setting.bookingId,
-          checkIn: setting.checkIn,
-          expireAt: setting.expireAt,
-          bookingAmount: setting.bookingAmount,
-          paymentToken: setting.paymentToken,
-          referrer: setting.referrer,
-          guest: guest.address,
-          policies: setting.policies,
-        };
+        const { checkOut, ...value } = setting;
 
         // generate an invalid signature
         const signature = await verifier._signTypedData(
@@ -984,6 +1165,8 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
           policies: [
             {
               expireAt: now,
@@ -1003,7 +1186,9 @@ describe("Property test", function () {
             { name: "checkOut", type: "uint256" },
             { name: "bookingAmount", type: "uint256" },
             { name: "paymentToken", type: "address" },
+            { name: "referrer", type: "address" },
             { name: "guest", type: "address" },
+            { name: "property", type: "address" },
             { name: "policies", type: "CancellationPolicy[]" },
           ],
           CancellationPolicy: [
@@ -1012,16 +1197,7 @@ describe("Property test", function () {
           ],
         };
 
-        const value = {
-          bookingId: setting.bookingId,
-          checkIn: setting.checkIn,
-          checkOut: setting.checkOut,
-          bookingAmount: setting.bookingAmount,
-          paymentToken: setting.paymentToken,
-          referrer: setting.referrer,
-          guest: guest.address,
-          policies: setting.policies,
-        };
+        const { expireAt, ...value } = setting;
 
         // generate an invalid signature
         const signature = await verifier._signTypedData(
@@ -1046,6 +1222,8 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
           policies: [
             {
               expireAt: now,
@@ -1065,7 +1243,9 @@ describe("Property test", function () {
             { name: "checkOut", type: "uint256" },
             { name: "expireAt", type: "uint256" },
             { name: "paymentToken", type: "address" },
+            { name: "referrer", type: "address" },
             { name: "guest", type: "address" },
+            { name: "property", type: "address" },
             { name: "policies", type: "CancellationPolicy[]" },
           ],
           CancellationPolicy: [
@@ -1074,16 +1254,7 @@ describe("Property test", function () {
           ],
         };
 
-        const value = {
-          bookingId: setting.bookingId,
-          checkIn: setting.checkIn,
-          checkOut: setting.checkOut,
-          expireAt: setting.expireAt,
-          paymentToken: setting.paymentToken,
-          referrer: setting.referrer,
-          guest: guest.address,
-          policies: setting.policies,
-        };
+        const { bookingAmount, ...value } = setting;
 
         // generate an invalid signature
         const signature = await verifier._signTypedData(
@@ -1108,6 +1279,65 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
+          policies: [
+            {
+              expireAt: now,
+              refundAmount: 48000,
+            },
+            {
+              expireAt: now + 1 * days,
+              refundAmount: 35000,
+            },
+          ],
+        };
+
+        const wrongTypes = {
+          Msg: [
+            { name: "bookingId", type: "uint256" },
+            { name: "checkIn", type: "uint256" },
+            { name: "checkOut", type: "uint256" },
+            { name: "expireAt", type: "uint256" },
+            { name: "bookingAmount", type: "uint256" },
+            { name: "referrer", type: "address" },
+            { name: "guest", type: "address" },
+            { name: "property", type: "address" },
+            { name: "policies", type: "CancellationPolicy[]" },
+          ],
+          CancellationPolicy: [
+            { name: "expireAt", type: "uint256" },
+            { name: "refundAmount", type: "uint256" },
+          ],
+        };
+
+        const { paymentToken, ...value } = setting;
+
+        // generate an invalid signature
+        const signature = await verifier._signTypedData(
+          domain,
+          wrongTypes,
+          value
+        );
+
+        await expect(
+          property.connect(guest).book(setting, signature)
+        ).revertedWith("InvalidSignature");
+      });
+
+      it("should revert if signed message is missing params - referrer", async () => {
+        const guest = users[1];
+        const now = (await ethers.provider.getBlock("latest")).timestamp;
+        const setting = {
+          bookingId: 2,
+          checkIn: now + 1 * days,
+          checkOut: now + 2 * days,
+          expireAt: now + 3 * days,
+          bookingAmount: 65000,
+          paymentToken: trvl.address,
+          referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
           policies: [
             {
               expireAt: now,
@@ -1128,6 +1358,7 @@ describe("Property test", function () {
             { name: "expireAt", type: "uint256" },
             { name: "bookingAmount", type: "uint256" },
             { name: "guest", type: "address" },
+            { name: "property", type: "address" },
             { name: "policies", type: "CancellationPolicy[]" },
           ],
           CancellationPolicy: [
@@ -1136,16 +1367,7 @@ describe("Property test", function () {
           ],
         };
 
-        const value = {
-          bookingId: setting.bookingId,
-          checkIn: setting.checkIn,
-          checkOut: setting.checkOut,
-          expireAt: setting.expireAt,
-          bookingAmount: setting.bookingAmount,
-          referrer: setting.referrer,
-          guest: guest.address,
-          policies: setting.policies,
-        };
+        const { referrer, ...value } = setting;
 
         // generate an invalid signature
         const signature = await verifier._signTypedData(
@@ -1170,6 +1392,8 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
           policies: [
             {
               expireAt: now,
@@ -1190,6 +1414,8 @@ describe("Property test", function () {
             { name: "expireAt", type: "uint256" },
             { name: "bookingAmount", type: "uint256" },
             { name: "paymentToken", type: "address" },
+            { name: "referrer", type: "address" },
+            { name: "property", type: "address" },
             { name: "policies", type: "CancellationPolicy[]" },
           ],
           CancellationPolicy: [
@@ -1206,6 +1432,73 @@ describe("Property test", function () {
           bookingAmount: setting.bookingAmount,
           paymentToken: setting.paymentToken,
           referrer: setting.referrer,
+          property: setting.property,
+          policies: setting.policies,
+        };
+
+        // generate an invalid signature
+        const signature = await verifier._signTypedData(
+          domain,
+          wrongTypes,
+          value
+        );
+
+        await expect(
+          property.connect(guest).book(setting, signature)
+        ).revertedWith("InvalidSignature");
+      });
+
+      it("should revert if signed message is missing params - property", async () => {
+        const guest = users[1];
+        const now = (await ethers.provider.getBlock("latest")).timestamp;
+        const setting = {
+          bookingId: 2,
+          checkIn: now + 1 * days,
+          checkOut: now + 2 * days,
+          expireAt: now + 3 * days,
+          bookingAmount: 65000,
+          paymentToken: trvl.address,
+          referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
+          policies: [
+            {
+              expireAt: now,
+              refundAmount: 48000,
+            },
+            {
+              expireAt: now + 1 * days,
+              refundAmount: 35000,
+            },
+          ],
+        };
+
+        const wrongTypes = {
+          Msg: [
+            { name: "bookingId", type: "uint256" },
+            { name: "checkIn", type: "uint256" },
+            { name: "checkOut", type: "uint256" },
+            { name: "expireAt", type: "uint256" },
+            { name: "bookingAmount", type: "uint256" },
+            { name: "referrer", type: "address" },
+            { name: "guest", type: "address" },
+            { name: "policies", type: "CancellationPolicy[]" },
+          ],
+          CancellationPolicy: [
+            { name: "expireAt", type: "uint256" },
+            { name: "refundAmount", type: "uint256" },
+          ],
+        };
+
+        const value = {
+          bookingId: setting.bookingId,
+          checkIn: setting.checkIn,
+          checkOut: setting.checkOut,
+          expireAt: setting.expireAt,
+          bookingAmount: setting.bookingAmount,
+          paymentToken: setting.paymentToken,
+          referrer: setting.referrer,
+          guest: setting.guest,
           policies: setting.policies,
         };
 
@@ -1232,6 +1525,8 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
           policies: [
             {
               expireAt: now,
@@ -1252,20 +1547,13 @@ describe("Property test", function () {
             { name: "expireAt", type: "uint256" },
             { name: "bookingAmount", type: "uint256" },
             { name: "paymentToken", type: "address" },
+            { name: "referrer", type: "address" },
             { name: "guest", type: "address" },
+            { name: "property", type: "address" },
           ],
         };
 
-        const value = {
-          bookingId: setting.bookingId,
-          checkIn: setting.checkIn,
-          checkOut: setting.checkOut,
-          expireAt: setting.expireAt,
-          bookingAmount: setting.bookingAmount,
-          paymentToken: setting.paymentToken,
-          referrer: setting.referrer,
-          guest: guest.address,
-        };
+        const { policies, ...value } = setting;
 
         // generate an invalid signature
         const signature = await verifier._signTypedData(
@@ -1290,6 +1578,8 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
           policies: [
             {
               expireAt: now,
@@ -1306,26 +1596,14 @@ describe("Property test", function () {
           name: "IncorrectName",
           version: "1",
           chainId: network.config.chainId,
-          verifyingContract: property.address,
-        };
-
-        const value = {
-          bookingId: setting.bookingId,
-          checkIn: setting.checkIn,
-          checkOut: setting.checkOut,
-          expireAt: setting.expireAt,
-          bookingAmount: setting.bookingAmount,
-          paymentToken: setting.paymentToken,
-          referrer: setting.referrer,
-          guest: guest.address,
-          policies: [setting.policies[0]],
+          verifyingContract: eip712.address,
         };
 
         // generate an invalid signature
         const signature = await verifier._signTypedData(
           wrongDomain,
           types,
-          value
+          setting
         );
 
         await expect(
@@ -1344,6 +1622,8 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
           policies: [
             {
               expireAt: now,
@@ -1360,26 +1640,14 @@ describe("Property test", function () {
           name: "Booking_Property",
           version: "v100",
           chainId: network.config.chainId,
-          verifyingContract: property.address,
-        };
-
-        const value = {
-          bookingId: setting.bookingId,
-          checkIn: setting.checkIn,
-          checkOut: setting.checkOut,
-          expireAt: setting.expireAt,
-          bookingAmount: setting.bookingAmount,
-          paymentToken: setting.paymentToken,
-          referrer: setting.referrer,
-          guest: guest.address,
-          policies: [setting.policies[0]],
+          verifyingContract: eip712.address,
         };
 
         // generate an invalid signature
         const signature = await verifier._signTypedData(
           wrongDomain,
           types,
-          value
+          setting
         );
 
         await expect(
@@ -1398,6 +1666,8 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
           policies: [
             {
               expireAt: now,
@@ -1414,26 +1684,14 @@ describe("Property test", function () {
           name: "Booking_Property",
           version: "1",
           chainId: network.config.chainId! + 1,
-          verifyingContract: property.address,
-        };
-
-        const value = {
-          bookingId: setting.bookingId,
-          checkIn: setting.checkIn,
-          checkOut: setting.checkOut,
-          expireAt: setting.expireAt,
-          bookingAmount: setting.bookingAmount,
-          paymentToken: setting.paymentToken,
-          referrer: setting.referrer,
-          guest: guest.address,
-          policies: [setting.policies[0]],
+          verifyingContract: eip712.address,
         };
 
         // generate an invalid signature
         const signature = await verifier._signTypedData(
           wrongDomain,
           types,
-          value
+          setting
         );
 
         await expect(
@@ -1452,6 +1710,8 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
           policies: [
             {
               expireAt: now,
@@ -1471,23 +1731,11 @@ describe("Property test", function () {
           verifyingContract: constants.AddressZero,
         };
 
-        const value = {
-          bookingId: setting.bookingId,
-          checkIn: setting.checkIn,
-          checkOut: setting.checkOut,
-          expireAt: setting.expireAt,
-          bookingAmount: setting.bookingAmount,
-          paymentToken: setting.paymentToken,
-          referrer: setting.referrer,
-          guest: guest.address,
-          policies: [setting.policies[0]],
-        };
-
         // generate an invalid signature
         const signature = await verifier._signTypedData(
           wrongDomain,
           types,
-          value
+          setting
         );
 
         await expect(
@@ -1506,6 +1754,8 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
           policies: [
             {
               expireAt: now,
@@ -1518,20 +1768,8 @@ describe("Property test", function () {
           ],
         };
 
-        const value = {
-          bookingId: setting.bookingId,
-          checkIn: setting.checkIn,
-          checkOut: setting.checkOut,
-          expireAt: setting.expireAt,
-          bookingAmount: setting.bookingAmount,
-          paymentToken: setting.paymentToken,
-          referrer: setting.referrer,
-          guest: guest.address,
-          policies: setting.policies,
-        };
-
         // generate an invalid signature
-        const signature = await users[1]._signTypedData(domain, types, value);
+        const signature = await users[1]._signTypedData(domain, types, setting);
 
         await expect(
           property.connect(guest).book(setting, signature)
@@ -1551,6 +1789,8 @@ describe("Property test", function () {
           bookingAmount: 65000,
           paymentToken: trvl.address,
           referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
           policies: [
             {
               expireAt: now,
@@ -1563,20 +1803,8 @@ describe("Property test", function () {
           ],
         };
 
-        const value = {
-          bookingId: setting.bookingId,
-          checkIn: setting.checkIn,
-          checkOut: setting.checkOut,
-          expireAt: setting.expireAt,
-          bookingAmount: setting.bookingAmount,
-          paymentToken: setting.paymentToken,
-          referrer: setting.referrer,
-          guest: guest.address,
-          policies: setting.policies,
-        };
-
         // generate a valid signature
-        const signature = await verifier._signTypedData(domain, types, value);
+        const signature = await verifier._signTypedData(domain, types, setting);
 
         const guestBalanceBefore = await trvl.balanceOf(guest.address);
         const contractBalanceBefore = await trvl.balanceOf(property.address);
@@ -1627,6 +1855,9 @@ describe("Property test", function () {
       //    - expireAt: now + 3 * days,
       //    - bookingAmount: 65000,
       //    - paymentToken: trvl.address,
+      //    - referrer: constants.AddressZero,
+      //    - guest: guest.address,
+      //    - property: property.address,
       //    - policies: [
       //        {
       //          expireAt: now,
@@ -1708,6 +1939,8 @@ describe("Property test", function () {
         bookingAmount: 65000,
         paymentToken: trvl.address,
         referrer: referrer.address,
+        guest: guest.address,
+        property: property.address,
         policies: [
           {
             expireAt: now + 2 * days,
@@ -1720,20 +1953,8 @@ describe("Property test", function () {
         ],
       };
 
-      const value = {
-        bookingId: setting.bookingId,
-        checkIn: setting.checkIn,
-        checkOut: setting.checkOut,
-        expireAt: setting.expireAt,
-        bookingAmount: setting.bookingAmount,
-        paymentToken: setting.paymentToken,
-        referrer: setting.referrer,
-        guest: guest.address,
-        policies: setting.policies,
-      };
-
       // generate a valid signature
-      const signature = await verifier._signTypedData(domain, types, value);
+      const signature = await verifier._signTypedData(domain, types, setting);
 
       await expect(property.connect(guest).book(setting, signature)).emit(
         property,
@@ -1825,6 +2046,8 @@ describe("Property test", function () {
         bookingAmount: 65000,
         paymentToken: trvl.address,
         referrer: constants.AddressZero,
+        guest: guest.address,
+        property: property.address,
         policies: [
           {
             expireAt: now + 2 * days,
@@ -1837,20 +2060,8 @@ describe("Property test", function () {
         ],
       };
 
-      const value = {
-        bookingId: setting.bookingId,
-        checkIn: setting.checkIn,
-        checkOut: setting.checkOut,
-        expireAt: setting.expireAt,
-        bookingAmount: setting.bookingAmount,
-        paymentToken: setting.paymentToken,
-        referrer: setting.referrer,
-        guest: guest.address,
-        policies: setting.policies,
-      };
-
       // generate a valid signature
-      const signature = await verifier._signTypedData(domain, types, value);
+      const signature = await verifier._signTypedData(domain, types, setting);
 
       await expect(property.connect(guest).book(setting, signature)).emit(
         property,
@@ -1927,6 +2138,8 @@ describe("Property test", function () {
         bookingAmount: 65000,
         paymentToken: trvl.address,
         referrer: referrer.address,
+        guest: guest.address,
+        property: property.address,
         policies: [
           {
             expireAt: now + 2 * days,
@@ -1939,20 +2152,8 @@ describe("Property test", function () {
         ],
       };
 
-      const value = {
-        bookingId: setting.bookingId,
-        checkIn: setting.checkIn,
-        checkOut: setting.checkOut,
-        expireAt: setting.expireAt,
-        bookingAmount: setting.bookingAmount,
-        paymentToken: setting.paymentToken,
-        referrer: setting.referrer,
-        guest: guest.address,
-        policies: setting.policies,
-      };
-
       // generate a valid signature
-      const signature = await verifier._signTypedData(domain, types, value);
+      const signature = await verifier._signTypedData(domain, types, setting);
 
       await expect(property.connect(guest).book(setting, signature)).emit(
         property,
@@ -2065,6 +2266,8 @@ describe("Property test", function () {
         bookingAmount: 65000,
         paymentToken: trvl.address,
         referrer: constants.AddressZero,
+        guest: guest.address,
+        property: property.address,
         policies: [
           {
             expireAt: now + 2 * days,
@@ -2077,20 +2280,8 @@ describe("Property test", function () {
         ],
       };
 
-      const value = {
-        bookingId: setting.bookingId,
-        checkIn: setting.checkIn,
-        checkOut: setting.checkOut,
-        expireAt: setting.expireAt,
-        bookingAmount: setting.bookingAmount,
-        paymentToken: setting.paymentToken,
-        referrer: setting.referrer,
-        guest: guest.address,
-        policies: setting.policies,
-      };
-
       // generate a valid signature
-      const signature = await verifier._signTypedData(domain, types, value);
+      const signature = await verifier._signTypedData(domain, types, setting);
 
       await expect(property.connect(guest).book(setting, signature)).emit(
         property,
@@ -2192,6 +2383,8 @@ describe("Property test", function () {
         bookingAmount: 85000,
         paymentToken: busd.address,
         referrer: referrer.address,
+        guest: guest.address,
+        property: property.address,
         policies: [
           {
             expireAt: now + 2 * days,
@@ -2204,20 +2397,8 @@ describe("Property test", function () {
         ],
       };
 
-      const value = {
-        bookingId: setting.bookingId,
-        checkIn: setting.checkIn,
-        checkOut: setting.checkOut,
-        expireAt: setting.expireAt,
-        bookingAmount: setting.bookingAmount,
-        paymentToken: setting.paymentToken,
-        referrer: setting.referrer,
-        guest: guest.address,
-        policies: setting.policies,
-      };
-
       // generate a valid signature
-      const signature = await verifier._signTypedData(domain, types, value);
+      const signature = await verifier._signTypedData(domain, types, setting);
 
       await expect(property.connect(guest).book(setting, signature)).emit(
         property,
@@ -2327,6 +2508,8 @@ describe("Property test", function () {
         bookingAmount: 85000,
         paymentToken: busd.address,
         referrer: constants.AddressZero,
+        guest: guest.address,
+        property: property.address,
         policies: [
           {
             expireAt: now + 2 * days,
@@ -2339,20 +2522,8 @@ describe("Property test", function () {
         ],
       };
 
-      const value = {
-        bookingId: setting.bookingId,
-        checkIn: setting.checkIn,
-        checkOut: setting.checkOut,
-        expireAt: setting.expireAt,
-        bookingAmount: setting.bookingAmount,
-        paymentToken: setting.paymentToken,
-        referrer: setting.referrer,
-        guest: guest.address,
-        policies: setting.policies,
-      };
-
       // generate a valid signature
-      const signature = await verifier._signTypedData(domain, types, value);
+      const signature = await verifier._signTypedData(domain, types, setting);
 
       await expect(property.connect(guest).book(setting, signature)).emit(
         property,
@@ -2453,6 +2624,8 @@ describe("Property test", function () {
         bookingAmount: 85000,
         paymentToken: busd.address,
         referrer: constants.AddressZero,
+        guest: guest.address,
+        property: property.address,
         policies: [
           {
             expireAt: now + 2 * days,
@@ -2465,20 +2638,8 @@ describe("Property test", function () {
         ],
       };
 
-      const value = {
-        bookingId: setting.bookingId,
-        checkIn: setting.checkIn,
-        checkOut: setting.checkOut,
-        expireAt: setting.expireAt,
-        bookingAmount: setting.bookingAmount,
-        paymentToken: setting.paymentToken,
-        referrer: setting.referrer,
-        guest: guest.address,
-        policies: setting.policies,
-      };
-
       // generate a valid signature
-      const signature = await verifier._signTypedData(domain, types, value);
+      const signature = await verifier._signTypedData(domain, types, setting);
 
       await expect(property.connect(guest).book(setting, signature)).emit(
         property,
@@ -2606,6 +2767,8 @@ describe("Property test", function () {
         bookingAmount: 85000,
         paymentToken: busd.address,
         referrer: constants.AddressZero,
+        guest: guest.address,
+        property: property.address,
         policies: [
           {
             expireAt: now + 2 * days,
@@ -2618,20 +2781,8 @@ describe("Property test", function () {
         ],
       };
 
-      const value = {
-        bookingId: setting.bookingId,
-        checkIn: setting.checkIn,
-        checkOut: setting.checkOut,
-        expireAt: setting.expireAt,
-        bookingAmount: setting.bookingAmount,
-        paymentToken: setting.paymentToken,
-        referrer: setting.referrer,
-        guest: guest.address,
-        policies: setting.policies,
-      };
-
       // generate a valid signature
-      const signature = await verifier._signTypedData(domain, types, value);
+      const signature = await verifier._signTypedData(domain, types, setting);
 
       let txExecutionTime = now + 1;
       await expect(property.connect(guest).book(setting, signature))
@@ -2686,6 +2837,8 @@ describe("Property test", function () {
         bookingAmount: 85000,
         paymentToken: busd.address,
         referrer: constants.AddressZero,
+        guest: guest.address,
+        property: property.address,
         policies: [
           {
             expireAt: now + 2 * days,
@@ -2698,20 +2851,8 @@ describe("Property test", function () {
         ],
       };
 
-      const value = {
-        bookingId: setting.bookingId,
-        checkIn: setting.checkIn,
-        checkOut: setting.checkOut,
-        expireAt: setting.expireAt,
-        bookingAmount: setting.bookingAmount,
-        paymentToken: setting.paymentToken,
-        referrer: setting.referrer,
-        guest: guest.address,
-        policies: setting.policies,
-      };
-
       // generate a valid signature
-      const signature = await verifier._signTypedData(domain, types, value);
+      const signature = await verifier._signTypedData(domain, types, setting);
 
       let txExecutionTime = now + 1;
       await expect(property.connect(guest).book(setting, signature))
@@ -2817,6 +2958,8 @@ describe("Property test", function () {
         bookingAmount: 65000,
         paymentToken: trvl.address,
         referrer: constants.AddressZero,
+        guest: guest1.address,
+        property: property.address,
         policies: [
           {
             expireAt: now,
@@ -2829,20 +2972,8 @@ describe("Property test", function () {
         ],
       };
 
-      let value = {
-        bookingId: setting1.bookingId,
-        checkIn: setting1.checkIn,
-        checkOut: setting1.checkOut,
-        expireAt: setting1.expireAt,
-        bookingAmount: setting1.bookingAmount,
-        paymentToken: setting1.paymentToken,
-        referrer: setting1.referrer,
-        guest: guest1.address,
-        policies: setting1.policies,
-      };
-
       // generate a valid signature
-      let signature = await verifier._signTypedData(domain, types, value);
+      let signature = await verifier._signTypedData(domain, types, setting1);
 
       await expect(property.connect(guest1).book(setting1, signature)).emit(
         property,
@@ -2866,6 +2997,8 @@ describe("Property test", function () {
         bookingAmount: 85000,
         paymentToken: trvl.address,
         referrer: constants.AddressZero,
+        guest: guest2.address,
+        property: property.address,
         policies: [
           {
             expireAt: now,
@@ -2878,20 +3011,8 @@ describe("Property test", function () {
         ],
       };
 
-      value = {
-        bookingId: setting2.bookingId,
-        checkIn: setting2.checkIn,
-        checkOut: setting2.checkOut,
-        expireAt: setting2.expireAt,
-        bookingAmount: setting2.bookingAmount,
-        paymentToken: setting2.paymentToken,
-        referrer: setting2.referrer,
-        guest: guest2.address,
-        policies: setting2.policies,
-      };
-
       // generate a valid signature
-      signature = await verifier._signTypedData(domain, types, value);
+      signature = await verifier._signTypedData(domain, types, setting2);
 
       await expect(property.connect(guest2).book(setting2, signature)).emit(
         property,
@@ -2975,6 +3096,8 @@ describe("Property test", function () {
         bookingAmount: 85000,
         paymentToken: busd.address,
         referrer: constants.AddressZero,
+        guest: guest.address,
+        property: property.address,
         policies: [
           {
             expireAt: now + 2 * days,
@@ -2987,20 +3110,8 @@ describe("Property test", function () {
         ],
       };
 
-      const value = {
-        bookingId: setting.bookingId,
-        checkIn: setting.checkIn,
-        checkOut: setting.checkOut,
-        expireAt: setting.expireAt,
-        bookingAmount: setting.bookingAmount,
-        paymentToken: setting.paymentToken,
-        referrer: setting.referrer,
-        guest: guest.address,
-        policies: setting.policies,
-      };
-
       // generate a valid signature
-      const signature = await verifier._signTypedData(domain, types, value);
+      const signature = await verifier._signTypedData(domain, types, setting);
 
       const txExecutionTime = now + 1;
       await expect(property.connect(guest).book(setting, signature))

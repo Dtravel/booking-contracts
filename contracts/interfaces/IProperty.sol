@@ -37,6 +37,8 @@ interface IProperty {
         uint256 bookingAmount;
         address paymentToken;
         address referrer;
+        address guest;
+        address property;
         CancellationPolicy[] policies;
     }
 

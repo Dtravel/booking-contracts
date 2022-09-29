@@ -8,9 +8,9 @@ import {
   Property,
   PropertyV2,
 } from "../typechain";
-import { Contract, utils, constants } from "ethers";
+import { Contract, utils, constants, Wallet } from "ethers";
 
-describe("Property test", function () {
+describe("Upgradeable property test", function () {
   let management: Management;
   let busd: ERC20Test;
   let trvl: ERC20Test;
@@ -170,6 +170,7 @@ describe("Property test", function () {
         paymentToken: busd.address,
         referrer: constants.AddressZero,
         guest: guest.address,
+        property: Wallet.createRandom().address,
         policies: [
           {
             expireAt: now,

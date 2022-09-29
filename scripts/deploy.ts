@@ -58,6 +58,21 @@ async function main() {
       }
     );
     console.log("- Factory         : ", factory.address);
+
+    // deploy EIP712
+    const eip712Factory = await ethers.getContractFactory("EIP712");
+    const eip712 = await upgrades.deployProxy(
+      eip712Factory,
+      [management.address],
+      {
+        initializer: "init",
+      }
+    );
+    console.log("- EIP712          : ", eip712.address);
+
+    // link created contracts
+    await management.setFactory(factory.address);
+    await management.setEIP712(eip712.address);
   } else if (network.name === "mainnet") {
     // TODO
   }

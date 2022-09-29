@@ -62,6 +62,21 @@ async function main() {
     }
   );
   console.log("- Factory         : ", factory.address);
+
+  // deploy EIP712
+  const eip712Factory = await ethers.getContractFactory("EIP712");
+  const eip712 = await upgrades.deployProxy(
+    eip712Factory,
+    [management.address],
+    {
+      initializer: "init",
+    }
+  );
+  console.log("- EIP712          : ", eip712.address);
+
+  // link created contracts
+  await management.setFactory(factory.address);
+  await management.setEIP712(eip712.address);
   console.log("=========== DEPLOY COMPLETE ===========\n");
 
   const initialBalance = BigNumber.from(utils.parseEther("1000000000000"));
@@ -71,7 +86,7 @@ async function main() {
     name: "Booking_Property",
     version: "1",
     chainId: network.config.chainId || 31337,
-    verifyingContract: "",
+    verifyingContract: eip712.address,
   };
 
   const types = {
@@ -132,6 +147,7 @@ async function main() {
         bookingAmount: 65000 + getRandomInt(30) * 1000,
         paymentToken: i % 2 === 0 ? busd.address : trvl.address,
         referrer: ethers.constants.AddressZero,
+        guest: guest.address,
         policies: [
           {
             expireAt: now,
