@@ -81,11 +81,7 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
        @param _addr new host address
      */
     function updateHost(address _addr) external {
-        address msgSender = _msgSender();
-        require(
-            msgSender == host || msgSender == management.operator(),
-            "OnlyHostOrOperator"
-        );
+        require(_msgSender() == management.operator(), "OnlyOperator");
         require(_addr != address(0), "ZeroAddress");
         require(_addr != host, "HostExisted");
 
