@@ -2898,10 +2898,10 @@ describe("Property test", function () {
   });
 
   describe("Update host", async () => {
-    it("should revert when updating host if caller is NOT HOST/OPERATOR", async () => {
+    it("should revert when updating host if caller is NOT OPERATOR", async () => {
       const newHost = users[3];
       await expect(property.updateHost(newHost.address)).revertedWith(
-        "OnlyHostOrOperator"
+        "OnlyOperator"
       );
     });
 
@@ -2910,23 +2910,20 @@ describe("Property test", function () {
       const newHost = users[3];
       await expect(
         property.connect(authorizedUser).updateHost(newHost.address)
-      ).revertedWith("OnlyHostOrOperator");
+      ).revertedWith("OnlyOperator");
     });
 
     it("should revert when updating host to zero address", async () => {
       await expect(
-        property.connect(host).updateHost(constants.AddressZero)
+        property.connect(operator).updateHost(constants.AddressZero)
       ).revertedWith("ZeroAddress");
     });
 
-    it("should allow host to update host", async () => {
+    it("should revert when host update new host", async () => {
       const newHost = users[10];
-      await expect(property.connect(host).updateHost(newHost.address))
-        .emit(property, "NewHost")
-        .withArgs(newHost.address);
-
-      const newHostResult = await property.host();
-      expect(newHostResult).deep.equal(newHost.address);
+      await expect(
+        property.connect(host).updateHost(newHost.address)
+      ).revertedWith("OnlyOperator");
     });
 
     it("should allow operator to update host", async () => {
@@ -2942,11 +2939,11 @@ describe("Property test", function () {
     it("should revert when updating host that has already set up", async () => {
       const newHost = users[11];
       await expect(
-        property.connect(newHost).updateHost(newHost.address)
+        property.connect(operator).updateHost(newHost.address)
       ).revertedWith("HostExisted");
     });
 
-    it("should transfer to new host wallet when paying out after host updates wallet", async () => {
+    it("should transfer to new host wallet when paying out after operator updates wallet", async () => {
       // create a booking
       const guest1 = users[1];
       let now = (await ethers.provider.getBlock("latest")).timestamp;
@@ -2983,7 +2980,7 @@ describe("Property test", function () {
       // update new host
       const currentHost = users[11];
       const newHost = host;
-      await property.connect(currentHost).updateHost(newHost.address);
+      await property.connect(operator).updateHost(newHost.address);
 
       const oldHost = currentHost;
 
