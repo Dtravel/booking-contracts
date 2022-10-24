@@ -106,7 +106,7 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     function updatePaymentReceiver(address _addr) external {
         address msgSender = _msgSender();
         require(
-            msgSender == host || authorized[msgSender], 
+            msgSender == host || authorized[msgSender],
             "OnlyHostOrDelegator"
         );
         require(_addr != address(0), "ZeroAddress");
