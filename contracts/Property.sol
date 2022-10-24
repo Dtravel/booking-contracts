@@ -97,7 +97,7 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         paymentReceiver = _addr;
 
         emit NewHost(_addr);
-        emit NewPaymentReceiver(_addr);  
+        emit NewPaymentReceiver(_addr);
     }
 
     /**
@@ -107,7 +107,10 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
      */
     function updatePaymentReceiver(address _addr) external {
         address msgSender = _msgSender();
-        require(msgSender == host || authorized[msgSender], "OnlyHostOrDelegator");
+        require(
+            msgSender == host || authorized[msgSender],
+            "OnlyHostOrDelegator"
+        );
         require(_addr != address(0), "ZeroAddress");
         require(_addr != paymentReceiver, "PaymentReceiverExisted");
 
