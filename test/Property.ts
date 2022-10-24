@@ -2958,14 +2958,20 @@ describe("Property test", function () {
     it("should revert when updating payment receiver to zero address", async () => {
       const currentHost = users[11];
       await expect(
-        property.connect(currentHost).updatePaymentReceiver(constants.AddressZero)
+        property
+          .connect(currentHost)
+          .updatePaymentReceiver(constants.AddressZero)
       ).revertedWith("ZeroAddress");
     });
 
     it("should allow host to update payment receiver", async () => {
       const currentHost = users[11];
       const newPaymentReceiver = users[12];
-      await expect(property.connect(currentHost).updatePaymentReceiver(newPaymentReceiver.address))
+      await expect(
+        property
+          .connect(currentHost)
+          .updatePaymentReceiver(newPaymentReceiver.address)
+      )
         .emit(property, "NewPaymentReceiver")
         .withArgs(newPaymentReceiver.address);
 
@@ -2978,7 +2984,11 @@ describe("Property test", function () {
       const newPaymentReceiver = users[13];
       const delegator = users[1];
       await property.connect(currentHost).grantAuthorized(delegator.address);
-      await expect(property.connect(delegator).updatePaymentReceiver(newPaymentReceiver.address))
+      await expect(
+        property
+          .connect(delegator)
+          .updatePaymentReceiver(newPaymentReceiver.address)
+      )
         .emit(property, "NewPaymentReceiver")
         .withArgs(newPaymentReceiver.address);
 
@@ -2990,7 +3000,9 @@ describe("Property test", function () {
       const currentHost = users[11];
       const newPaymentReceiver = users[13];
       await expect(
-        property.connect(currentHost).updatePaymentReceiver(newPaymentReceiver.address)
+        property
+          .connect(currentHost)
+          .updatePaymentReceiver(newPaymentReceiver.address)
       ).revertedWith("PaymentReceiverExisted");
     });
 
@@ -3033,7 +3045,9 @@ describe("Property test", function () {
       const currentPaymentReceiver = users[13];
       const newPaymentReceiver = users[12];
 
-      await property.connect(currentHost).updatePaymentReceiver(newPaymentReceiver.address);
+      await property
+        .connect(currentHost)
+        .updatePaymentReceiver(newPaymentReceiver.address);
 
       const oldPaymentReceiver = currentPaymentReceiver;
 
@@ -3070,8 +3084,12 @@ describe("Property test", function () {
       );
 
       // get balances of old and new payment receiver wallet before guest making payouts
-      const oldPaymentReceiverBalanceBefore = await trvl.balanceOf(oldPaymentReceiver.address);
-      const newPaymentReceiverBalanceBefore = await trvl.balanceOf(newPaymentReceiver.address);
+      const oldPaymentReceiverBalanceBefore = await trvl.balanceOf(
+        oldPaymentReceiver.address
+      );
+      const newPaymentReceiverBalanceBefore = await trvl.balanceOf(
+        newPaymentReceiver.address
+      );
 
       // calculate fees and related amounts for booking 1 (id = 10)
       const booking1Info = await property.getBookingById(setting1.bookingId);
@@ -3121,12 +3139,16 @@ describe("Property test", function () {
       await decreaseTime(4 * days + 1);
 
       // check balances old and new payment reiver
-      const oldPaymentReceiverBalance = await trvl.balanceOf(oldPaymentReceiver.address);
+      const oldPaymentReceiverBalance = await trvl.balanceOf(
+        oldPaymentReceiver.address
+      );
       expect(oldPaymentReceiverBalance).deep.equal(
         oldPaymentReceiverBalanceBefore.add(oldPaymentReceiverRevenue)
       );
 
-      const newPaymentReceiverBalance = await trvl.balanceOf(newPaymentReceiver.address);
+      const newPaymentReceiverBalance = await trvl.balanceOf(
+        newPaymentReceiver.address
+      );
       expect(newPaymentReceiverBalance).deep.equal(
         newPaymentReceiverBalanceBefore.add(newPaymentReceiverRevenue)
       );
