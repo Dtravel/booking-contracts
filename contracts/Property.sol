@@ -51,6 +51,7 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         paymentReceiver = _host;
         factory = _msgSender();
         management = IManagement(_management);
+        authorized[management.operator()] = true;
     }
 
     /**
@@ -85,7 +86,11 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
        @param _addr new host address
      */
     function updateHost(address _addr) external {
-        require(_msgSender() == management.operator(), "OnlyOperator");
+        address msgSender = _msgSender();
+        require(
+            msgSender == host || msgSender == management.operator(),
+            "OnlyHostOrOperator"
+        );
         require(_addr != address(0), "ZeroAddress");
         require(_addr != host, "HostExisted");
 
