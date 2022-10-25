@@ -32,16 +32,33 @@ describe("Management test", function () {
 
     // deploy mock trvl for payment
     trvl = await mockErc20Factory.deploy("Dtravel", "TRVL");
+  });
 
+  it("should not allow to deploy management contract with invalid addresses", async () => {
+    const managementFactory = await ethers.getContractFactory("Management");
+    await expect(
+      managementFactory.deploy(
+        feeNumerator,
+        referralFeeNumerator,
+        payoutDelay,
+        constants.AddressZero,
+        constants.AddressZero,
+        constants.AddressZero,
+        [paymentToken.address]
+      )
+    ).revertedWith("ZeroAddress");
+  });
+
+  it("should deploy management contract", async () => {
     // deploy management
     const managementFactory = await ethers.getContractFactory("Management");
     management = await managementFactory.deploy(
       feeNumerator,
       referralFeeNumerator,
       payoutDelay,
-      constants.AddressZero,
-      constants.AddressZero,
-      constants.AddressZero,
+      Wallet.createRandom().address,
+      Wallet.createRandom().address,
+      Wallet.createRandom().address,
       [paymentToken.address]
     );
   });
@@ -102,21 +119,19 @@ describe("Management test", function () {
       ).revertedWith("Ownable: caller is not the owner");
     });
 
-    it("should revert when setting referral fee greater than treasury fee", async () => {
+    it("should revert when setting referral fee greater than overall fee", async () => {
       const currentfeeNumerator = await management.feeNumerator();
       await expect(
         management.setReferralFeeRatio(currentfeeNumerator.add(100))
       ).revertedWith("InvalidReferralFee");
     });
 
-    it("should revert when setting referral fee and treasury fee exceeding 100%", async () => {
-      await management.setFeeRatio(6000);
-      await expect(management.setReferralFeeRatio(3999))
-        .emit(management, "NewReferralFeeNumerator")
-        .withArgs(3999);
-      await expect(management.setReferralFeeRatio(5000)).revertedWith(
-        "InvalidReferralFee"
-      );
+    it("should revert when setting overall fee less than referral fee", async () => {
+      const currentReferralFeeDenominator =
+        await management.referralFeeNumerator();
+      await expect(
+        management.setFeeRatio(currentReferralFeeDenominator.sub(1))
+      ).revertedWith("InvalidFee");
     });
   });
 
