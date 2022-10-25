@@ -244,23 +244,12 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         uint256 hostRevenue = remainingAmount - fee - referralFee;
 
         // transfer payment and charge fee
-        IERC20Upgradeable(info.paymentToken).safeTransfer(
-            info.guest,
-            refundAmount
-        );
-        IERC20Upgradeable(info.paymentToken).safeTransfer(
-            info.paymentReceiver,
-            hostRevenue
-        );
-        IERC20Upgradeable(info.paymentToken).safeTransfer(
-            management.treasury(),
-            fee
-        );
+        IERC20Upgradeable paymentToken = IERC20Upgradeable(info.paymentToken);
+        paymentToken.safeTransfer(info.guest, refundAmount);
+        paymentToken.safeTransfer(info.paymentReceiver, hostRevenue);
+        paymentToken.safeTransfer(management.treasury(), fee);
         if (info.referrer != address(0)) {
-            IERC20Upgradeable(info.paymentToken).safeTransfer(
-                info.referrer,
-                referralFee
-            );
+            paymentToken.safeTransfer(info.referrer, referralFee);
         }
 
         // update booking storage
@@ -330,19 +319,12 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         uint256 hostRevenue = toBePaid - fee - referralFee;
 
         // transfer payment and charge fee
-        IERC20Upgradeable(info.paymentToken).safeTransfer(
-            info.paymentReceiver,
-            hostRevenue
-        );
-        IERC20Upgradeable(info.paymentToken).safeTransfer(
-            management.treasury(),
-            fee
-        );
+        IERC20Upgradeable paymentToken = IERC20Upgradeable(info.paymentToken);
+
+        paymentToken.safeTransfer(info.paymentReceiver, hostRevenue);
+        paymentToken.safeTransfer(management.treasury(), fee);
         if (info.referrer != address(0)) {
-            IERC20Upgradeable(info.paymentToken).safeTransfer(
-                info.referrer,
-                referralFee
-            );
+            paymentToken.safeTransfer(info.referrer, referralFee);
         }
 
         emit PayOut(
