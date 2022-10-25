@@ -2948,11 +2948,11 @@ describe("Property test", function () {
   });
 
   describe("Update payment receiver", async () => {
-    it("should revert when updating payment receiver if caller is NOT HOST/DELEGATOR", async () => {
+    it("should revert when updating payment receiver if caller is NOT HOST/AUTHORIZED ADDRESS", async () => {
       const newPaymentReceiver = users[3];
       await expect(
         property.updatePaymentReceiver(newPaymentReceiver.address)
-      ).revertedWith("OnlyHostOrDelegator");
+      ).revertedWith("OnlyHostOrAuthorizedAddress");
     });
 
     it("should revert when updating payment receiver to zero address", async () => {
@@ -3004,7 +3004,7 @@ describe("Property test", function () {
         property
           .connect(newOperator)
           .updatePaymentReceiver(newPaymentReceiver.address)
-      ).revertedWith("OnlyHostOrDelegator");
+      ).revertedWith("OnlyHostOrAuthorizedAddress");
 
       await property.connect(currentHost).grantAuthorized(newOperator.address);
       await expect(
@@ -3019,14 +3019,14 @@ describe("Property test", function () {
       expect(newPaymentReceiverResult).deep.equal(newPaymentReceiver.address);
     });
 
-    it("should allow delegator to update payment receiver", async () => {
+    it("should allow authorized address to update payment receiver", async () => {
       const currentHost = users[11];
       const newPaymentReceiver = users[13];
-      const delegator = users[1];
-      await property.connect(currentHost).grantAuthorized(delegator.address);
+      const authorizedUser = users[1];
+      await property.connect(currentHost).grantAuthorized(authorizedUser.address);
       await expect(
         property
-          .connect(delegator)
+          .connect(authorizedUser)
           .updatePaymentReceiver(newPaymentReceiver.address)
       )
         .emit(property, "NewPaymentReceiver")

@@ -101,14 +101,14 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
 
     /**
         @notice Update payment receiver wallet
-        @dev    Caller must be HOST or DELEGATOR
+        @dev    Caller must be HOST or AUTHORIZED ADDRESS
         @param _addr new payment receiver address
      */
     function updatePaymentReceiver(address _addr) external {
         address msgSender = _msgSender();
         require(
             msgSender == host || authorized[msgSender],
-            "OnlyHostOrDelegator"
+            "OnlyHostOrAuthorizedAddress"
         );
         require(_addr != address(0), "ZeroAddress");
         require(_addr != paymentReceiver, "PaymentReceiverExisted");
