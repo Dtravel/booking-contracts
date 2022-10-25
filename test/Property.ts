@@ -2898,10 +2898,10 @@ describe("Property test", function () {
   });
 
   describe("Update host", async () => {
-    it("should revert when updating host if caller is NOT OPERATOR", async () => {
+    it("should revert when updating host if caller is NOT HOST/OPERATOR", async () => {
       const newHost = users[3];
       await expect(property.updateHost(newHost.address)).revertedWith(
-        "OnlyOperator"
+        "OnlyHostOrOperator"
       );
     });
 
@@ -2910,20 +2910,23 @@ describe("Property test", function () {
       const newHost = users[3];
       await expect(
         property.connect(authorizedUser).updateHost(newHost.address)
-      ).revertedWith("OnlyOperator");
+      ).revertedWith("OnlyHostOrOperator");
     });
 
     it("should revert when updating host to zero address", async () => {
       await expect(
-        property.connect(operator).updateHost(constants.AddressZero)
+        property.connect(host).updateHost(constants.AddressZero)
       ).revertedWith("ZeroAddress");
     });
 
-    it("should revert when host update new host", async () => {
+    it("should allow host to update host", async () => {
       const newHost = users[10];
-      await expect(
-        property.connect(host).updateHost(newHost.address)
-      ).revertedWith("OnlyOperator");
+      await expect(property.connect(host).updateHost(newHost.address))
+        .emit(property, "NewHost")
+        .withArgs(newHost.address);
+
+      const newHostResult = await property.host();
+      expect(newHostResult).deep.equal(newHost.address);
     });
 
     it("should allow operator to update host", async () => {
@@ -2939,11 +2942,113 @@ describe("Property test", function () {
     it("should revert when updating host that has already set up", async () => {
       const newHost = users[11];
       await expect(
-        property.connect(operator).updateHost(newHost.address)
+        property.connect(newHost).updateHost(newHost.address)
       ).revertedWith("HostExisted");
     });
+  });
 
-    it("should transfer to new host wallet when paying out after operator updates wallet", async () => {
+  describe("Update payment receiver", async () => {
+    it("should revert when updating payment receiver if caller is NOT HOST/AUTHORIZED ADDRESS", async () => {
+      const newPaymentReceiver = users[3];
+      await expect(
+        property.updatePaymentReceiver(newPaymentReceiver.address)
+      ).revertedWith("OnlyHostOrAuthorizedAddress");
+    });
+
+    it("should revert when updating payment receiver to zero address", async () => {
+      const currentHost = users[11];
+      await expect(
+        property
+          .connect(currentHost)
+          .updatePaymentReceiver(constants.AddressZero)
+      ).revertedWith("ZeroAddress");
+    });
+
+    it("should allow host to update payment receiver", async () => {
+      const currentHost = users[11];
+      const newPaymentReceiver = users[12];
+      await expect(
+        property
+          .connect(currentHost)
+          .updatePaymentReceiver(newPaymentReceiver.address)
+      )
+        .emit(property, "NewPaymentReceiver")
+        .withArgs(newPaymentReceiver.address);
+
+      const newPaymentReceiverResult = await property.paymentReceiver();
+      expect(newPaymentReceiverResult).deep.equal(newPaymentReceiver.address);
+    });
+
+    it("should allow operator to update payment receiver", async () => {
+      const newPaymentReceiver = users[10];
+      await expect(
+        property
+          .connect(operator)
+          .updatePaymentReceiver(newPaymentReceiver.address)
+      )
+        .emit(property, "NewPaymentReceiver")
+        .withArgs(newPaymentReceiver.address);
+
+      const newPaymentReceiverResult = await property.paymentReceiver();
+      expect(newPaymentReceiverResult).deep.equal(newPaymentReceiver.address);
+    });
+
+    it("should allow new operator to update payment receiver after being authorized", async () => {
+      const currentHost = users[11];
+      const newPaymentReceiver = users[9];
+      const newOperator = users[8];
+      await management.connect(admin).setOperator(newOperator.address);
+
+      // should revert before new oprator is authorized
+      await expect(
+        property
+          .connect(newOperator)
+          .updatePaymentReceiver(newPaymentReceiver.address)
+      ).revertedWith("OnlyHostOrAuthorizedAddress");
+
+      await property.connect(currentHost).grantAuthorized(newOperator.address);
+      await expect(
+        property
+          .connect(operator)
+          .updatePaymentReceiver(newPaymentReceiver.address)
+      )
+        .emit(property, "NewPaymentReceiver")
+        .withArgs(newPaymentReceiver.address);
+
+      const newPaymentReceiverResult = await property.paymentReceiver();
+      expect(newPaymentReceiverResult).deep.equal(newPaymentReceiver.address);
+    });
+
+    it("should allow authorized address to update payment receiver", async () => {
+      const currentHost = users[11];
+      const newPaymentReceiver = users[13];
+      const authorizedUser = users[1];
+      await property
+        .connect(currentHost)
+        .grantAuthorized(authorizedUser.address);
+      await expect(
+        property
+          .connect(authorizedUser)
+          .updatePaymentReceiver(newPaymentReceiver.address)
+      )
+        .emit(property, "NewPaymentReceiver")
+        .withArgs(newPaymentReceiver.address);
+
+      const newPaymentReceiverResult = await property.paymentReceiver();
+      expect(newPaymentReceiverResult).deep.equal(newPaymentReceiver.address);
+    });
+
+    it("should revert when updating payment receiver that has already set up", async () => {
+      const currentHost = users[11];
+      const newPaymentReceiver = users[13];
+      await expect(
+        property
+          .connect(currentHost)
+          .updatePaymentReceiver(newPaymentReceiver.address)
+      ).revertedWith("PaymentReceiverExisted");
+    });
+
+    it("should transfer to new host wallet when paying out after host updates wallet", async () => {
       // create a booking
       const guest1 = users[1];
       let now = (await ethers.provider.getBlock("latest")).timestamp;
@@ -2977,14 +3082,18 @@ describe("Property test", function () {
         "NewBooking"
       );
 
-      // update new host
+      // update new payment receiver
       const currentHost = users[11];
-      const newHost = host;
-      await property.connect(operator).updateHost(newHost.address);
+      const currentPaymentReceiver = users[13];
+      const newPaymentReceiver = users[12];
 
-      const oldHost = currentHost;
+      await property
+        .connect(currentHost)
+        .updatePaymentReceiver(newPaymentReceiver.address);
 
-      // create a new booking after updating host
+      const oldPaymentReceiver = currentPaymentReceiver;
+
+      // create a new booking after updating payment receiver
       const guest2 = users[1];
       const setting2 = {
         bookingId: 11,
@@ -3016,9 +3125,13 @@ describe("Property test", function () {
         "NewBooking"
       );
 
-      // get balances of old and new host wallet before guest making payouts
-      const oldHostBalanceBefore = await trvl.balanceOf(oldHost.address);
-      const newHostBalanceBefore = await trvl.balanceOf(newHost.address);
+      // get balances of old and new payment receiver wallet before guest making payouts
+      const oldPaymentReceiverBalanceBefore = await trvl.balanceOf(
+        oldPaymentReceiver.address
+      );
+      const newPaymentReceiverBalanceBefore = await trvl.balanceOf(
+        newPaymentReceiver.address
+      );
 
       // calculate fees and related amounts for booking 1 (id = 10)
       const booking1Info = await property.getBookingById(setting1.bookingId);
@@ -3026,13 +3139,13 @@ describe("Property test", function () {
       const feeRatio = await management.feeNumerator();
       const feeDenominator = await management.FEE_DENOMINATOR();
       const fee1 = toBePaid.mul(feeRatio).div(feeDenominator);
-      const oldHostRevenue = toBePaid.sub(fee1);
+      const oldPaymentReceiverRevenue = toBePaid.sub(fee1);
 
       // calculate fees and related amounts for booking 2 (id = 11)
       const booking2Info = await property.getBookingById(setting2.bookingId);
       toBePaid = booking2Info.balance;
       const fee2 = toBePaid.mul(feeRatio).div(feeDenominator);
-      const newHostRevenue = toBePaid.sub(fee2);
+      const newPaymentReceiverRevenue = toBePaid.sub(fee2);
 
       // guests make payouts
       await increaseTime(4 * days);
@@ -3045,7 +3158,7 @@ describe("Property test", function () {
           guest1.address,
           setting1.bookingId,
           txExecutionTime,
-          oldHostRevenue,
+          oldPaymentReceiverRevenue,
           fee1,
           0,
           2
@@ -3058,7 +3171,7 @@ describe("Property test", function () {
           guest2.address,
           setting2.bookingId,
           txExecutionTime,
-          newHostRevenue,
+          newPaymentReceiverRevenue,
           fee2,
           0,
           2
@@ -3068,14 +3181,18 @@ describe("Property test", function () {
       await decreaseTime(4 * days + 1);
 
       // check balances old and new payment reiver
-      const oldHostBalance = await trvl.balanceOf(oldHost.address);
-      expect(oldHostBalance).deep.equal(
-        oldHostBalanceBefore.add(oldHostRevenue)
+      const oldPaymentReceiverBalance = await trvl.balanceOf(
+        oldPaymentReceiver.address
+      );
+      expect(oldPaymentReceiverBalance).deep.equal(
+        oldPaymentReceiverBalanceBefore.add(oldPaymentReceiverRevenue)
       );
 
-      const newHostBalance = await trvl.balanceOf(newHost.address);
-      expect(newHostBalance).deep.equal(
-        newHostBalanceBefore.add(newHostRevenue)
+      const newPaymentReceiverBalance = await trvl.balanceOf(
+        newPaymentReceiver.address
+      );
+      expect(newPaymentReceiverBalance).deep.equal(
+        newPaymentReceiverBalanceBefore.add(newPaymentReceiverRevenue)
       );
     });
   });

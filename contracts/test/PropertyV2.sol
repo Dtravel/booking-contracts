@@ -24,6 +24,9 @@ contract PropertyV2 is
     // host of the property
     address public host;
 
+    // address of booking payment recipient
+    address public paymentReceiver;
+
     // address of the property's factory
     address public factory;
 
@@ -56,6 +59,7 @@ contract PropertyV2 is
 
         propertyId = _propertyId;
         host = _host;
+        paymentReceiver = _host;
         factory = _msgSender();
         management = IManagement(_management);
     }
@@ -89,6 +93,17 @@ contract PropertyV2 is
         _newWallet;
         // solhint-disable-next-line
         revert("updateHost() upgraded!");
+    }
+
+    /**
+        @notice Update payment receiver wallet
+        @dev    Caller must be HOST or DELEGATOR
+        @param _addr new payment receiver address
+     */
+    function updatePaymentReceiver(address _addr) external pure {
+        _addr;
+        // solhint-disable-next-line
+        revert("updatePaymentReceiver() upgraded!");
     }
 
     /**

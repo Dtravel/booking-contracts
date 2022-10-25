@@ -23,6 +23,9 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     // host of the property
     address public host;
 
+    // address of booking payment recipient
+    address public paymentReceiver;
+
     // address of the property's factory
     address public factory;
 
@@ -45,8 +48,10 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
 
         propertyId = _propertyId;
         host = _host;
+        paymentReceiver = _host;
         factory = _msgSender();
         management = IManagement(_management);
+        authorized[management.operator()] = true;
     }
 
     /**
@@ -81,13 +86,36 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
        @param _addr new host address
      */
     function updateHost(address _addr) external {
-        require(_msgSender() == management.operator(), "OnlyOperator");
+        address msgSender = _msgSender();
+        require(
+            msgSender == host || msgSender == management.operator(),
+            "OnlyHostOrOperator"
+        );
         require(_addr != address(0), "ZeroAddress");
         require(_addr != host, "HostExisted");
 
         host = _addr;
 
         emit NewHost(_addr);
+    }
+
+    /**
+        @notice Update payment receiver wallet
+        @dev    Caller must be HOST or AUTHORIZED ADDRESS
+        @param _addr new payment receiver address
+     */
+    function updatePaymentReceiver(address _addr) external {
+        address msgSender = _msgSender();
+        require(
+            msgSender == host || authorized[msgSender],
+            "OnlyHostOrAuthorizedAddress"
+        );
+        require(_addr != address(0), "ZeroAddress");
+        require(_addr != paymentReceiver, "PaymentReceiverExisted");
+
+        paymentReceiver = _addr;
+
+        emit NewPaymentReceiver(_addr);
     }
 
     /**
@@ -121,7 +149,7 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         bookingInfo.feeNumerator = management.feeNumerator();
         bookingInfo.guest = sender;
         bookingInfo.paymentToken = _setting.paymentToken;
-        bookingInfo.paymentReceiver = host;
+        bookingInfo.paymentReceiver = paymentReceiver;
         if (_setting.referrer != address(0)) {
             bookingInfo.referrer = _setting.referrer;
             bookingInfo.referralFeeNumerator = management
