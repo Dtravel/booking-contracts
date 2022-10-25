@@ -3023,7 +3023,9 @@ describe("Property test", function () {
       const currentHost = users[11];
       const newPaymentReceiver = users[13];
       const authorizedUser = users[1];
-      await property.connect(currentHost).grantAuthorized(authorizedUser.address);
+      await property
+        .connect(currentHost)
+        .grantAuthorized(authorizedUser.address);
       await expect(
         property
           .connect(authorizedUser)
