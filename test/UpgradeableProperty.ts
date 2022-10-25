@@ -158,6 +158,16 @@ describe("Upgradeable property test", function () {
       );
     });
 
+    it("should upgrade updatePaymentReceiver()", async () => {
+      await expect(
+        upgradedProperty1.updatePaymentReceiver(users[4].address)
+      ).revertedWith("updatePaymentReceiver() upgraded!");
+
+      await expect(
+        upgradedProperty2.updatePaymentReceiver(users[4].address)
+      ).revertedWith("updatePaymentReceiver() upgraded!");
+    });
+
     it("should upgrade book()", async () => {
       const guest = users[1];
       const now = (await ethers.provider.getBlock("latest")).timestamp;

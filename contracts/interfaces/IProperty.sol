@@ -54,6 +54,8 @@ interface IProperty {
 
     function updateHost(address _addr) external;
 
+    function updatePaymentReceiver(address _addr) external;
+
     function book(BookingSetting calldata _setting, bytes calldata _signature)
         external;
 
@@ -68,6 +70,8 @@ interface IProperty {
     function totalBookings() external view returns (uint256);
 
     event NewHost(address indexed host);
+
+    event NewPaymentReceiver(address indexed paymentReceiver);
 
     event NewBooking(
         address indexed guest,
