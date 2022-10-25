@@ -43,6 +43,12 @@ contract Management is IManagement, Ownable {
         address _verifier,
         address[] memory _tokens
     ) {
+        require(
+            _operator != address(0) &&
+                _treasury != address(0) &&
+                _verifier != address(0),
+            "ZeroAddress"
+        );
         feeNumerator = _feeNumerator;
         referralFeeNumerator = _referralFeeNumerator;
         payoutDelay = _paymentDelay;
@@ -69,7 +75,11 @@ contract Management is IManagement, Ownable {
         @param _feeNumerator the fee numerator
     */
     function setFeeRatio(uint256 _feeNumerator) external onlyOwner {
-        require(_feeNumerator < FEE_DENOMINATOR, "InvalidFee");
+        require(
+            _feeNumerator < FEE_DENOMINATOR &&
+                _feeNumerator > referralFeeNumerator,
+            "InvalidFee"
+        );
 
         feeNumerator = _feeNumerator;
 
@@ -82,11 +92,7 @@ contract Management is IManagement, Ownable {
         @param _feeNumerator the fee numerator
      */
     function setReferralFeeRatio(uint256 _feeNumerator) external onlyOwner {
-        require(
-            _feeNumerator < feeNumerator &&
-                _feeNumerator + feeNumerator < FEE_DENOMINATOR,
-            "InvalidReferralFee"
-        );
+        require(_feeNumerator < feeNumerator, "InvalidReferralFee");
 
         referralFeeNumerator = _feeNumerator;
 

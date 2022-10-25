@@ -14,7 +14,7 @@ contract Factory is IFactory, OwnableUpgradeable {
     // linked management instance
     IManagement public management;
 
-    // the upgrage beacon address of property contracts
+    // the upgrade beacon address of property contracts
     address private propertyBeacon;
 
     // returns the deployed property address for a given ID

@@ -56,7 +56,7 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
 
     /**
        @notice Grant authorized role
-       @dev    Caller must be Owner
+       @dev    Caller must be HOST
        @param _addr authorized address
      */
     function grantAuthorized(address _addr) external {
@@ -69,7 +69,7 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
 
     /**
        @notice Revoke authorized role
-       @dev    Caller must be Owner
+       @dev    Caller must be HOST
        @param _addr authorized address
      */
     function revokeAuthorized(address _addr) external {
@@ -292,9 +292,7 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         uint256 n = info.policies.length;
         uint256 delay = management.payoutDelay();
         uint256 current = block.timestamp;
-        if (
-            info.policies[info.policies.length - 1].expireAt + delay < current
-        ) {
+        if (info.policies[n - 1].expireAt + delay < current) {
             toBePaid = info.balance;
         } else {
             for (uint256 i = 0; i < n; i++) {
