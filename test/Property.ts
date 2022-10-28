@@ -2368,6 +2368,55 @@ describe("Property test", function () {
       );
     });
 
+    it("should revert when booking balance is insufficient for canceling payments", async () => {
+      const guest = users[1];
+      const now = (await ethers.provider.getBlock("latest")).timestamp;
+      const setting = {
+        bookingId: 148,
+        checkIn: now + 1 * days,
+        checkOut: now + 2 * days,
+        expireAt: now + 3 * days,
+        bookingAmount: 65000,
+        paymentToken: trvl.address,
+        referrer: constants.AddressZero,
+        guest: guest.address,
+        property: property.address,
+        policies: [
+          {
+            expireAt: now,
+            refundAmount: 48000,
+          },
+          {
+            expireAt: now + 1 * days,
+            refundAmount: 55000,
+          },
+        ],
+      };
+
+      // generate a valid signature
+      const signature = await verifier._signTypedData(domain, types, setting);
+
+      // make a new booking
+      await expect(property.connect(guest).book(setting, signature)).emit(
+        property,
+        "NewBooking"
+      );
+
+      // make a partial payout
+      await expect(property.connect(guest).payout(setting.bookingId)).emit(
+        property,
+        "PayOut"
+      );
+
+      await increaseTime(1 * days); // start 2nd policy period
+
+      await expect(
+        property.connect(guest).payout(setting.bookingId)
+      ).revertedWith("InsufficientBalance");
+
+      await decreaseTime(1 * days); // restore evm time
+    });
+
     it("should cancel a booking when refund policies are available", async () => {
       // setup referrer fee
       await management.setReferralFeeRatio(500);
@@ -3247,9 +3296,9 @@ describe("Property test", function () {
     });
 
     it("should get total bookings", async () => {
-      // created booking Ids = [1, 2, 3, ... 10, 11, 149, 150, 151]
+      // created booking Ids = [1, 2, 3, ... 10, 11, 148, 149, 150, 151]
       const res = await property.totalBookings();
-      expect(res).deep.equal(14);
+      expect(res).deep.equal(15);
     });
   });
 });

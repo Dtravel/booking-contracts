@@ -232,6 +232,7 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         }
 
         // refund to the guest
+        require(info.balance >= refundAmount, "InsufficientBalance");
         uint256 remainingAmount = info.balance - refundAmount;
         uint256 referralFee;
         if (info.referrer != address(0)) {
