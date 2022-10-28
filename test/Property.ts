@@ -2412,7 +2412,7 @@ describe("Property test", function () {
 
       await expect(
         property.connect(guest).payout(setting.bookingId)
-      ).revertedWith("Insufficient");
+      ).revertedWith("InsufficientBalance");
 
       await decreaseTime(1 * days); // restore evm time
     });
