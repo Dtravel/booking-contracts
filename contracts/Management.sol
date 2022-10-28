@@ -44,6 +44,11 @@ contract Management is IManagement, Ownable {
         address[] memory _tokens
     ) {
         require(
+            _feeNumerator < FEE_DENOMINATOR &&
+                _feeNumerator > _referralFeeNumerator,
+            "InvalidFee"
+        );
+        require(
             _operator != address(0) &&
                 _treasury != address(0) &&
                 _verifier != address(0),

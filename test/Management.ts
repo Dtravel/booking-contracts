@@ -34,6 +34,33 @@ describe("Management test", function () {
     trvl = await mockErc20Factory.deploy("Dtravel", "TRVL");
   });
 
+  it("should not allow to deploy management contract with invalid fees", async () => {
+    const managementFactory = await ethers.getContractFactory("Management");
+    await expect(
+      managementFactory.deploy(
+        FEE_DENOMINATOR + 1000,
+        referralFeeNumerator,
+        payoutDelay,
+        Wallet.createRandom().address,
+        Wallet.createRandom().address,
+        Wallet.createRandom().address,
+        [paymentToken.address]
+      )
+    ).revertedWith("InvalidFee");
+
+    await expect(
+      managementFactory.deploy(
+        feeNumerator,
+        feeNumerator + 1,
+        payoutDelay,
+        Wallet.createRandom().address,
+        Wallet.createRandom().address,
+        Wallet.createRandom().address,
+        [paymentToken.address]
+      )
+    ).revertedWith("InvalidFee");
+  });
+
   it("should not allow to deploy management contract with invalid addresses", async () => {
     const managementFactory = await ethers.getContractFactory("Management");
     await expect(
