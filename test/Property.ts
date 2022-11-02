@@ -235,6 +235,44 @@ describe("Property test", function () {
   });
 
   describe("Book", async () => {
+    describe("Verify operator", async () => {
+      it("should revert if operator is unauthorized", async () => {
+        const guest = users[1];
+        const now = (await ethers.provider.getBlock("latest")).timestamp;
+        const setting = {
+          bookingId: 2,
+          checkIn: now + 1 * days,
+          checkOut: now + 2 * days,
+          expireAt: now + 3 * days,
+          bookingAmount: 65000,
+          paymentToken: busd.address,
+          referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
+          policies: [
+            {
+              expireAt: now,
+              refundAmount: 48000,
+            },
+            {
+              expireAt: now + 1 * days,
+              refundAmount: 35000,
+            },
+          ],
+        };
+
+        const signature = utils.randomBytes(65);
+
+        await property.connect(host).revokeAuthorized(operator.address);
+
+        await expect(
+          property.connect(guest).book(setting, signature)
+        ).revertedWith("Unsupported");
+
+        // reset operator to be authorized to process other test case
+        await property.connect(host).grantAuthorized(operator.address);
+      });
+    });
     describe("Validate setting", async () => {
       it("should revert if guest is not caller", async () => {
         const guest = users[1];
@@ -2993,6 +3031,20 @@ describe("Property test", function () {
       await expect(
         property.connect(newHost).updateHost(newHost.address)
       ).revertedWith("HostExisted");
+    });
+
+    it("should revert when updating host by unauthorized operator", async () => {
+      const currentHost = users[11];
+      const newHost = users[12];
+
+      await property.connect(currentHost).revokeAuthorized(operator.address);
+
+      await expect(
+        property.connect(operator).updateHost(newHost.address)
+      ).revertedWith("OnlyHostOrOperator");
+
+      // set operator to be authorized again to process other test case
+      await property.connect(currentHost).grantAuthorized(operator.address);
     });
   });
 
