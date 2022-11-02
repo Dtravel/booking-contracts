@@ -130,6 +130,8 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         external
         nonReentrant
     {
+        require(authorized[management.operator()], "UnauthorizedOperator");
+
         _validateSetting(_setting);
 
         // verify signed message
