@@ -91,7 +91,7 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         require(
             msgSender == host ||
                 (msgSender == operator && authorized[operator]),
-            "OnlyHostOrAuthorizedOperator"
+            "OnlyHostOrOperator"
         );
         require(_addr != address(0), "ZeroAddress");
         require(_addr != host, "HostExisted");
@@ -130,7 +130,7 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         external
         nonReentrant
     {
-        require(authorized[management.operator()], "UnauthorizedOperator");
+        require(authorized[management.operator()], "Unsupported");
 
         _validateSetting(_setting);
 
