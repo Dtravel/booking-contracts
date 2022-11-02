@@ -2950,7 +2950,7 @@ describe("Property test", function () {
     it("should revert when updating host if caller is NOT HOST/OPERATOR", async () => {
       const newHost = users[3];
       await expect(property.updateHost(newHost.address)).revertedWith(
-        "OnlyHostOrOperator"
+        "OnlyHostOrAuthorizedOperator"
       );
     });
 
@@ -2959,7 +2959,7 @@ describe("Property test", function () {
       const newHost = users[3];
       await expect(
         property.connect(authorizedUser).updateHost(newHost.address)
-      ).revertedWith("OnlyHostOrOperator");
+      ).revertedWith("OnlyHostOrAuthorizedOperator");
     });
 
     it("should revert when updating host to zero address", async () => {
@@ -2993,6 +2993,20 @@ describe("Property test", function () {
       await expect(
         property.connect(newHost).updateHost(newHost.address)
       ).revertedWith("HostExisted");
+    });
+
+    it("should revert when updating host by unauthorized operator", async () => {
+      const currentHost = users[11];
+      const newHost = users[12];
+
+      await property.connect(currentHost).revokeAuthorized(operator.address);
+
+      await expect(
+        property.connect(operator).updateHost(newHost.address)
+      ).revertedWith("OnlyHostOrAuthorizedOperator");
+
+      // set operator to be authorized again to process other test case
+      await property.connect(currentHost).grantAuthorized(operator.address);
     });
   });
 
