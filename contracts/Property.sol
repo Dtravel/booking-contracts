@@ -87,8 +87,10 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
      */
     function updateHost(address _addr) external {
         address msgSender = _msgSender();
+        address operator = management.operator();
         require(
-            msgSender == host || msgSender == management.operator(),
+            msgSender == host ||
+                (msgSender == operator && authorized[operator]),
             "OnlyHostOrOperator"
         );
         require(_addr != address(0), "ZeroAddress");
@@ -128,6 +130,8 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         external
         nonReentrant
     {
+        require(authorized[management.operator()], "Unsupported");
+
         _validateSetting(_setting);
 
         // verify signed message

@@ -4,11 +4,12 @@ pragma solidity ^0.8.4;
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
+import "./interfaces/IEIP712.sol";
 import "./interfaces/IManagement.sol";
 import "./interfaces/IFactory.sol";
 import "./interfaces/IProperty.sol";
 
-contract EIP712 is EIP712Upgradeable, OwnableUpgradeable {
+contract EIP712 is IEIP712, EIP712Upgradeable, OwnableUpgradeable {
     using ECDSAUpgradeable for bytes32;
 
     // keccak256("CancellationPolicy(uint256 expireAt,uint256 refundAmount)");
