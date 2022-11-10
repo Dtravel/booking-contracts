@@ -35,12 +35,13 @@ contract Factory is IFactory, OwnableUpgradeable {
        @param _propertyId The given property ID
        @param _host Address of property's host
      */
-    function createProperty(uint256 _propertyId, address _host)
-        external
-        returns (address _property)
-    {
+    function createProperty(
+        uint256 _propertyId,
+        address _host,
+        address _delegate
+    ) external returns (address _property) {
         require(_msgSender() == management.operator(), "OnlyOperator");
-        require(_host != address(0), "ZeroAddress");
+        require(_host != address(0) && _delegate != address(0), "ZeroAddress");
         require(property[_propertyId] == address(0), "PropertyExisted");
 
         bytes32 salt = keccak256(abi.encodePacked(_propertyId, VERSION));
@@ -53,7 +54,8 @@ contract Factory is IFactory, OwnableUpgradeable {
                     IProperty.init.selector,
                     _propertyId,
                     _host,
-                    address(management)
+                    address(management),
+                    _delegate
                 )
             )
         );

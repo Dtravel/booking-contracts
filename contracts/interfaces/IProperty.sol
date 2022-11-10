@@ -45,7 +45,8 @@ interface IProperty {
     function init(
         uint256 _propertyId,
         address _host,
-        address _management
+        address _management,
+        address _delegate
     ) external;
 
     function grantAuthorized(address _addr) external;

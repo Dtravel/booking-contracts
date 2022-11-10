@@ -52,7 +52,8 @@ contract PropertyV2 is
     function init(
         uint256 _propertyId,
         address _host,
-        address _management
+        address _management,
+        address _delegate
     ) external initializer {
         __Ownable_init();
         __ReentrancyGuard_init();
@@ -61,6 +62,7 @@ contract PropertyV2 is
         host = _host;
         paymentReceiver = _host;
         factory = _msgSender();
+        _delegate;
         management = IManagement(_management);
     }
 
