@@ -34,6 +34,7 @@ contract Factory is IFactory, OwnableUpgradeable {
        @dev    Caller must be Operator
        @param _propertyId The given property ID
        @param _host Address of property's host
+       @param _delegate Address of delegate contract
      */
     function createProperty(
         uint256 _propertyId,
