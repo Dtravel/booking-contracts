@@ -9,8 +9,8 @@ import "../interfaces/IProperty.sol";
     @dev The contract has the authority of the host to operate property contracts.
         It helps Dtravel channel migrate to a new operator address in a single call,
         using transferOwnership() from Ownable.sol
-         - Contract owner is OPERATOR that has DEFAULT_ADMIN_ROLE
-         - OPERATOR can grant/revoke DELEGATE_ROLE to a specific address
+         - Contract owner is ADMIN that has DEFAULT_ADMIN_ROLE
+         - ADMIN can grant/revoke DELEGATE_ROLE
  */
 
 contract Delegate is IDelegate, AccessControlEnumerableUpgradeable {
