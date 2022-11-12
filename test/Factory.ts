@@ -34,6 +34,7 @@ describe("Factory test", function () {
   let operator: SignerWithAddress;
   let verifier: SignerWithAddress;
   let treasury: SignerWithAddress;
+  let delegate: SignerWithAddress;
   let users: SignerWithAddress[];
   let propertyBeacon: Contract;
 
@@ -43,7 +44,8 @@ describe("Factory test", function () {
   const payoutDelay = 1 * days;
 
   before(async () => {
-    [operator, verifier, treasury, ...users] = await ethers.getSigners();
+    [operator, verifier, treasury, delegate, ...users] =
+      await ethers.getSigners();
 
     // deploy mock erc20 for payment
     const mockErc20Factory = await ethers.getContractFactory("ERC20Test");
@@ -71,7 +73,7 @@ describe("Factory test", function () {
       expect(propertyBeacon.address).not.deep.equal(constants.AddressZero);
     });
 
-    it("should revert when deploy with management address is zero", async () => {
+    it("should revert when deploy with management address equal to zero", async () => {
       const factoryFactory = await ethers.getContractFactory("Factory");
       await expect(
         upgrades.deployProxy(
@@ -84,7 +86,7 @@ describe("Factory test", function () {
       ).revertedWith("ZeroAddress");
     });
 
-    it("should revert when deploy with beacon address is zero", async () => {
+    it("should revert when deploy with beacon address equal to zero", async () => {
       const factoryFactory = await ethers.getContractFactory("Factory");
       await expect(
         upgrades.deployProxy(
@@ -114,7 +116,9 @@ describe("Factory test", function () {
       const propertyId = 1;
       const host = users[0];
       await expect(
-        factory.connect(verifier).createProperty(propertyId, host.address)
+        factory
+          .connect(verifier)
+          .createProperty(propertyId, host.address, delegate.address)
       ).revertedWith("OnlyOperator");
     });
 
@@ -122,7 +126,19 @@ describe("Factory test", function () {
       const propertyId = 1;
       const host = constants.AddressZero;
       await expect(
-        factory.connect(operator).createProperty(propertyId, host)
+        factory
+          .connect(operator)
+          .createProperty(propertyId, host, delegate.address)
+      ).revertedWith("ZeroAddress");
+    });
+
+    it("should revert when creating property if delegate address is zero", async () => {
+      const propertyId = 1;
+      const host = constants.AddressZero;
+      await expect(
+        factory
+          .connect(operator)
+          .createProperty(propertyId, host, constants.AddressZero)
       ).revertedWith("ZeroAddress");
     });
 
@@ -139,13 +155,14 @@ describe("Factory test", function () {
       );
 
       const ABI = [
-        "function init(uint256 _propertyId,address _host,address _management)",
+        "function init(uint256 _propertyId,address _host,address _management,address _delegate)",
       ];
       const functionSelector = new ethers.utils.Interface(ABI);
       const data = functionSelector.encodeFunctionData("init", [
         inputPropertyId,
         inputHost.address,
         management.address,
+        delegate.address,
       ]);
 
       const encodedParams = defaultAbiCoder
@@ -164,7 +181,7 @@ describe("Factory test", function () {
       // create new property
       const tx = await factory
         .connect(operator)
-        .createProperty(inputPropertyId, inputHost.address);
+        .createProperty(inputPropertyId, inputHost.address, delegate.address);
       const receipt = await tx.wait();
       const events = await factory.queryFilter(
         factory.filters.NewProperty(),
@@ -196,7 +213,9 @@ describe("Factory test", function () {
       const propertyId = 1;
       const host = users[2];
       await expect(
-        factory.connect(operator).createProperty(propertyId, host.address)
+        factory
+          .connect(operator)
+          .createProperty(propertyId, host.address, delegate.address)
       ).revertedWith("PropertyExisted");
     });
 
@@ -214,13 +233,14 @@ describe("Factory test", function () {
         );
 
         const ABI = [
-          "function init(uint256 _propertyId,address _host,address _management)",
+          "function init(uint256 _propertyId,address _host,address _management,address _delegate)",
         ];
         const functionSelector = new ethers.utils.Interface(ABI);
         const data = functionSelector.encodeFunctionData("init", [
           inputPropertyId,
           inputHost.address,
           management.address,
+          delegate.address,
         ]);
 
         const encodedParams = defaultAbiCoder
@@ -241,7 +261,7 @@ describe("Factory test", function () {
         // create new property
         const tx = await factory
           .connect(operator)
-          .createProperty(inputPropertyId, inputHost.address);
+          .createProperty(inputPropertyId, inputHost.address, delegate.address);
         const receipt = await tx.wait();
         const events = await factory.queryFilter(
           factory.filters.NewProperty(),
