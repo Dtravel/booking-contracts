@@ -153,6 +153,9 @@ describe("Property test", function () {
       const id = await property.propertyId();
       expect(id).deep.equal(propertyId);
       expect(hostAddress).deep.equal(host.address);
+
+      const res = await property.authorized(delegate.address);
+      expect(res).deep.equal(true);
     });
 
     it("should get property owner", async () => {
@@ -172,16 +175,22 @@ describe("Property test", function () {
   });
 
   describe("Grant authorized role", async () => {
-    it("should grant authorized address if caller is HOST", async () => {
-      const authorizedAddress = users[1].address;
+    it("should grant authorized address if caller is HOST or AUTHORIZED ADDRESS", async () => {
+      const authorized = users[1];
 
-      await property.connect(host).grantAuthorized(authorizedAddress);
+      await property.connect(host).grantAuthorized(authorized.address);
 
-      const res = await property.authorized(authorizedAddress);
+      let res = await property.authorized(authorized.address);
+      expect(res).deep.equal(true);
+
+      const newAuthorized = users[3];
+      await property.connect(authorized).grantAuthorized(newAuthorized.address);
+
+      res = await property.authorized(newAuthorized.address);
       expect(res).deep.equal(true);
     });
 
-    it("should revert when granting if caller is NOT HOST", async () => {
+    it("should revert when granting if caller is unathorized", async () => {
       const authorizedAddress = Wallet.createRandom().address;
 
       await expect(
@@ -225,12 +234,19 @@ describe("Property test", function () {
       ).revertedWith("NotYetGranted");
     });
 
-    it("should revoke authorized if caller is HOST", async () => {
-      const authorizedAddress = users[1].address;
+    it("should revoke authorized if caller is HOST or AUTHORIZED", async () => {
+      let authorized = users[3];
 
-      await property.connect(host).revokeAuthorized(authorizedAddress);
+      await property.connect(users[1]).revokeAuthorized(authorized.address);
 
-      const res = await property.authorized(authorizedAddress);
+      let res = await property.authorized(authorized.address);
+      expect(res).deep.equal(false);
+
+      authorized = users[1];
+
+      await property.connect(host).revokeAuthorized(authorized.address);
+
+      res = await property.authorized(authorized.address);
       expect(res).deep.equal(false);
     });
   });
@@ -2409,13 +2425,13 @@ describe("Property test", function () {
         "PayOut"
       );
 
-      await increaseTime(1 * days); // start 2nd policy period
+      await increaseTime(0.5 * days); // start 2nd policy period
 
       await expect(
-        property.connect(guest).payout(setting.bookingId)
+        property.connect(guest).cancel(setting.bookingId)
       ).revertedWith("InsufficientBalance");
 
-      await decreaseTime(1 * days); // restore evm time
+      await decreaseTime(0.5 * days); // restore evm time
     });
 
     it("should cancel a booking when refund policies are available", async () => {

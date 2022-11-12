@@ -107,7 +107,19 @@ describe("Delegate test", function () {
     // link created contracts
     await management.setFactory(factory.address);
     await management.setEIP712(eip712.address);
+  });
 
+  it("should revert when deploying delegate contract with invalis param", async () => {
+    // deploy delegate contract then grant delegate to operator by default
+    const delegateFactory = await ethers.getContractFactory("Delegate");
+    await expect(
+      upgrades.deployProxy(delegateFactory, [constants.AddressZero], {
+        initializer: "init",
+      })
+    ).revertedWith("ZeroAddress");
+  });
+
+  it("should deploy delegate contact using proxy pattern", async () => {
     // deploy delegate contract then grant delegate to operator by default
     const delegateFactory = await ethers.getContractFactory("Delegate");
     delegate = (await upgrades.deployProxy(
