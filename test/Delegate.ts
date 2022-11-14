@@ -109,7 +109,7 @@ describe("Delegate test", function () {
     await management.setEIP712(eip712.address);
   });
 
-  it("should revert when deploying delegate contract with invalis param", async () => {
+  it("should revert when deploying delegate contract with invalid param", async () => {
     // deploy delegate contract then grant delegate to operator by default
     const delegateFactory = await ethers.getContractFactory("Delegate");
     await expect(
