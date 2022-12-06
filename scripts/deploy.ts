@@ -26,10 +26,6 @@ async function main() {
     const busd = await mockErc20Factory.deploy("Binance USD", "BUSD");
     console.log("- BUSD            : ", busd.address);
 
-    // deploy mock trvl for payment
-    const trvl = await mockErc20Factory.deploy("Dtravel", "TRVL");
-    console.log("- TRVL            : ", trvl.address);
-
     // deploy management
     const managementFactory = await ethers.getContractFactory("Management");
     const management = await managementFactory.deploy(
@@ -39,7 +35,7 @@ async function main() {
       operator,
       treasury,
       verifier,
-      [trvl.address, busd.address]
+      [busd.address]
     );
     console.log("- Management      : ", management.address);
 
@@ -73,6 +69,13 @@ async function main() {
     // link created contracts
     await management.setFactory(factory.address);
     await management.setEIP712(eip712.address);
+
+    // deploy delegate contract
+    const delegateFactory = await ethers.getContractFactory("Delegate");
+    const delegate = await upgrades.deployProxy(delegateFactory, [operator], {
+      initializer: "init",
+    });
+    console.log("- Delegate        : ", delegate.address);
   } else if (network.name === "mainnet") {
     // TODO
   }

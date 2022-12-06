@@ -77,7 +77,7 @@ describe("Upgradeable property test", function () {
 
       let tx = await factory
         .connect(operator)
-        .createProperty(inputPropertyId, host.address);
+        .createProperty(inputPropertyId, host.address, operator.address);
       let receipt = await tx.wait();
       let events = await factory.queryFilter(
         factory.filters.NewProperty(),
@@ -99,7 +99,7 @@ describe("Upgradeable property test", function () {
 
       tx = await factory
         .connect(operator)
-        .createProperty(inputPropertyId, host.address);
+        .createProperty(inputPropertyId, host.address, operator.address);
       receipt = await tx.wait();
       events = await factory.queryFilter(
         factory.filters.NewProperty(),

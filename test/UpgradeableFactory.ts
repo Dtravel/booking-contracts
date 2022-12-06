@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { ethers, upgrades } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Management, ERC20Test, Factory, FactoryV2 } from "../typechain";
-import { constants, Contract } from "ethers";
+import { constants, Contract, Wallet } from "ethers";
 
 describe("Upgradeable factory test", function () {
   let management: Management;
@@ -73,7 +73,11 @@ describe("Upgradeable factory test", function () {
     it("should interact with new createProperty implementation", async () => {
       const propertyId = 1;
       await expect(
-        factoryV2.createProperty(propertyId, host.address)
+        factoryV2.createProperty(
+          propertyId,
+          host.address,
+          Wallet.createRandom().address
+        )
       ).revertedWith("Factory has been upgraded successfully!");
     });
   });

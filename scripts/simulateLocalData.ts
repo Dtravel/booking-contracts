@@ -77,13 +77,24 @@ async function main() {
   // link created contracts
   await management.setFactory(factory.address);
   await management.setEIP712(eip712.address);
+
+  // deploy delegate contract
+  const delegateFactory = await ethers.getContractFactory("Delegate");
+  const delegate = await upgrades.deployProxy(
+    delegateFactory,
+    [operator.address],
+    {
+      initializer: "init",
+    }
+  );
+  console.log("- Delegate        : ", delegate.address);
   console.log("=========== DEPLOY COMPLETE ===========\n");
 
   const initialBalance = BigNumber.from(utils.parseEther("1000000000000"));
 
   // typed data hash for eip-712
   const domain = {
-    name: "Booking_Property",
+    name: "DtravelBooking",
     version: "1",
     chainId: network.config.chainId || 31337,
     verifyingContract: eip712.address,
@@ -99,6 +110,7 @@ async function main() {
       { name: "paymentToken", type: "address" },
       { name: "referrer", type: "address" },
       { name: "guest", type: "address" },
+      { name: "property", type: "address" },
       { name: "policies", type: "CancellationPolicy[]" },
     ],
     CancellationPolicy: [
@@ -112,7 +124,7 @@ async function main() {
     const propertyId = i;
     const tx = await factory
       .connect(operator)
-      .createProperty(propertyId, host.address);
+      .createProperty(propertyId, host.address, delegate.address);
     const receipt = await tx.wait();
     const events = await factory.queryFilter(
       factory.filters.NewProperty(),
@@ -122,7 +134,6 @@ async function main() {
     const event = events.find((e) => e.event === "NewProperty");
     const createdProperty = event!.args!.property;
     const property = await ethers.getContractAt("Property", createdProperty);
-    domain.verifyingContract = property.address;
 
     console.log(`------> Created property id ${i} at ${property.address}`);
 
@@ -148,6 +159,7 @@ async function main() {
         paymentToken: i % 2 === 0 ? busd.address : trvl.address,
         referrer: ethers.constants.AddressZero,
         guest: guest.address,
+        property: property.address,
         policies: [
           {
             expireAt: now,
@@ -160,21 +172,8 @@ async function main() {
         ],
       };
 
-      const value = {
-        bookingId: setting.bookingId,
-        checkIn: setting.checkIn,
-        checkOut: setting.checkOut,
-        expireAt: setting.expireAt,
-        bookingAmount: setting.bookingAmount,
-        paymentToken: setting.paymentToken,
-        referrer: setting.referrer,
-        guest: guest.address,
-        policies: setting.policies,
-      };
-
       // generate a valid signature
-      const signature = await verifier._signTypedData(domain, types, value);
-
+      const signature = await verifier._signTypedData(domain, types, setting);
       await property.connect(guest).book(setting, signature);
       console.log(
         `----> Generate booking id ${setting.bookingId} for guest ${guest.address}`
