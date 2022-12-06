@@ -40,14 +40,15 @@ contract FactoryV2 is IFactory, OwnableUpgradeable {
         propertyBeacon = _beacon;
     }
 
-    function createProperty(uint256 _propertyId, address _host)
-        external
-        pure
-        returns (address _property)
-    {
+    function createProperty(
+        uint256 _propertyId,
+        address _host,
+        address _delegate
+    ) external pure returns (address _property) {
         _propertyId;
         _host;
         _property;
+        _delegate;
         // solhint-disable-next-line
         revert("Factory has been upgraded successfully!");
     }

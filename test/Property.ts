@@ -27,6 +27,7 @@ describe("Property test", function () {
   let operator: SignerWithAddress;
   let verifier: SignerWithAddress;
   let treasury: SignerWithAddress;
+  let delegate: SignerWithAddress;
   let referrer: SignerWithAddress;
   let host: SignerWithAddress;
   let users: SignerWithAddress[];
@@ -66,7 +67,7 @@ describe("Property test", function () {
   };
 
   before(async () => {
-    [admin, operator, verifier, treasury, referrer, host, ...users] =
+    [admin, operator, verifier, treasury, referrer, host, delegate, ...users] =
       await ethers.getSigners();
 
     // deploy mock busd for payment
@@ -122,7 +123,7 @@ describe("Property test", function () {
     fakeProperty = (await upgrades.deployBeaconProxy(
       propertyBeacon,
       propertyFactory,
-      [999999, users[9].address, management.address],
+      [999999, users[9].address, management.address, delegate.address],
       {
         initializer: "init",
       }
@@ -136,7 +137,7 @@ describe("Property test", function () {
 
       const tx = await factory
         .connect(operator)
-        .createProperty(inputPropertyId, host.address);
+        .createProperty(inputPropertyId, host.address, delegate.address);
       const receipt = await tx.wait();
       const events = await factory.queryFilter(
         factory.filters.NewProperty(),
@@ -152,6 +153,9 @@ describe("Property test", function () {
       const id = await property.propertyId();
       expect(id).deep.equal(propertyId);
       expect(hostAddress).deep.equal(host.address);
+
+      const res = await property.authorized(delegate.address);
+      expect(res).deep.equal(true);
     });
 
     it("should get property owner", async () => {
@@ -171,21 +175,27 @@ describe("Property test", function () {
   });
 
   describe("Grant authorized role", async () => {
-    it("should grant authorized address if caller is HOST", async () => {
-      const authorizedAddress = users[1].address;
+    it("should grant authorized address if caller is HOST or AUTHORIZED ADDRESS", async () => {
+      const authorized = users[1];
 
-      await property.connect(host).grantAuthorized(authorizedAddress);
+      await property.connect(host).grantAuthorized(authorized.address);
 
-      const res = await property.authorized(authorizedAddress);
+      let res = await property.authorized(authorized.address);
+      expect(res).deep.equal(true);
+
+      const newAuthorized = users[3];
+      await property.connect(authorized).grantAuthorized(newAuthorized.address);
+
+      res = await property.authorized(newAuthorized.address);
       expect(res).deep.equal(true);
     });
 
-    it("should revert when granting if caller is NOT HOST", async () => {
+    it("should revert when granting if caller is unathorized", async () => {
       const authorizedAddress = Wallet.createRandom().address;
 
       await expect(
         property.connect(admin).grantAuthorized(authorizedAddress)
-      ).revertedWith("OnlyHost");
+      ).revertedWith("Unauthorized");
     });
 
     it("should revert when granting authorized role for zero address", async () => {
@@ -208,7 +218,7 @@ describe("Property test", function () {
 
       await expect(
         property.connect(admin).revokeAuthorized(authorizedAddress)
-      ).revertedWith("OnlyHost");
+      ).revertedWith("Unauthorized");
     });
 
     it("should revert when revoking authorized role for zero address", async () => {
@@ -224,55 +234,24 @@ describe("Property test", function () {
       ).revertedWith("NotYetGranted");
     });
 
-    it("should revoke authorized if caller is HOST", async () => {
-      const authorizedAddress = users[1].address;
+    it("should revoke authorized if caller is HOST or AUTHORIZED", async () => {
+      let authorized = users[3];
 
-      await property.connect(host).revokeAuthorized(authorizedAddress);
+      await property.connect(users[1]).revokeAuthorized(authorized.address);
 
-      const res = await property.authorized(authorizedAddress);
+      let res = await property.authorized(authorized.address);
+      expect(res).deep.equal(false);
+
+      authorized = users[1];
+
+      await property.connect(host).revokeAuthorized(authorized.address);
+
+      res = await property.authorized(authorized.address);
       expect(res).deep.equal(false);
     });
   });
 
   describe("Book", async () => {
-    describe("Verify operator", async () => {
-      it("should revert if operator is unauthorized", async () => {
-        const guest = users[1];
-        const now = (await ethers.provider.getBlock("latest")).timestamp;
-        const setting = {
-          bookingId: 2,
-          checkIn: now + 1 * days,
-          checkOut: now + 2 * days,
-          expireAt: now + 3 * days,
-          bookingAmount: 65000,
-          paymentToken: busd.address,
-          referrer: constants.AddressZero,
-          guest: guest.address,
-          property: property.address,
-          policies: [
-            {
-              expireAt: now,
-              refundAmount: 48000,
-            },
-            {
-              expireAt: now + 1 * days,
-              refundAmount: 35000,
-            },
-          ],
-        };
-
-        const signature = utils.randomBytes(65);
-
-        await property.connect(host).revokeAuthorized(operator.address);
-
-        await expect(
-          property.connect(guest).book(setting, signature)
-        ).revertedWith("Unsupported");
-
-        // reset operator to be authorized to process other test case
-        await property.connect(host).grantAuthorized(operator.address);
-      });
-    });
     describe("Validate setting", async () => {
       it("should revert if guest is not caller", async () => {
         const guest = users[1];
@@ -2446,13 +2425,13 @@ describe("Property test", function () {
         "PayOut"
       );
 
-      await increaseTime(1 * days); // start 2nd policy period
+      await increaseTime(0.5 * days); // start 2nd policy period
 
       await expect(
-        property.connect(guest).payout(setting.bookingId)
+        property.connect(guest).cancel(setting.bookingId)
       ).revertedWith("InsufficientBalance");
 
-      await decreaseTime(1 * days); // restore evm time
+      await decreaseTime(0.5 * days); // restore evm time
     });
 
     it("should cancel a booking when refund policies are available", async () => {
@@ -2988,7 +2967,7 @@ describe("Property test", function () {
     it("should revert when updating host if caller is NOT HOST/OPERATOR", async () => {
       const newHost = users[3];
       await expect(property.updateHost(newHost.address)).revertedWith(
-        "OnlyHostOrOperator"
+        "Unauthorized"
       );
     });
 
@@ -2997,7 +2976,7 @@ describe("Property test", function () {
       const newHost = users[3];
       await expect(
         property.connect(authorizedUser).updateHost(newHost.address)
-      ).revertedWith("OnlyHostOrOperator");
+      ).revertedWith("Unauthorized");
     });
 
     it("should revert when updating host to zero address", async () => {
@@ -3012,18 +2991,18 @@ describe("Property test", function () {
         .emit(property, "NewHost")
         .withArgs(newHost.address);
 
-      const newHostResult = await property.host();
-      expect(newHostResult).deep.equal(newHost.address);
+      const res = await property.host();
+      expect(res).deep.equal(newHost.address);
     });
 
-    it("should allow operator to update host", async () => {
+    it("should allow delegate to update host", async () => {
       const newHost = users[11];
-      await expect(property.connect(operator).updateHost(newHost.address))
+      await expect(property.connect(delegate).updateHost(newHost.address))
         .emit(property, "NewHost")
         .withArgs(newHost.address);
 
-      const newHostResult = await property.host();
-      expect(newHostResult).deep.equal(newHost.address);
+      const res = await property.host();
+      expect(res).deep.equal(newHost.address);
     });
 
     it("should revert when updating host that has already set up", async () => {
@@ -3033,18 +3012,18 @@ describe("Property test", function () {
       ).revertedWith("HostExisted");
     });
 
-    it("should revert when updating host by unauthorized operator", async () => {
+    it("should revert when updating host by unauthorized address", async () => {
       const currentHost = users[11];
       const newHost = users[12];
 
-      await property.connect(currentHost).revokeAuthorized(operator.address);
+      await property.connect(currentHost).revokeAuthorized(delegate.address);
 
       await expect(
-        property.connect(operator).updateHost(newHost.address)
-      ).revertedWith("OnlyHostOrOperator");
+        property.connect(delegate).updateHost(newHost.address)
+      ).revertedWith("Unauthorized");
 
       // set operator to be authorized again to process other test case
-      await property.connect(currentHost).grantAuthorized(operator.address);
+      await property.connect(currentHost).grantAuthorized(delegate.address);
     });
   });
 
@@ -3053,7 +3032,7 @@ describe("Property test", function () {
       const newPaymentReceiver = users[3];
       await expect(
         property.updatePaymentReceiver(newPaymentReceiver.address)
-      ).revertedWith("OnlyHostOrAuthorizedAddress");
+      ).revertedWith("Unauthorized");
     });
 
     it("should revert when updating payment receiver to zero address", async () => {
@@ -3080,37 +3059,11 @@ describe("Property test", function () {
       expect(newPaymentReceiverResult).deep.equal(newPaymentReceiver.address);
     });
 
-    it("should allow operator to update payment receiver", async () => {
+    it("should allow delegate to update payment receiver", async () => {
       const newPaymentReceiver = users[10];
       await expect(
         property
-          .connect(operator)
-          .updatePaymentReceiver(newPaymentReceiver.address)
-      )
-        .emit(property, "NewPaymentReceiver")
-        .withArgs(newPaymentReceiver.address);
-
-      const newPaymentReceiverResult = await property.paymentReceiver();
-      expect(newPaymentReceiverResult).deep.equal(newPaymentReceiver.address);
-    });
-
-    it("should allow new operator to update payment receiver after being authorized", async () => {
-      const currentHost = users[11];
-      const newPaymentReceiver = users[9];
-      const newOperator = users[8];
-      await management.connect(admin).setOperator(newOperator.address);
-
-      // should revert before new oprator is authorized
-      await expect(
-        property
-          .connect(newOperator)
-          .updatePaymentReceiver(newPaymentReceiver.address)
-      ).revertedWith("OnlyHostOrAuthorizedAddress");
-
-      await property.connect(currentHost).grantAuthorized(newOperator.address);
-      await expect(
-        property
-          .connect(operator)
+          .connect(delegate)
           .updatePaymentReceiver(newPaymentReceiver.address)
       )
         .emit(property, "NewPaymentReceiver")
@@ -3122,11 +3075,13 @@ describe("Property test", function () {
 
     it("should allow authorized address to update payment receiver", async () => {
       const currentHost = users[11];
-      const newPaymentReceiver = users[13];
+      const newPaymentReceiver = users[12];
       const authorizedUser = users[1];
+
       await property
         .connect(currentHost)
         .grantAuthorized(authorizedUser.address);
+
       await expect(
         property
           .connect(authorizedUser)
@@ -3141,7 +3096,7 @@ describe("Property test", function () {
 
     it("should revert when updating payment receiver that has already set up", async () => {
       const currentHost = users[11];
-      const newPaymentReceiver = users[13];
+      const newPaymentReceiver = users[12];
       await expect(
         property
           .connect(currentHost)
@@ -3185,8 +3140,8 @@ describe("Property test", function () {
 
       // update new payment receiver
       const currentHost = users[11];
-      const currentPaymentReceiver = users[13];
-      const newPaymentReceiver = users[12];
+      const currentPaymentReceiver = users[12];
+      const newPaymentReceiver = users[10];
 
       await property
         .connect(currentHost)

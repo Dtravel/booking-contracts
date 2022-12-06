@@ -41,7 +41,8 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     function init(
         uint256 _propertyId,
         address _host,
-        address _management
+        address _management,
+        address _delegate
     ) external initializer {
         __Ownable_init();
         __ReentrancyGuard_init();
@@ -51,16 +52,17 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         paymentReceiver = _host;
         factory = _msgSender();
         management = IManagement(_management);
-        authorized[management.operator()] = true;
+        authorized[_delegate] = true;
     }
 
     /**
        @notice Grant authorized role
-       @dev    Caller must be HOST
+       @dev    Caller must be HOST or AUTHORIZED ADDRESS
        @param _addr authorized address
      */
     function grantAuthorized(address _addr) external {
-        require(_msgSender() == host, "OnlyHost");
+        address sender = _msgSender();
+        require(sender == host || authorized[sender], "Unauthorized");
         require(_addr != address(0), "ZeroAddress");
         require(!authorized[_addr], "GrantedAlready");
 
@@ -69,11 +71,12 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
 
     /**
        @notice Revoke authorized role
-       @dev    Caller must be HOST
+       @dev    Caller must be HOST or AUTHORIZED ADDRESS
        @param _addr authorized address
      */
     function revokeAuthorized(address _addr) external {
-        require(_msgSender() == host, "OnlyHost");
+        address sender = _msgSender();
+        require(sender == host || authorized[sender], "Unauthorized");
         require(_addr != address(0), "ZeroAddress");
         require(authorized[_addr], "NotYetGranted");
 
@@ -82,17 +85,12 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
 
     /**
        @notice Update host wallet
-       @dev    Caller must be HOST or OPERATOR
+       @dev    Caller must be HOST or AUTHORIZED ADDRESS
        @param _addr new host address
      */
     function updateHost(address _addr) external {
-        address msgSender = _msgSender();
-        address operator = management.operator();
-        require(
-            msgSender == host ||
-                (msgSender == operator && authorized[operator]),
-            "OnlyHostOrOperator"
-        );
+        address sender = _msgSender();
+        require(sender == host || authorized[sender], "Unauthorized");
         require(_addr != address(0), "ZeroAddress");
         require(_addr != host, "HostExisted");
 
@@ -107,11 +105,8 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         @param _addr new payment receiver address
      */
     function updatePaymentReceiver(address _addr) external {
-        address msgSender = _msgSender();
-        require(
-            msgSender == host || authorized[msgSender],
-            "OnlyHostOrAuthorizedAddress"
-        );
+        address sender = _msgSender();
+        require(sender == host || authorized[sender], "Unauthorized");
         require(_addr != address(0), "ZeroAddress");
         require(_addr != paymentReceiver, "PaymentReceiverExisted");
 
@@ -130,8 +125,6 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         external
         nonReentrant
     {
-        require(authorized[management.operator()], "Unsupported");
-
         _validateSetting(_setting);
 
         // verify signed message
