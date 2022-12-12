@@ -178,13 +178,19 @@ describe("Property test", function () {
     it("should grant authorized address if caller is HOST or AUTHORIZED ADDRESS", async () => {
       const authorized = users[1];
 
-      await property.connect(host).grantAuthorized(authorized.address);
+      await expect(property.connect(host).grantAuthorized(authorized.address))
+        .emit(property, "GrantAuthorized")
+        .withArgs(authorized.address);
 
       let res = await property.authorized(authorized.address);
       expect(res).deep.equal(true);
 
       const newAuthorized = users[3];
-      await property.connect(authorized).grantAuthorized(newAuthorized.address);
+      await expect(
+        property.connect(authorized).grantAuthorized(newAuthorized.address)
+      )
+        .emit(property, "GrantAuthorized")
+        .withArgs(newAuthorized.address);
 
       res = await property.authorized(newAuthorized.address);
       expect(res).deep.equal(true);
@@ -237,14 +243,20 @@ describe("Property test", function () {
     it("should revoke authorized if caller is HOST or AUTHORIZED", async () => {
       let authorized = users[3];
 
-      await property.connect(users[1]).revokeAuthorized(authorized.address);
+      await expect(
+        property.connect(users[1]).revokeAuthorized(authorized.address)
+      )
+        .emit(property, "RevokeAuthorized")
+        .withArgs(authorized.address);
 
       let res = await property.authorized(authorized.address);
       expect(res).deep.equal(false);
 
       authorized = users[1];
 
-      await property.connect(host).revokeAuthorized(authorized.address);
+      await expect(property.connect(host).revokeAuthorized(authorized.address))
+        .emit(property, "RevokeAuthorized")
+        .withArgs(authorized.address);
 
       res = await property.authorized(authorized.address);
       expect(res).deep.equal(false);
