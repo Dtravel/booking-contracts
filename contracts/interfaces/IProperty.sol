@@ -107,12 +107,7 @@ interface IProperty {
         BookingStatus status
     );
 
-    event GrantAuthorized (
-        address indexed addr
-    );
+    event GrantAuthorized(address indexed addr);
 
-    event RevokeAuthorized (
-        address indexed addr
-    );
-
+    event RevokeAuthorized(address indexed addr);
 }
