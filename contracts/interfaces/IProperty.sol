@@ -106,4 +106,13 @@ interface IProperty {
         uint256 referrerAmount,
         BookingStatus status
     );
+
+    event GrantAuthorized (
+        address indexed addr
+    );
+
+    event RevokeAuthorized (
+        address indexed addr
+    );
+
 }
