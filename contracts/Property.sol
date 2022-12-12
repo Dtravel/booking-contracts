@@ -67,6 +67,8 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         require(!authorized[_addr], "GrantedAlready");
 
         authorized[_addr] = true;
+
+        emit GrantAuthorized(_addr);
     }
 
     /**
@@ -81,6 +83,8 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         require(authorized[_addr], "NotYetGranted");
 
         authorized[_addr] = false;
+
+        emit RevokeAuthorized(_addr);
     }
 
     /**
