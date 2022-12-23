@@ -292,6 +292,9 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
                         info.balance >= info.policies[i].refundAmount,
                         "InsufficientBalance"
                     );
+                    // we allow guests to deposit funds in property contract even though these funds are insufficient to charge payment later.
+                    // Guests have to ask host for refund. Therefore, the condition to check if info.balance >= sum of required refund in policies is ignored.
+                    // This also saves us some gas to validate a new booking input in function `_validateSetting`.
                     toBePaid = info.balance - info.policies[i].refundAmount;
                     break;
                 }
