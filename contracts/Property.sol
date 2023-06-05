@@ -348,6 +348,12 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
             referralFee;
         uint256 hostRevenue = toBePaid - fee - referralFee;
 
+        // capture insurance fee from host revenue
+        // this captured fee is pending and only charged in the final payout
+        InsuranceInfo memory insurance = insuranceInfo[_bookingId];
+        uint256 insuranceFee = insurance.kygFee + insurance.damageProtectionFee;
+        hostRevenue = hostRevenue - insuranceFee;
+
         // transfer payment and charge fee
         IERC20Upgradeable paymentToken = IERC20Upgradeable(info.paymentToken);
 
@@ -355,6 +361,11 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         paymentToken.safeTransfer(management.treasury(), fee);
         if (info.referrer != address(0)) {
             paymentToken.safeTransfer(info.referrer, referralFee);
+        }
+
+        // transfer insurance fee in the final payout
+        if (status == BookingStatus.FULLY_PAID) {
+            paymentToken.safeTransfer(insurance.feeReceiver, insuranceFee);
         }
 
         emit PayOut(
