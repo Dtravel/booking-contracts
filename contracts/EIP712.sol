@@ -15,9 +15,12 @@ contract EIP712 is IEIP712, EIP712Upgradeable, OwnableUpgradeable {
     // keccak256("CancellationPolicy(uint256 expireAt,uint256 refundAmount)");
     bytes32 private constant CANCELLATION_POLICY_TYPEHASH =
         0x71ed7adc2b3cc6f42e80ad08652651cbc6e0fd93b50d04298efafcfb6570f246;
-    // keccak256("Msg(uint256 bookingId,uint256 checkIn,uint256 checkOut,uint256 expireAt,uint256 bookingAmount,address paymentToken,address referrer,address guest,address property,CancellationPolicy[] policies)CancellationPolicy(uint256 expireAt,uint256 refundAmount)");
+    // keccak256("InsuranceInfo(uint256 kygFee,uint256 damageProtectionFee,address feeReceiver)");
+    bytes32 private constant INSURANCE_INFO_TYPEHASH =
+        0xb39d7fbb3763366890598ba1e808219ec1dba0b1146c84ddcdd39400fc09c9d8;
+    // keccak256("Msg(uint256 bookingId,uint256 checkIn,uint256 checkOut,uint256 expireAt,uint256 bookingAmount,address paymentToken,address referrer,address guest,address property,InsuranceInfo insuranceInfo,CancellationPolicy[] policies)InsuranceInfo(uint256 kygFee,uint256 damageProtectionFee,address feeReceiver)CancellationPolicy(uint256 expireAt,uint256 refundAmount)");
     bytes32 private constant BOOKING_SETTING_TYPEHASH =
-        0x56c4cd6295f124426ae96b6210625fb14be94a8cb5b0001c745a3ad88b5297c1;
+        0x448c872397cccba070563b6bde399ef7445b8261480bfa000bc7ddfac8cadc69;
 
     IManagement public management;
 
@@ -57,7 +60,14 @@ contract EIP712 is IEIP712, EIP712Upgradeable, OwnableUpgradeable {
                 )
             );
         }
-
+        bytes32 insuranceInfoHash = keccak256(
+            abi.encode(
+                INSURANCE_INFO_TYPEHASH,
+                _setting.insuranceInfo.kygFee,
+                _setting.insuranceInfo.damageProtectionFee,
+                _setting.insuranceInfo.feeReceiver
+            )
+        );
         {
             address signer = _hashTypedDataV4(
                 keccak256(
@@ -67,14 +77,15 @@ contract EIP712 is IEIP712, EIP712Upgradeable, OwnableUpgradeable {
                             _setting.bookingId,
                             _setting.checkIn,
                             _setting.checkOut,
-                            _setting.expireAt
+                            _setting.expireAt,
+                            _setting.bookingAmount
                         ),
                         abi.encode(
-                            _setting.bookingAmount,
                             _setting.paymentToken,
                             _setting.referrer,
                             _setting.guest,
                             msgSender,
+                            insuranceInfoHash,
                             keccak256(abi.encodePacked(policiesHashes))
                         )
                     )
