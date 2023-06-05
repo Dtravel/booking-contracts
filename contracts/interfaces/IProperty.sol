@@ -7,6 +7,12 @@ interface IProperty {
         uint256 refundAmount;
     }
 
+    struct InsuranceInfo {
+        uint256 kygFee;
+        uint256 damageProtectionFee;
+        address feeReceiver;
+    }
+
     struct BookingInfo {
         uint256 checkIn;
         uint256 checkOut;
@@ -39,6 +45,7 @@ interface IProperty {
         address referrer;
         address guest;
         address property;
+        InsuranceInfo insuranceInfo;
         CancellationPolicy[] policies;
     }
 
