@@ -38,6 +38,9 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     // linked management instance
     IManagement public management;
 
+    // returns the insurance info for a given booking id
+    mapping(uint256 => InsuranceInfo) private insuranceInfo;
+
     function init(
         uint256 _propertyId,
         address _host,
