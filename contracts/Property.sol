@@ -222,6 +222,10 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
                 _setting.bookingAmount,
             "InvalidInsuranceFee"
         );
+        require(
+            _setting.insuranceInfo.feeReceiver != address(0),
+            "InvalidInsuranceFeeReceiver"
+        );
     }
 
     /**
@@ -257,6 +261,14 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
             referralFee;
         uint256 hostRevenue = remainingAmount - fee - referralFee;
 
+        // deduct insurance fee
+        InsuranceInfo memory insurance = insuranceInfo[_bookingId];
+        uint256 insuranceFee;
+        if (remainingAmount > 0) {
+            insuranceFee = insurance.kygFee;
+            hostRevenue = hostRevenue - insuranceFee;
+        }
+
         // transfer payment and charge fee
         IERC20Upgradeable paymentToken = IERC20Upgradeable(info.paymentToken);
         paymentToken.safeTransfer(info.guest, refundAmount);
@@ -265,6 +277,7 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         if (info.referrer != address(0)) {
             paymentToken.safeTransfer(info.referrer, referralFee);
         }
+        paymentToken.safeTransfer(insurance.feeReceiver, insuranceFee);
 
         // update booking storage
         booking[_bookingId].status = BookingStatus.GUEST_CANCELLED;
