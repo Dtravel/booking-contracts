@@ -160,6 +160,7 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
                 .referralFeeNumerator();
         }
         bookingInfo.status = BookingStatus.IN_PROGRESS;
+        insuranceInfo[_setting.bookingId] = _setting.insuranceInfo;
 
         uint256 n = _setting.policies.length;
         for (uint256 i; i < n; i++)
