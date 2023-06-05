@@ -210,6 +210,14 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
             management.paymentToken(_setting.paymentToken),
             "InvalidPayment"
         );
+
+        // validate insurance fee
+        require(
+            _setting.insuranceInfo.kygFee +
+                _setting.insuranceInfo.damageProtectionFee <
+                _setting.bookingAmount,
+            "InvalidInsuranceFee"
+        );
     }
 
     /**
