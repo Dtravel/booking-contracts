@@ -398,4 +398,16 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     function totalBookings() external view returns (uint256) {
         return bookingIds.length;
     }
+
+    /**
+        @notice Get insurance info of given booking ID
+        @param _id booking ID
+     */
+    function getInsuranceInfoById(uint256 _id)
+        external
+        view
+        returns (InsuranceInfo memory)
+    {
+        return insuranceInfo[_id];
+    }
 }
