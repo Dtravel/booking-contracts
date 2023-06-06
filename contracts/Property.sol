@@ -353,6 +353,10 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         InsuranceInfo memory insurance = insuranceInfo[_bookingId];
         uint256 insuranceFee = insurance.kygFee + insurance.damageProtectionFee;
         hostRevenue = hostRevenue - insuranceFee;
+        if (status == BookingStatus.PARTIAL_PAID) {
+            // pending insurance fee is added back to booking balance
+            booking[_bookingId].balance += insuranceFee;
+        }
 
         // transfer payment and charge fee
         IERC20Upgradeable paymentToken = IERC20Upgradeable(info.paymentToken);
