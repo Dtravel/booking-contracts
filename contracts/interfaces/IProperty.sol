@@ -8,7 +8,6 @@ interface IProperty {
     }
 
     struct InsuranceInfo {
-        uint256 kygFee;
         uint256 damageProtectionFee;
         address feeReceiver;
     }

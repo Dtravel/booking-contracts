@@ -15,12 +15,12 @@ contract EIP712 is IEIP712, EIP712Upgradeable, OwnableUpgradeable {
     // keccak256("CancellationPolicy(uint256 expireAt,uint256 refundAmount)");
     bytes32 private constant CANCELLATION_POLICY_TYPEHASH =
         0x71ed7adc2b3cc6f42e80ad08652651cbc6e0fd93b50d04298efafcfb6570f246;
-    // keccak256("InsuranceInfo(uint256 kygFee,uint256 damageProtectionFee,address feeReceiver)");
+    // keccak256("InsuranceInfo(uint256 damageProtectionFee,address feeReceiver)");
     bytes32 private constant INSURANCE_INFO_TYPEHASH =
-        0xb39d7fbb3763366890598ba1e808219ec1dba0b1146c84ddcdd39400fc09c9d8;
-    // keccak256("Msg(uint256 bookingId,uint256 checkIn,uint256 checkOut,uint256 expireAt,uint256 bookingAmount,address paymentToken,address referrer,address guest,address property,InsuranceInfo insuranceInfo,CancellationPolicy[] policies)InsuranceInfo(uint256 kygFee,uint256 damageProtectionFee,address feeReceiver)CancellationPolicy(uint256 expireAt,uint256 refundAmount)");
+        0xc0756e76aea0c3b89dac7750cff07778e18523e344cdd14f99642326634d9b73;
+    // keccak256("Msg(uint256 bookingId,uint256 checkIn,uint256 checkOut,uint256 expireAt,uint256 bookingAmount,address paymentToken,address referrer,address guest,address property,InsuranceInfo insuranceInfo,CancellationPolicy[] policies)InsuranceInfo(uint256 damageProtectionFee,address feeReceiver)CancellationPolicy(uint256 expireAt,uint256 refundAmount)");
     bytes32 private constant BOOKING_SETTING_TYPEHASH =
-        0x448c872397cccba070563b6bde399ef7445b8261480bfa000bc7ddfac8cadc69;
+        0x09ba7a753bda12e154c3d978c8a8316a5dd546e273b52a35d52813022013ceb4;
 
     IManagement public management;
 
@@ -63,7 +63,6 @@ contract EIP712 is IEIP712, EIP712Upgradeable, OwnableUpgradeable {
         bytes32 insuranceInfoHash = keccak256(
             abi.encode(
                 INSURANCE_INFO_TYPEHASH,
-                _setting.insuranceInfo.kygFee,
                 _setting.insuranceInfo.damageProtectionFee,
                 _setting.insuranceInfo.feeReceiver
             )

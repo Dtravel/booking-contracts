@@ -217,9 +217,7 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
 
         // validate insurance fee
         require(
-            _setting.insuranceInfo.kygFee +
-                _setting.insuranceInfo.damageProtectionFee <
-                _setting.bookingAmount,
+            _setting.insuranceInfo.damageProtectionFee < _setting.bookingAmount,
             "InvalidInsuranceFee"
         );
         require(
@@ -261,14 +259,6 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
             referralFee;
         uint256 hostRevenue = remainingAmount - fee - referralFee;
 
-        // deduct insurance fee
-        InsuranceInfo memory insurance = insuranceInfo[_bookingId];
-        uint256 insuranceFee;
-        if (remainingAmount > 0) {
-            insuranceFee = insurance.kygFee;
-            hostRevenue = hostRevenue - insuranceFee;
-        }
-
         // transfer payment and charge fee
         IERC20Upgradeable paymentToken = IERC20Upgradeable(info.paymentToken);
         paymentToken.safeTransfer(info.guest, refundAmount);
@@ -277,7 +267,6 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         if (info.referrer != address(0)) {
             paymentToken.safeTransfer(info.referrer, referralFee);
         }
-        paymentToken.safeTransfer(insurance.feeReceiver, insuranceFee);
 
         // update booking storage
         booking[_bookingId].status = BookingStatus.GUEST_CANCELLED;
@@ -351,11 +340,10 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         // capture insurance fee from host revenue
         // this captured fee is pending and only charged in the final payout
         InsuranceInfo memory insurance = insuranceInfo[_bookingId];
-        uint256 insuranceFee = insurance.kygFee + insurance.damageProtectionFee;
-        hostRevenue = hostRevenue - insuranceFee;
+        hostRevenue = hostRevenue - insurance.damageProtectionFee;
         if (status == BookingStatus.PARTIAL_PAID) {
             // pending insurance fee is added back to booking balance
-            booking[_bookingId].balance += insuranceFee;
+            booking[_bookingId].balance += insurance.damageProtectionFee;
         }
 
         // transfer payment and charge fee
@@ -369,7 +357,7 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
 
         // transfer insurance fee in the final payout
         if (status == BookingStatus.FULLY_PAID) {
-            paymentToken.safeTransfer(insurance.feeReceiver, insuranceFee);
+            paymentToken.safeTransfer(insurance.feeReceiver, insurance.damageProtectionFee);
         }
 
         emit PayOut(
