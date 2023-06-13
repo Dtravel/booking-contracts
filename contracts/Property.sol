@@ -343,11 +343,33 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
 
         require(toBePaid > 0, "NotPaidEnough");
 
-        // update booking storage
         uint256 remain = info.balance - toBePaid;
         BookingStatus status = remain == 0
             ? BookingStatus.FULLY_PAID
             : BookingStatus.PARTIAL_PAID;
+
+        // check insurance fee
+        InsuranceInfo memory insurance = insuranceInfo[_bookingId];
+        uint256 damageProtectionFee = insurance.damageProtectionFee;
+        uint8 kygStatus = insurance.kygStatus;
+        if (
+            status == BookingStatus.PARTIAL_PAID &&
+            damageProtectionFee > 0 &&
+            kygStatus != uint8(KygStatus.FAILED) // not charge insurance fee if KYG is failed
+        ) {
+            uint256 netRemain = remain -
+                (remain * info.feeNumerator) /
+                FEE_DENOMINATOR;
+            // if booking balance is not sufficient for insurance fee
+            // then the payout will be suspended until the final payout,
+            // in order to ensure that booking balance is enough to charge insurance fee
+            if (netRemain < insurance.damageProtectionFee) {
+                remain = remain + toBePaid;
+                toBePaid = 0;
+            }
+        }
+
+        // update booking storage
         booking[_bookingId].balance = remain;
         booking[_bookingId].status = status;
 
@@ -363,30 +385,28 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
             referralFee;
         uint256 hostRevenue = toBePaid - fee - referralFee;
 
-        // capture insurance fee from host revenue
-        // this captured fee is pending and only charged in the final payout
-        InsuranceInfo memory insurance = insuranceInfo[_bookingId];
-        hostRevenue = hostRevenue - insurance.damageProtectionFee;
-        if (status == BookingStatus.PARTIAL_PAID) {
-            // pending insurance fee is added back to booking balance
-            booking[_bookingId].balance += insurance.damageProtectionFee;
-        }
-
-        // transfer payment and charge fee
         IERC20Upgradeable paymentToken = IERC20Upgradeable(info.paymentToken);
 
-        paymentToken.safeTransfer(info.paymentReceiver, hostRevenue);
-        paymentToken.safeTransfer(management.treasury(), fee);
-        if (info.referrer != address(0)) {
-            paymentToken.safeTransfer(info.referrer, referralFee);
-        }
-
-        // transfer insurance fee in the final payout
-        if (status == BookingStatus.FULLY_PAID) {
+        // deduct insurance fee in the final payout if KYG is not failed
+        if (
+            status == BookingStatus.FULLY_PAID &&
+            damageProtectionFee > 0 &&
+            kygStatus != uint8(KygStatus.FAILED)
+        ) {
+            // this subtraction won't be overflowed because remaining booking balance 
+            // is hold to ensure to be greater than insurance fee until the final payout
+            hostRevenue = hostRevenue - damageProtectionFee;
             paymentToken.safeTransfer(
                 insurance.feeReceiver,
                 insurance.damageProtectionFee
             );
+        }
+
+        // transfer payment and charge booking fee
+        paymentToken.safeTransfer(info.paymentReceiver, hostRevenue);
+        paymentToken.safeTransfer(management.treasury(), fee);
+        if (info.referrer != address(0)) {
+            paymentToken.safeTransfer(info.referrer, referralFee);
         }
 
         emit PayOut(
