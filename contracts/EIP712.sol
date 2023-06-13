@@ -15,12 +15,12 @@ contract EIP712 is IEIP712, EIP712Upgradeable, OwnableUpgradeable {
     // keccak256("CancellationPolicy(uint256 expireAt,uint256 refundAmount)");
     bytes32 private constant CANCELLATION_POLICY_TYPEHASH =
         0x71ed7adc2b3cc6f42e80ad08652651cbc6e0fd93b50d04298efafcfb6570f246;
-    // keccak256("InsuranceInfo(uint256 damageProtectionFee,address feeReceiver)");
+    // keccak256("InsuranceInfo(uint256 damageProtectionFee,address feeReceiver,uint8 kygStatus)");
     bytes32 private constant INSURANCE_INFO_TYPEHASH =
-        0xc0756e76aea0c3b89dac7750cff07778e18523e344cdd14f99642326634d9b73;
-    // keccak256("Msg(uint256 bookingId,uint256 checkIn,uint256 checkOut,uint256 expireAt,uint256 bookingAmount,address paymentToken,address referrer,address guest,address property,InsuranceInfo insuranceInfo,CancellationPolicy[] policies)InsuranceInfo(uint256 damageProtectionFee,address feeReceiver)CancellationPolicy(uint256 expireAt,uint256 refundAmount)");
+        0x3611ae94f04e593c59ae6804f59fcfee09118c73acf88c4171954c856bb438c1;
+    // keccak256("Msg(uint256 bookingId,uint256 checkIn,uint256 checkOut,uint256 expireAt,uint256 bookingAmount,address paymentToken,address referrer,address guest,address property,InsuranceInfo insuranceInfo,CancellationPolicy[] policies)InsuranceInfo(uint256 damageProtectionFee,address feeReceiver,uint8 kygStatus)CancellationPolicy(uint256 expireAt,uint256 refundAmount)");
     bytes32 private constant BOOKING_SETTING_TYPEHASH =
-        0x09ba7a753bda12e154c3d978c8a8316a5dd546e273b52a35d52813022013ceb4;
+        0x43585b062a210ea03c429509ab49c310e112c16044d3fc1180efa064d6beb03e;
 
     IManagement public management;
 
@@ -64,7 +64,8 @@ contract EIP712 is IEIP712, EIP712Upgradeable, OwnableUpgradeable {
             abi.encode(
                 INSURANCE_INFO_TYPEHASH,
                 _setting.insuranceInfo.damageProtectionFee,
-                _setting.insuranceInfo.feeReceiver
+                _setting.insuranceInfo.feeReceiver,
+                _setting.insuranceInfo.kygStatus
             )
         );
         {

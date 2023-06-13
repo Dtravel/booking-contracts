@@ -135,8 +135,11 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         require(info.balance > 0, "PaidOrCancelledAlready");
         InsuranceInfo storage insurance = insuranceInfo[_id];
         // only accept to change status from IN_PROGRESS to PASSED or from IN_PROGRESS to FAILED
-        require(insurance.kygStatus == KygStatus.IN_PROGRESS, "StatusAlreadyFinalized");
-        insurance.kygStatus = _status;
+        require(
+            insurance.kygStatus == uint8(KygStatus.IN_PROGRESS),
+            "StatusAlreadyFinalized"
+        );
+        insurance.kygStatus = uint8(_status);
     }
 
     /**
