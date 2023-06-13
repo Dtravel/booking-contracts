@@ -109,7 +109,7 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     /**
         @notice Update payment receiver wallet
         @dev    Caller must be HOST or AUTHORIZED ADDRESS
-        @param _addr new payment receiver address
+        @param  _addr new payment receiver address
      */
     function updatePaymentReceiver(address _addr) external {
         address sender = _msgSender();
@@ -120,6 +120,23 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         paymentReceiver = _addr;
 
         emit NewPaymentReceiver(_addr);
+    }
+
+    /**
+        @notice Update KYG status of the given booking ID
+        @dev    Caller must be OPERATOR
+        @param  _id booking ID
+        @param  _status new KYG status
+     */
+    function updateKygStatusById(uint256 _id, KygStatus _status) external {
+        require(_msgSender() == management.operator(), "OnlyOperator");
+        BookingInfo memory info = booking[_id];
+        require(info.guest != address(0), "BookingNotFound");
+        require(info.balance > 0, "PaidOrCancelledAlready");
+        InsuranceInfo storage insurance = insuranceInfo[_id];
+        // only accept to change status from IN_PROGRESS to PASSED or from IN_PROGRESS to FAILED
+        require(insurance.kygStatus == KygStatus.IN_PROGRESS, "StatusAlreadyFinalized");
+        insurance.kygStatus = _status;
     }
 
     /**

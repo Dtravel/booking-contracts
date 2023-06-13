@@ -10,6 +10,7 @@ interface IProperty {
     struct InsuranceInfo {
         uint256 damageProtectionFee;
         address feeReceiver;
+        KygStatus kygStatus;
     }
 
     struct BookingInfo {
@@ -32,6 +33,12 @@ interface IProperty {
         FULLY_PAID,
         GUEST_CANCELLED,
         HOST_CANCELLED
+    }
+
+    enum KygStatus {
+        IN_PROGRESS,
+        PASSED,
+        FAILED
     }
 
     struct BookingSetting {
