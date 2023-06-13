@@ -217,11 +217,15 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
 
         // validate insurance fee
         require(
-            _setting.insuranceInfo.damageProtectionFee < _setting.bookingAmount,
+            _setting.insuranceInfo.damageProtectionFee <
+                (_setting.bookingAmount *
+                    (FEE_DENOMINATOR - management.feeNumerator())) /
+                    FEE_DENOMINATOR,
             "InvalidInsuranceFee"
         );
         require(
-            _setting.insuranceInfo.feeReceiver != address(0),
+            _setting.insuranceInfo.damageProtectionFee == 0 ||
+                _setting.insuranceInfo.feeReceiver != address(0),
             "InvalidInsuranceFeeReceiver"
         );
     }
@@ -357,7 +361,10 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
 
         // transfer insurance fee in the final payout
         if (status == BookingStatus.FULLY_PAID) {
-            paymentToken.safeTransfer(insurance.feeReceiver, insurance.damageProtectionFee);
+            paymentToken.safeTransfer(
+                insurance.feeReceiver,
+                insurance.damageProtectionFee
+            );
         }
 
         emit PayOut(
