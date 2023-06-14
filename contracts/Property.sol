@@ -142,6 +142,10 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
             insuranceInfo.kygStatus == KygStatus.IN_PROGRESS,
             "StatusAlreadyFinalized"
         );
+        require(
+            _status == KygStatus.PASSED || _status == KygStatus.FAILED,
+            "InvalidKYGStatus"
+        );
         insuranceInfo.kygStatus = _status;
     }
 
