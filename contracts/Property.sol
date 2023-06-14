@@ -139,10 +139,10 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         InsuranceInfo storage insuranceInfo = insurance[_id];
         // only accept to change status from IN_PROGRESS to PASSED or from IN_PROGRESS to FAILED
         require(
-            insuranceInfo.kygStatus == uint8(KygStatus.IN_PROGRESS),
+            insuranceInfo.kygStatus == KygStatus.IN_PROGRESS,
             "StatusAlreadyFinalized"
         );
-        insuranceInfo.kygStatus = uint8(_status);
+        insuranceInfo.kygStatus = _status;
     }
 
     /**
@@ -358,7 +358,7 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
 
         InsuranceInfo memory insuranceInfo = insurance[_bookingId];
         bool isInsuranceFeeActive = insuranceInfo.damageProtectionFee > 0 &&
-            insuranceInfo.kygStatus != uint8(KygStatus.FAILED);
+            insuranceInfo.kygStatus != KygStatus.FAILED;
         // check insurance fee to decide the amount can be paid for this time
         // if it is not the final payout and insurance fee is active
         if (isInsuranceFeeActive && remain > 0) {
@@ -404,7 +404,7 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
             hostRevenue = hostRevenue - insuranceInfo.damageProtectionFee;
             if (
                 info.checkIn > current &&
-                insuranceInfo.kygStatus != uint8(KygStatus.PASSED)
+                insuranceInfo.kygStatus != KygStatus.PASSED
             ) {
                 // if it is the final payout but not reach check-in date and kyg status is not passed (still in progress)
                 // then contract will continue holding insurance fee until check-in date
@@ -460,7 +460,7 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         booking[_bookingId].status = status;
         pendingInsuranceFee[_bookingId] = 0;
 
-        if (insuranceInfo.kygStatus == uint8(KygStatus.FAILED)) {
+        if (insuranceInfo.kygStatus == KygStatus.FAILED) {
             // refund insurance fee to host
             paymentToken.safeTransfer(info.paymentReceiver, pendingFee);
             emit PayOut(

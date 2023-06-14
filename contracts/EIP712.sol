@@ -65,7 +65,7 @@ contract EIP712 is IEIP712, EIP712Upgradeable, OwnableUpgradeable {
                 INSURANCE_INFO_TYPEHASH,
                 _setting.insuranceInfo.damageProtectionFee,
                 _setting.insuranceInfo.feeReceiver,
-                _setting.insuranceInfo.kygStatus
+                uint8(_setting.insuranceInfo.kygStatus)
             )
         );
         {
