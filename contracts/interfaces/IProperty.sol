@@ -32,7 +32,8 @@ interface IProperty {
         PARTIAL_PAID,
         FULLY_PAID,
         GUEST_CANCELLED,
-        HOST_CANCELLED
+        HOST_CANCELLED,
+        PENING_INSURANCE_FEE
     }
 
     enum KygStatus {
