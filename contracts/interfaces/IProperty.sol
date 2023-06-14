@@ -121,6 +121,12 @@ interface IProperty {
         BookingStatus status
     );
 
+    event InsuranceFeeCollected(
+        address indexed receiver,
+        uint256 collectAt,
+        uint256 feeAmount
+    );
+
     event GrantAuthorized(address indexed addr);
 
     event RevokeAuthorized(address indexed addr);
