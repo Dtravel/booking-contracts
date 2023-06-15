@@ -458,7 +458,6 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         uint256 current = block.timestamp;
         BookingInfo memory info = booking[_bookingId];
         InsuranceInfo memory insuranceInfo = insurance[_bookingId];
-        require(pendingFee > 0, "NoPendingInsuranceFee");
         require(info.checkIn <= current, "CannotChargeInsuranceFee");
 
         BookingStatus status = BookingStatus.FULLY_PAID;

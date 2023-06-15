@@ -150,8 +150,8 @@ describe("Delegate test", function () {
     const createdProperty = event!.args.property;
     property = await ethers.getContractAt("Property", createdProperty);
 
-    // mint tokens for users 1, 2, 3 then approve for property
-    for (let i = 1; i < 4; i++) {
+    // mint tokens for users then approve for property
+    for (let i = 1; i < 5; i++) {
       await busd.mint(users[i].address, initialBalance);
       await busd.connect(users[i]).approve(property.address, initialBalance);
     }
@@ -447,7 +447,7 @@ describe("Delegate test", function () {
   });
 
   describe("Payout", async () => {
-    describe("2 policies, KYG status is PASSED and remaining balance > damage protection fee", async () => {
+    describe("KYG status is PASSED and remaining balance > damage protection fee", async () => {
       it("should charge a partial payment ", async () => {
         const bookingId = 3;
         const guest = users[2];
@@ -457,6 +457,7 @@ describe("Delegate test", function () {
           property,
           "PayOut"
         );
+        // TODO: check states
       });
 
       it("should make a final payout and collect damage protection fee", async () => {
@@ -468,67 +469,233 @@ describe("Delegate test", function () {
           property,
           "InsuranceFeeCollected"
         );
+        // TODO: check states
       });
     });
 
-    describe("2 policies, KYG status is FAILED", async () => {
-      describe("2 policies, KYG status is PASSED but remaining balance <= damage protection fee", async () => {
-        it.skip("should charge a partial payment ", async () => {
-          const guest = users[2];
+    describe("KYG status is PASSED but remaining balance <= damage protection fee", async () => {
+      it("should charge a partial payment ", async () => {
+        const guest = users[2];
 
-          const now = (await ethers.provider.getBlock("latest")).timestamp;
-          const setting = {
-            bookingId: 4,
-            checkIn: now + 1 * days,
-            checkOut: now + 4 * days,
-            expireAt: now + 5 * days,
-            bookingAmount: 10000000,
-            paymentToken: busd.address,
-            referrer: constants.AddressZero,
-            guest: guest.address,
-            property: property.address,
-            insuranceInfo: {
-              damageProtectionFee: 12000,
-              feeReceiver: feeHolder.address,
-              kygStatus: 0,
+        const now = (await ethers.provider.getBlock("latest")).timestamp;
+        const setting = {
+          bookingId: 4,
+          checkIn: now + 1 * days,
+          checkOut: now + 4 * days,
+          expireAt: now + 7 * days,
+          bookingAmount: 70000,
+          paymentToken: busd.address,
+          referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 10000,
+            feeReceiver: feeHolder.address,
+            kygStatus: 0,
+          },
+          policies: [
+            {
+              expireAt: now + 2,
+              refundAmount: 30000,
             },
-            policies: [
-              {
-                expireAt: now + 2,
-                refundAmount: 48000,
-              },
-              {
-                expireAt: now + 4 * days,
-                refundAmount: 30000,
-              },
-            ],
-          };
+            {
+              expireAt: now + 3 * days,
+              refundAmount: 11000,
+            },
+          ],
+        };
 
-          // generate signature
-          const signature = await verifier._signTypedData(
-            domain,
-            types,
-            setting
-          );
+        // generate signature
+        const signature = await verifier._signTypedData(domain, types, setting);
 
-          await expect(property.connect(guest).book(setting, signature)).emit(
-            property,
-            "NewBooking"
-          );
-          await property
-            .connect(operator)
-            .updateKygStatusById(setting.bookingId, 1);
+        await expect(property.connect(guest).book(setting, signature)).emit(
+          property,
+          "NewBooking"
+        );
 
-          await increaseTime(1 * days);
+        await property
+          .connect(operator)
+          .updateKygStatusById(setting.bookingId, 1);
 
-          await expect(property.connect(guest).payout(setting.bookingId)).emit(
-            property,
-            "PayOut"
-          );
+        await increaseTime(0.5 * days);
 
-          const res = await property.getBookingById(setting.bookingId);
-          console.log(res);
-        });
+        await expect(property.connect(guest).payout(setting.bookingId)).emit(
+          property,
+          "PayOut"
+        );
+
+        // TODO: check states
+      });
+
+      it("should suspend payment if booking balance is insufficient to charge insurance fee", async () => {
+        const guest = users[2];
+        const bookingId = 4;
+        await increaseTime(2 * days);
+        await expect(property.connect(guest).payout(bookingId)).emit(
+          property,
+          "PayOut"
+        );
+
+        // TODO: check states
+      });
+
+      it("should make a final payout and collect damage protection fee", async () => {
+        const guest = users[2];
+        const bookingId = 4;
+        await increaseTime(2 * days);
+        await expect(property.connect(guest).payout(bookingId)).emit(
+          property,
+          "InsuranceFeeCollected"
+        );
+
+        // TODO: check states
+      });
+    });
+
+    describe("KYG status is IN PROGRESS and make a payout before check in", async () => {
+      it("should charge a partial payment and update pending insurance fee", async () => {
+        const guest = users[3];
+
+        const now = (await ethers.provider.getBlock("latest")).timestamp;
+        const setting = {
+          bookingId: 5,
+          checkIn: now + 10 * days,
+          checkOut: now + 11 * days,
+          expireAt: now + 15 * days,
+          bookingAmount: 80000,
+          paymentToken: busd.address,
+          referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 10000,
+            feeReceiver: feeHolder.address,
+            kygStatus: 0,
+          },
+          policies: [
+            {
+              expireAt: now + 2,
+              refundAmount: 30000,
+            },
+            {
+              expireAt: now + 3 * days,
+              refundAmount: 20000,
+            },
+          ],
+        };
+
+        // generate signature
+        const signature = await verifier._signTypedData(domain, types, setting);
+
+        await expect(property.connect(guest).book(setting, signature)).emit(
+          property,
+          "NewBooking"
+        );
+
+        await increaseTime(5 * days);
+
+        await expect(property.connect(guest).payout(setting.bookingId)).emit(
+          property,
+          "PayOut"
+        );
+
+        // TODO: check states
+      });
+
+      it("should revert when unlocking pending insurance fee - make a payout before check in", async () => {
+        const guest = users[3];
+        const bookingId = 5;
+        await expect(property.connect(guest).payout(bookingId)).revertedWith(
+          "CannotChargeInsuranceFee"
+        );
+      });
+
+      it("should unlock pending insurance fee - make a payout after check in", async () => {
+        const guest = users[3];
+        const bookingId = 5;
+
+        await increaseTime(5 * days);
+        await expect(property.connect(guest).payout(bookingId)).emit(
+          property,
+          "InsuranceFeeCollected"
+        );
+
+        // TODO: check states
+      });
+    });
+
+    describe("KYG status is FAILED and make a payout before check in", async () => {
+      it("should charge a partial payment and update pending insurance fee", async () => {
+        const guest = users[4];
+
+        const now = (await ethers.provider.getBlock("latest")).timestamp;
+        const setting = {
+          bookingId: 6,
+          checkIn: now + 10 * days,
+          checkOut: now + 11 * days,
+          expireAt: now + 15 * days,
+          bookingAmount: 80000,
+          paymentToken: busd.address,
+          referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 10000,
+            feeReceiver: feeHolder.address,
+            kygStatus: 0,
+          },
+          policies: [
+            {
+              expireAt: now + 2,
+              refundAmount: 30000,
+            },
+            {
+              expireAt: now + 3 * days,
+              refundAmount: 20000,
+            },
+          ],
+        };
+
+        // generate signature
+        const signature = await verifier._signTypedData(domain, types, setting);
+
+        await expect(property.connect(guest).book(setting, signature)).emit(
+          property,
+          "NewBooking"
+        );
+
+        await increaseTime(5 * days);
+
+        await expect(property.connect(guest).payout(setting.bookingId)).emit(
+          property,
+          "PayOut"
+        );
+
+        // TODO: check states
+      });
+
+      it("should revert when refunding insurance fee to host - make a payout before check in", async () => {
+        const guest = users[4];
+        const bookingId = 6;
+
+        await property.connect(operator).updateKygStatusById(bookingId, 2); // KYG status = FAILED
+
+        await expect(property.connect(guest).payout(bookingId)).revertedWith(
+          "CannotChargeInsuranceFee"
+        );
+      });
+
+      it("should refund insurance fee to host - make a payout after check in", async () => {
+        const guest = users[4];
+        const bookingId = 6;
+
+        await increaseTime(5 * days);
+        await expect(property.connect(guest).payout(bookingId)).emit(
+          property,
+          "PayOut"
+        );
+
+        // TODO: check states
       });
     });
   });
