@@ -133,9 +133,10 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
      */
     function updateKygStatusById(uint256 _id, KygStatus _status) external {
         require(_msgSender() == management.operator(), "OnlyOperator");
+        uint256 pendingFee = pendingInsuranceFee[_id];
         BookingInfo memory info = booking[_id];
         require(info.guest != address(0), "BookingNotFound");
-        require(info.balance > 0, "PaidOrCancelledAlready");
+        require(info.balance > 0 || pendingFee > 0, "BookingAlreadyFinalized");
         InsuranceInfo storage insuranceInfo = insurance[_id];
         // only accept to change status from IN_PROGRESS to PASSED or from IN_PROGRESS to FAILED
         require(
