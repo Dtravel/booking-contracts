@@ -181,6 +181,11 @@ describe("Upgradeable property test", function () {
         referrer: constants.AddressZero,
         guest: guest.address,
         property: Wallet.createRandom().address,
+        insuranceInfo: {
+          damageProtectionFee: 0,
+          feeReceiver: constants.AddressZero,
+          kygStatus: 0,
+        },
         policies: [
           {
             expireAt: now,

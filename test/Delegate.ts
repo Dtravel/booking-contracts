@@ -53,11 +53,17 @@ describe("Delegate test", function () {
       { name: "referrer", type: "address" },
       { name: "guest", type: "address" },
       { name: "property", type: "address" },
+      { name: "insuranceInfo", type: "InsuranceInfo" },
       { name: "policies", type: "CancellationPolicy[]" },
     ],
     CancellationPolicy: [
       { name: "expireAt", type: "uint256" },
       { name: "refundAmount", type: "uint256" },
+    ],
+    InsuranceInfo: [
+      { name: "damageProtectionFee", type: "uint256" },
+      { name: "feeReceiver", type: "address" },
+      { name: "kygStatus", type: "uint8" },
     ],
   };
 
@@ -227,6 +233,11 @@ describe("Delegate test", function () {
         referrer: constants.AddressZero,
         guest: guest.address,
         property: property.address,
+        insuranceInfo: {
+          damageProtectionFee: 0,
+          feeReceiver: constants.AddressZero,
+          kygStatus: 0,
+        },
         policies: [
           {
             expireAt: now,
@@ -319,6 +330,11 @@ describe("Delegate test", function () {
         referrer: constants.AddressZero,
         guest: guest.address,
         property: property.address,
+        insuranceInfo: {
+          damageProtectionFee: 0,
+          feeReceiver: constants.AddressZero,
+          kygStatus: 0,
+        },
         policies: [
           {
             expireAt: now,
