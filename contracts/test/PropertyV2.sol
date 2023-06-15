@@ -43,7 +43,7 @@ contract PropertyV2 is
     mapping(uint256 => InsuranceInfo) private insurance;
 
     // returns the insurance fee that has not been charged yet for the given booking id
-    mapping(uint256 => uint256) private pendingInsuranceFee;
+    mapping(uint256 => uint256) public pendingInsuranceFee;
 
     modifier AddressZero(address _addr) {
         require(_addr != address(0), "Property: Cannot be zero address");
@@ -170,6 +170,19 @@ contract PropertyV2 is
     {
         require(_id == 0, "getBookingById() upgraded!");
         return booking[_id];
+    }
+
+    /**
+        @notice Get insurance info of given booking ID
+        @param _id booking ID
+     */
+    function getInsuranceInfoById(uint256 _id)
+        external
+        view
+        returns (InsuranceInfo memory)
+    {
+        require(_id == 0, "getInsuranceInfoById() upgraded!");
+        return insurance[_id];
     }
 
     /**

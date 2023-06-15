@@ -82,6 +82,10 @@ interface IProperty {
 
     function getBookingById(uint256 _id) external returns (BookingInfo memory);
 
+    function getInsuranceInfoById(uint256 _id)
+        external
+        returns (InsuranceInfo memory);
+
     function totalBookings() external view returns (uint256);
 
     event NewHost(address indexed host);

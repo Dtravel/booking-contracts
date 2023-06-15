@@ -42,7 +42,7 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     mapping(uint256 => InsuranceInfo) private insurance;
 
     // returns the insurance fee that has not been charged yet for the given booking id
-    mapping(uint256 => uint256) private pendingInsuranceFee;
+    mapping(uint256 => uint256) public pendingInsuranceFee;
 
     function init(
         uint256 _propertyId,
@@ -137,8 +137,11 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         BookingInfo memory info = booking[_id];
         require(info.guest != address(0), "BookingNotFound");
         require(info.balance > 0 || pendingFee > 0, "BookingAlreadyFinalized");
+
         InsuranceInfo storage insuranceInfo = insurance[_id];
-        // only accept to change status from IN_PROGRESS to PASSED or from IN_PROGRESS to FAILED
+        require(insuranceInfo.damageProtectionFee > 0, "InsuranceNotFound");
+
+        // only accept to change status from IN_PROGRESS to PASSED/FAILED
         require(
             insuranceInfo.kygStatus == KygStatus.IN_PROGRESS,
             "StatusAlreadyFinalized"
