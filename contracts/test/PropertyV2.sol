@@ -39,6 +39,12 @@ contract PropertyV2 is
     // linked management instance
     IManagement public management;
 
+    // returns the insurance info for a given booking id
+    mapping(uint256 => InsuranceInfo) private insurance;
+
+    // returns the insurance fee that has not been charged yet for the given booking id
+    mapping(uint256 => uint256) private pendingInsuranceFee;
+
     modifier AddressZero(address _addr) {
         require(_addr != address(0), "Property: Cannot be zero address");
         _;

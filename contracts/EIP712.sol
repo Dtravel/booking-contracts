@@ -18,9 +18,9 @@ contract EIP712 is IEIP712, EIP712Upgradeable, OwnableUpgradeable {
     // keccak256("InsuranceInfo(uint256 damageProtectionFee,address feeReceiver,uint8 kygStatus)");
     bytes32 private constant INSURANCE_INFO_TYPEHASH =
         0x3611ae94f04e593c59ae6804f59fcfee09118c73acf88c4171954c856bb438c1;
-    // keccak256("Msg(uint256 bookingId,uint256 checkIn,uint256 checkOut,uint256 expireAt,uint256 bookingAmount,address paymentToken,address referrer,address guest,address property,InsuranceInfo insuranceInfo,CancellationPolicy[] policies)InsuranceInfo(uint256 damageProtectionFee,address feeReceiver,uint8 kygStatus)CancellationPolicy(uint256 expireAt,uint256 refundAmount)");
+    // keccak256("Msg(uint256 bookingId,uint256 checkIn,uint256 checkOut,uint256 expireAt,uint256 bookingAmount,address paymentToken,address referrer,address guest,address property,InsuranceInfo insuranceInfo,CancellationPolicy[] policies)CancellationPolicy(uint256 expireAt,uint256 refundAmount)InsuranceInfo(uint256 damageProtectionFee,address feeReceiver,uint8 kygStatus)");
     bytes32 private constant BOOKING_SETTING_TYPEHASH =
-        0x43585b062a210ea03c429509ab49c310e112c16044d3fc1180efa064d6beb03e;
+        0x3afc33b10506e02b8adfec843d933fc9d1536b6f83590c6e51ff6c27595733f7;
 
     IManagement public management;
 

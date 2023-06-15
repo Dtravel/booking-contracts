@@ -187,7 +187,7 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
             bookingInfo.referralFeeNumerator = management
                 .referralFeeNumerator();
         }
-        bookingInfo.status = BookingStatus.IN_PROGRESS;
+
         if (_setting.insuranceInfo.damageProtectionFee > 0) {
             insurance[_setting.bookingId] = _setting.insuranceInfo;
         }
