@@ -245,6 +245,16 @@ describe("Upgradeable property test", function () {
       );
     });
 
+    it("should upgrade getInsuranceInfoById()", async () => {
+      await expect(upgradedProperty1.getInsuranceInfoById(100)).revertedWith(
+        "getInsuranceInfoById() upgraded!"
+      );
+
+      await expect(upgradedProperty2.getInsuranceInfoById(1300)).revertedWith(
+        "getInsuranceInfoById() upgraded!"
+      );
+    });
+
     it("should upgrade totalBookings()", async () => {
       await expect(upgradedProperty1.totalBookings()).revertedWith(
         "totalBookings() upgraded!"
