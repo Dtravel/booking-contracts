@@ -429,6 +429,7 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
                 );
                 emit InsuranceFeeCollected(
                     insuranceInfo.feeReceiver,
+                    _bookingId,
                     current,
                     insuranceInfo.damageProtectionFee
                 );
@@ -484,6 +485,7 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
             paymentToken.safeTransfer(insuranceInfo.feeReceiver, pendingFee);
             emit InsuranceFeeCollected(
                 insuranceInfo.feeReceiver,
+                _bookingId,
                 current,
                 pendingFee
             );

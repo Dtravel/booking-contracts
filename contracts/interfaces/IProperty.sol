@@ -127,6 +127,7 @@ interface IProperty {
 
     event InsuranceFeeCollected(
         address indexed receiver,
+        uint256 indexed bookingId,
         uint256 collectAt,
         uint256 feeAmount
     );
