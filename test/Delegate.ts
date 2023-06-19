@@ -147,7 +147,7 @@ describe("Delegate test", function () {
       receipt.blockHash
     );
 
-    const event = events.find((e) => e.event === "NewProperty");
+    const event = events.find((e: any) => e.event === "NewProperty");
     const createdProperty = event!.args.property;
     property = await ethers.getContractAt("Property", createdProperty);
   });
