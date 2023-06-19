@@ -42,8 +42,8 @@ contract PropertyV2 is
     // returns the insurance info for a given booking id
     mapping(uint256 => InsuranceInfo) private insurance;
 
-    // returns the insurance fee that has not been charged yet for the given booking id
-    mapping(uint256 => uint256) public pendingInsuranceFee;
+    // mapping of bookings that have pending insurance fees
+    mapping(uint256 => bool) public isInsuranceFeePending;
 
     modifier AddressZero(address _addr) {
         require(_addr != address(0), "Property: Cannot be zero address");

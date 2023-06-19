@@ -41,8 +41,8 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     // returns the insurance info for a given booking id
     mapping(uint256 => InsuranceInfo) private insurance;
 
-    // returns the insurance fee that has not been charged yet for the given booking id
-    mapping(uint256 => uint256) public pendingInsuranceFee;
+    // mapping of bookings that have pending insurance fees
+    mapping(uint256 => bool) public isInsuranceFeePending;
 
     function init(
         uint256 _propertyId,
@@ -136,7 +136,7 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         BookingInfo memory info = booking[_id];
         require(info.guest != address(0), "BookingNotFound");
         require(
-            info.balance > 0 || pendingInsuranceFee[_id] > 0,
+            info.balance > 0 || isInsuranceFeePending[_id],
             "BookingAlreadyFinalized"
         );
 
@@ -332,10 +332,10 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
 
         require(info.guest != address(0), "BookingNotFound");
 
-        uint256 pendingFee = pendingInsuranceFee[_bookingId];
-        require(info.balance > 0 || pendingFee > 0, "PaidOrCancelledAlready");
+        bool pendingFee = isInsuranceFeePending[_bookingId];
+        require(info.balance > 0 || pendingFee, "PaidOrCancelledAlready");
 
-        if (info.balance == 0 && pendingFee > 0) {
+        if (info.balance == 0 && pendingFee) {
             _finalizeInsuranceFee(_bookingId);
             return;
         }
@@ -419,8 +419,7 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
             ) {
                 // if it is the final payout but not reach check-in date and kyg status is not passed (still in progress)
                 // then contract will continue holding insurance fee until check-in date
-                pendingInsuranceFee[_bookingId] = insuranceInfo
-                    .damageProtectionFee;
+                isInsuranceFeePending[_bookingId] = true;
                 // update booking storage
                 booking[_bookingId].status = BookingStatus
                     .PENDING_INSURANCE_FEE;
@@ -458,37 +457,42 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     }
 
     function _finalizeInsuranceFee(uint256 _bookingId) private {
-        uint256 pendingFee = pendingInsuranceFee[_bookingId];
         uint256 current = block.timestamp;
         BookingInfo memory info = booking[_bookingId];
         require(info.checkIn <= current, "CannotChargeInsuranceFee");
 
         // update storage
         booking[_bookingId].status = BookingStatus.FULLY_PAID;
-        pendingInsuranceFee[_bookingId] = 0;
+        isInsuranceFeePending[_bookingId] = false;
 
         InsuranceInfo memory insuranceInfo = insurance[_bookingId];
         IERC20Upgradeable paymentToken = IERC20Upgradeable(info.paymentToken);
         if (insuranceInfo.kygStatus == KygStatus.FAILED) {
             // refund insurance fee to host
-            paymentToken.safeTransfer(info.paymentReceiver, pendingFee);
+            paymentToken.safeTransfer(
+                info.paymentReceiver,
+                insuranceInfo.damageProtectionFee
+            );
             emit PayOut(
                 info.guest,
                 _bookingId,
                 current,
-                pendingFee,
+                insuranceInfo.damageProtectionFee,
                 0,
                 0,
                 BookingStatus.FULLY_PAID
             );
         } else {
             // collect pending insurance fee
-            paymentToken.safeTransfer(insuranceInfo.feeReceiver, pendingFee);
+            paymentToken.safeTransfer(
+                insuranceInfo.feeReceiver,
+                insuranceInfo.damageProtectionFee
+            );
             emit InsuranceFeeCollected(
                 insuranceInfo.feeReceiver,
                 _bookingId,
                 current,
-                pendingFee
+                insuranceInfo.damageProtectionFee
             );
         }
     }
