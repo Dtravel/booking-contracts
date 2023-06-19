@@ -112,7 +112,7 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     /**
         @notice Update payment receiver wallet
         @dev    Caller must be HOST or AUTHORIZED ADDRESS
-        @param  _addr new payment receiver address
+        @param _addr new payment receiver address
      */
     function updatePaymentReceiver(address _addr) external {
         address sender = _msgSender();
@@ -133,10 +133,12 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
      */
     function updateKygStatusById(uint256 _id, KygStatus _status) external {
         require(_msgSender() == management.operator(), "OnlyOperator");
-        uint256 pendingFee = pendingInsuranceFee[_id];
         BookingInfo memory info = booking[_id];
         require(info.guest != address(0), "BookingNotFound");
-        require(info.balance > 0 || pendingFee > 0, "BookingAlreadyFinalized");
+        require(
+            info.balance > 0 || pendingInsuranceFee[_id] > 0,
+            "BookingAlreadyFinalized"
+        );
 
         InsuranceInfo storage insuranceInfo = insurance[_id];
         require(insuranceInfo.damageProtectionFee > 0, "InsuranceNotFound");
@@ -327,9 +329,10 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
      */
     function payout(uint256 _bookingId) external nonReentrant {
         BookingInfo memory info = booking[_bookingId];
-        uint256 pendingFee = pendingInsuranceFee[_bookingId];
 
         require(info.guest != address(0), "BookingNotFound");
+
+        uint256 pendingFee = pendingInsuranceFee[_bookingId];
         require(info.balance > 0 || pendingFee > 0, "PaidOrCancelledAlready");
 
         if (info.balance == 0 && pendingFee > 0) {
@@ -418,9 +421,9 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
                 // then contract will continue holding insurance fee until check-in date
                 pendingInsuranceFee[_bookingId] = insuranceInfo
                     .damageProtectionFee;
-                status = BookingStatus.PENDING_INSURANCE_FEE;
-                // re-update booking storage
-                booking[_bookingId].status = status;
+                // update booking storage
+                booking[_bookingId].status = BookingStatus
+                    .PENDING_INSURANCE_FEE;
             } else {
                 // collect insurance fee
                 paymentToken.safeTransfer(
@@ -458,16 +461,14 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         uint256 pendingFee = pendingInsuranceFee[_bookingId];
         uint256 current = block.timestamp;
         BookingInfo memory info = booking[_bookingId];
-        InsuranceInfo memory insuranceInfo = insurance[_bookingId];
         require(info.checkIn <= current, "CannotChargeInsuranceFee");
 
-        BookingStatus status = BookingStatus.FULLY_PAID;
-        IERC20Upgradeable paymentToken = IERC20Upgradeable(info.paymentToken);
-
         // update storage
-        booking[_bookingId].status = status;
+        booking[_bookingId].status = BookingStatus.FULLY_PAID;
         pendingInsuranceFee[_bookingId] = 0;
 
+        InsuranceInfo memory insuranceInfo = insurance[_bookingId];
+        IERC20Upgradeable paymentToken = IERC20Upgradeable(info.paymentToken);
         if (insuranceInfo.kygStatus == KygStatus.FAILED) {
             // refund insurance fee to host
             paymentToken.safeTransfer(info.paymentReceiver, pendingFee);
@@ -478,7 +479,7 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
                 pendingFee,
                 0,
                 0,
-                status
+                BookingStatus.FULLY_PAID
             );
         } else {
             // collect pending insurance fee
