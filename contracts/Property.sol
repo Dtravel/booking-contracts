@@ -421,8 +421,8 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
                 // then contract will continue holding insurance fee until check-in date
                 isInsuranceFeePending[_bookingId] = true;
                 // update booking storage
-                booking[_bookingId].status = BookingStatus
-                    .PENDING_INSURANCE_FEE;
+                status = BookingStatus.PENDING_INSURANCE_FEE;
+                booking[_bookingId].status = status;
             } else {
                 // collect insurance fee
                 paymentToken.safeTransfer(
