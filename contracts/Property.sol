@@ -467,21 +467,11 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
 
         InsuranceInfo memory insuranceInfo = insurance[_bookingId];
         IERC20Upgradeable paymentToken = IERC20Upgradeable(info.paymentToken);
+        uint256 refundAmount;
         if (insuranceInfo.kygStatus == KygStatus.FAILED) {
+            refundAmount = insuranceInfo.damageProtectionFee;
             // refund insurance fee to host
-            paymentToken.safeTransfer(
-                info.paymentReceiver,
-                insuranceInfo.damageProtectionFee
-            );
-            emit PayOut(
-                info.guest,
-                _bookingId,
-                current,
-                insuranceInfo.damageProtectionFee,
-                0,
-                0,
-                BookingStatus.FULLY_PAID
-            );
+            paymentToken.safeTransfer(info.paymentReceiver, refundAmount);
         } else {
             // collect pending insurance fee
             paymentToken.safeTransfer(
@@ -495,6 +485,15 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
                 insuranceInfo.damageProtectionFee
             );
         }
+        emit PayOut(
+            info.guest,
+            _bookingId,
+            current,
+            refundAmount,
+            0,
+            0,
+            BookingStatus.FULLY_PAID
+        );
     }
 
     /**
