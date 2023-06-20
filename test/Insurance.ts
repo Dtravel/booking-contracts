@@ -953,16 +953,37 @@ describe("Delegate test", function () {
         );
 
         await increaseTime(5 * days);
+
         const now = (await ethers.provider.getBlock("latest")).timestamp;
         const txExecutionTime = now + 1;
-        await expect(property.connect(guest).payout(bookingId))
-          .emit(property, "InsuranceFeeCollected")
-          .withArgs(
-            feeHolder.address,
-            bookingId,
-            txExecutionTime,
-            insuranceInfo.damageProtectionFee
-          );
+        const tx = await property.connect(guest).payout(bookingId);
+        const receipt = await tx.wait();
+        let events: any = await property.queryFilter(
+          property.filters.InsuranceFeeCollected(),
+          receipt.blockHash
+        );
+
+        let res = events.find((e: any) => e.event === "InsuranceFeeCollected");
+        expect(res!.args.receiver).deep.equal(feeHolder.address);
+        expect(res!.args.bookingId).deep.equal(bookingId);
+        expect(res!.args.collectAt).deep.equal(txExecutionTime);
+        expect(res!.args.feeAmount).deep.equal(
+          insuranceInfo.damageProtectionFee
+        );
+
+        events = await property.queryFilter(
+          property.filters.PayOut(),
+          receipt.blockHash
+        );
+
+        res = events.find((e: any) => e.event === "PayOut");
+        expect(res!.args.guest).deep.equal(guest.address);
+        expect(res!.args.bookingId).deep.equal(bookingId);
+        expect(res!.args.payAt).deep.equal(txExecutionTime);
+        expect(res!.args.hostAmount).deep.equal(0);
+        expect(res!.args.treasuryAmount).deep.equal(0);
+        expect(res!.args.referrerAmount).deep.equal(0);
+        expect(res!.args.status).deep.equal(2); // 2 = BookingStatus.FULLY_PAID
 
         // check balance after payout
         const guestBalance = await busd.balanceOf(guest.address);
