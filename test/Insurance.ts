@@ -938,6 +938,17 @@ describe("Delegate test", function () {
         );
       });
 
+      it("should revert when canceling booking in status of pending insurance fee", async () => {
+        const guest = users[3];
+        const bookingId = 5;
+        await expect(property.connect(guest).cancel(bookingId)).revertedWith(
+          "PaidOrCancelledAlready"
+        );
+        await expect(
+          property.connect(host).cancelByHost(bookingId)
+        ).revertedWith("PaidOrCancelledAlready");
+      });
+
       it("should unlock pending insurance fee - make a payout after check in", async () => {
         const guest = users[3];
         const bookingId = 5;
@@ -1121,6 +1132,17 @@ describe("Delegate test", function () {
         await expect(property.connect(guest).payout(bookingId)).revertedWith(
           "CannotChargeInsuranceFee"
         );
+      });
+
+      it("should revert when canceling booking in status of pending insurance fee", async () => {
+        const guest = users[4];
+        const bookingId = 6;
+        await expect(property.connect(guest).cancel(bookingId)).revertedWith(
+          "PaidOrCancelledAlready"
+        );
+        await expect(
+          property.connect(host).cancelByHost(bookingId)
+        ).revertedWith("PaidOrCancelledAlready");
       });
 
       it("should refund insurance fee to host - make a payout after check in", async () => {
