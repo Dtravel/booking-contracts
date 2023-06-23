@@ -75,9 +75,11 @@ $ rm -rf artifacts cache .oppenzeppelin
 3. Update your smart contracts
 4. Update `.env`
 ```
-FACTORY_PROXY_ADDR=<proxy address>
+FACTORY_PROXY_ADDR=<factory proxy address>
 
-PROPERTY_BEACON_ADDR=<beacon address>
+PROPERTY_BEACON_ADDR=<property beacon address>
+
+EIP712_PROXY_ADDRESS=<eip712 proxy address>
 ```
 5. Run upgrade factory via `TransparentUpgradeableProxy` contract
 ```
@@ -92,6 +94,13 @@ $ yarn upgrade:mainnet:factory
 $ yarn upgrade:testnet:property
 
 $ yarn upgrade:mainnet:property
+```
+
+7. Run upgrade EIP712 via `TransparentUpgradeableProxy` contract
+```
+$ yarn upgrade:testnet:eip712
+
+$ yarn upgrade:mainnet:eip712
 ```
 
 ## Additional tasks CLI

@@ -14,6 +14,8 @@
     "deploy:mainnet": "npx hardhat run --network mainnet scripts/deploy.ts",
     "upgrade:testnet:factory": "npx hardhat run --network testnet scripts/upgradeFactory.ts",
     "upgrade:mainnet:factory": "npx hardhat run --network mainnet scripts/upgradeFactory.ts",
+    "upgrade:testnet:eip712": "npx hardhat run --network testnet scripts/upgradeEIP712.ts",
+    "upgrade:mainnet:eip712": "npx hardhat run --network mainnet scripts/upgradeEIP712.ts",
     "upgrade:testnet:property": "npx hardhat run --network testnet scripts/upgradeProperty.ts",
     "upgrade:mainnet:property": "npx hardhat run --network mainnet scripts/upgradeProperty.ts",
     "test": "npx hardhat test",
