@@ -9,7 +9,7 @@ async function main() {
     process.env.EIP712_PROXY_ADDRESS!,
     newEIP712Factory
   );
-  console.log("Upgraded factory proxy at : ", EIP712Proxy.address);
+  console.log("Upgraded beacon proxy at : ", EIP712Proxy.address);
 }
 
 main().catch((error) => {
