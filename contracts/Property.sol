@@ -38,6 +38,12 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     // linked management instance
     IManagement public management;
 
+    // returns the insurance info for a given booking id
+    mapping(uint256 => InsuranceInfo) private insurance;
+
+    // mapping of bookings that have pending insurance fees
+    mapping(uint256 => bool) public isInsuranceFeePending;
+
     function init(
         uint256 _propertyId,
         address _host,
@@ -120,6 +126,36 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     }
 
     /**
+        @notice Update KYG status of the given booking ID
+        @dev    Caller must be OPERATOR
+        @param  _id booking ID
+        @param  _status new KYG status
+     */
+    function updateKygStatusById(uint256 _id, KygStatus _status) external {
+        require(_msgSender() == management.operator(), "OnlyOperator");
+        BookingInfo memory info = booking[_id];
+        require(info.guest != address(0), "BookingNotFound");
+        require(
+            info.balance > 0 || isInsuranceFeePending[_id],
+            "BookingAlreadyFinalized"
+        );
+
+        InsuranceInfo storage insuranceInfo = insurance[_id];
+        require(insuranceInfo.damageProtectionFee > 0, "InsuranceNotFound");
+
+        // only accept to change status from IN_PROGRESS to PASSED/FAILED
+        require(
+            insuranceInfo.kygStatus == KygStatus.IN_PROGRESS,
+            "StatusAlreadyFinalized"
+        );
+        require(
+            _status == KygStatus.PASSED || _status == KygStatus.FAILED,
+            "InvalidKYGStatus"
+        );
+        insuranceInfo.kygStatus = _status;
+    }
+
+    /**
         @notice Book a property
         @dev    Caller can be ANYONE
         @param  _setting booking input setting by user
@@ -156,7 +192,10 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
             bookingInfo.referralFeeNumerator = management
                 .referralFeeNumerator();
         }
-        bookingInfo.status = BookingStatus.IN_PROGRESS;
+
+        if (_setting.insuranceInfo.damageProtectionFee > 0) {
+            insurance[_setting.bookingId] = _setting.insuranceInfo;
+        }
 
         uint256 n = _setting.policies.length;
         for (uint256 i; i < n; i++)
@@ -209,6 +248,20 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         require(
             management.paymentToken(_setting.paymentToken),
             "InvalidPayment"
+        );
+
+        // validate insurance fee
+        require(
+            _setting.insuranceInfo.damageProtectionFee <
+                (_setting.bookingAmount *
+                    (FEE_DENOMINATOR - management.feeNumerator())) /
+                    FEE_DENOMINATOR,
+            "InvalidInsuranceFee"
+        );
+        require(
+            _setting.insuranceInfo.damageProtectionFee == 0 ||
+                _setting.insuranceInfo.feeReceiver != address(0),
+            "InvalidInsuranceFeeReceiver"
         );
     }
 
@@ -276,38 +329,67 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
      */
     function payout(uint256 _bookingId) external nonReentrant {
         BookingInfo memory info = booking[_bookingId];
+
         require(info.guest != address(0), "BookingNotFound");
-        require(info.balance > 0, "PaidOrCancelledAlready");
+
+        bool pendingFee = isInsuranceFeePending[_bookingId];
+        require(info.balance > 0 || pendingFee, "PaidOrCancelledAlready");
+
+        if (info.balance == 0 && pendingFee) {
+            _finalizeInsuranceFee(_bookingId);
+            return;
+        }
 
         uint256 toBePaid;
-        uint256 n = info.policies.length;
-        uint256 delay = management.payoutDelay();
         uint256 current = block.timestamp;
-        if (info.policies[n - 1].expireAt + delay < current) {
-            toBePaid = info.balance;
-        } else {
-            for (uint256 i = 0; i < n; i++) {
-                if (info.policies[i].expireAt + delay >= current) {
-                    require(
-                        info.balance >= info.policies[i].refundAmount,
-                        "InsufficientBalance"
-                    );
-                    // we allow guests to deposit funds in property contract even though these funds are insufficient to charge payment later.
-                    // Guests have to ask host for refund. Therefore, the condition to check if info.balance >= sum of required refund in policies is ignored.
-                    // This also saves us some gas to validate a new booking input in function `_validateSetting`.
-                    toBePaid = info.balance - info.policies[i].refundAmount;
-                    break;
+        {
+            uint256 n = info.policies.length;
+            uint256 delay = management.payoutDelay();
+            if (info.policies[n - 1].expireAt + delay < current) {
+                toBePaid = info.balance;
+            } else {
+                for (uint256 i = 0; i < n; i++) {
+                    if (info.policies[i].expireAt + delay >= current) {
+                        require(
+                            info.balance >= info.policies[i].refundAmount,
+                            "InsufficientBalance"
+                        );
+                        // we allow guests to deposit funds in property contract even though these funds are insufficient to charge payment later.
+                        // Guests have to ask host for refund. Therefore, the condition to check if info.balance >= sum of required refund in policies is ignored.
+                        // This also saves us some gas to validate a new booking input in function `_validateSetting`.
+                        toBePaid = info.balance - info.policies[i].refundAmount;
+                        break;
+                    }
                 }
             }
         }
 
         require(toBePaid > 0, "NotPaidEnough");
-
-        // update booking storage
         uint256 remain = info.balance - toBePaid;
+
+        InsuranceInfo memory insuranceInfo = insurance[_bookingId];
+        bool isInsuranceFeeActive = insuranceInfo.damageProtectionFee > 0 &&
+            insuranceInfo.kygStatus != KygStatus.FAILED;
+        // check insurance fee to decide the amount can be paid for this time
+        // if it is not the final payout and insurance fee is active
+        if (isInsuranceFeeActive && remain > 0) {
+            uint256 netRemain = remain -
+                (remain * info.feeNumerator) /
+                FEE_DENOMINATOR;
+            // if booking balance is not sufficient for insurance fee
+            // then the payout will be suspended until the final payout,
+            // in order to ensure that booking balance is enough to charge insurance fee
+            if (netRemain < insuranceInfo.damageProtectionFee) {
+                remain = remain + toBePaid;
+                toBePaid = 0;
+            }
+        }
+
         BookingStatus status = remain == 0
             ? BookingStatus.FULLY_PAID
             : BookingStatus.PARTIAL_PAID;
+
+        // update booking storage
         booking[_bookingId].balance = remain;
         booking[_bookingId].status = status;
 
@@ -323,9 +405,40 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
             referralFee;
         uint256 hostRevenue = toBePaid - fee - referralFee;
 
-        // transfer payment and charge fee
         IERC20Upgradeable paymentToken = IERC20Upgradeable(info.paymentToken);
 
+        // check logic to collect insurance fee in the final payout
+        if (isInsuranceFeeActive && remain == 0) {
+            // deduct insurance fee from host revenue
+            // this subtraction won't be overflowed because remaining booking balance
+            // is hold to ensure to be greater than insurance fee until the final payout
+            hostRevenue = hostRevenue - insuranceInfo.damageProtectionFee;
+            if (
+                info.checkIn > current &&
+                insuranceInfo.kygStatus != KygStatus.PASSED
+            ) {
+                // if it is the final payout but not reach check-in date and kyg status is not passed (still in progress)
+                // then contract will continue holding insurance fee until check-in date
+                isInsuranceFeePending[_bookingId] = true;
+                // update booking storage
+                status = BookingStatus.PENDING_INSURANCE_FEE;
+                booking[_bookingId].status = status;
+            } else {
+                // collect insurance fee
+                paymentToken.safeTransfer(
+                    insuranceInfo.feeReceiver,
+                    insuranceInfo.damageProtectionFee
+                );
+                emit InsuranceFeeCollected(
+                    insuranceInfo.feeReceiver,
+                    _bookingId,
+                    current,
+                    insuranceInfo.damageProtectionFee
+                );
+            }
+        }
+
+        // transfer payment and charge booking fee
         paymentToken.safeTransfer(info.paymentReceiver, hostRevenue);
         paymentToken.safeTransfer(management.treasury(), fee);
         if (info.referrer != address(0)) {
@@ -340,6 +453,46 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
             fee,
             referralFee,
             status
+        );
+    }
+
+    function _finalizeInsuranceFee(uint256 _bookingId) private {
+        uint256 current = block.timestamp;
+        BookingInfo memory info = booking[_bookingId];
+        require(info.checkIn <= current, "CannotChargeInsuranceFee");
+
+        // update storage
+        booking[_bookingId].status = BookingStatus.FULLY_PAID;
+        isInsuranceFeePending[_bookingId] = false;
+
+        InsuranceInfo memory insuranceInfo = insurance[_bookingId];
+        IERC20Upgradeable paymentToken = IERC20Upgradeable(info.paymentToken);
+        uint256 refundAmount;
+        if (insuranceInfo.kygStatus == KygStatus.FAILED) {
+            refundAmount = insuranceInfo.damageProtectionFee;
+            // refund insurance fee to host
+            paymentToken.safeTransfer(info.paymentReceiver, refundAmount);
+        } else {
+            // collect pending insurance fee
+            paymentToken.safeTransfer(
+                insuranceInfo.feeReceiver,
+                insuranceInfo.damageProtectionFee
+            );
+            emit InsuranceFeeCollected(
+                insuranceInfo.feeReceiver,
+                _bookingId,
+                current,
+                insuranceInfo.damageProtectionFee
+            );
+        }
+        emit PayOut(
+            info.guest,
+            _bookingId,
+            current,
+            refundAmount,
+            0,
+            0,
+            BookingStatus.FULLY_PAID
         );
     }
 
@@ -386,5 +539,17 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
      */
     function totalBookings() external view returns (uint256) {
         return bookingIds.length;
+    }
+
+    /**
+        @notice Get insurance info of given booking ID
+        @param _id booking ID
+     */
+    function getInsuranceInfoById(uint256 _id)
+        external
+        view
+        returns (InsuranceInfo memory)
+    {
+        return insurance[_id];
     }
 }

@@ -58,11 +58,17 @@ describe("Property test", function () {
       { name: "referrer", type: "address" },
       { name: "guest", type: "address" },
       { name: "property", type: "address" },
+      { name: "insuranceInfo", type: "InsuranceInfo" },
       { name: "policies", type: "CancellationPolicy[]" },
     ],
     CancellationPolicy: [
       { name: "expireAt", type: "uint256" },
       { name: "refundAmount", type: "uint256" },
+    ],
+    InsuranceInfo: [
+      { name: "damageProtectionFee", type: "uint256" },
+      { name: "feeReceiver", type: "address" },
+      { name: "kygStatus", type: "uint8" },
     ],
   };
 
@@ -278,6 +284,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: Wallet.createRandom().address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -305,6 +316,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: Wallet.createRandom().address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -332,6 +348,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -359,6 +380,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -386,6 +412,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -413,6 +444,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [],
         };
 
@@ -435,6 +471,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -466,6 +507,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now + 1 * days,
@@ -510,6 +556,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -546,6 +597,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -580,6 +636,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: fakeProperty.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -613,6 +674,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -645,6 +711,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -683,6 +754,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -721,6 +797,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -759,6 +840,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -797,6 +883,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -835,6 +926,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -873,6 +969,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -911,6 +1012,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -949,6 +1055,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -974,6 +1085,53 @@ describe("Property test", function () {
         ).revertedWith("InvalidSignature");
       });
 
+      it("should revert if there's mismatch between signed message and params - insuranceInfo", async () => {
+        const guest = users[1];
+        const now = (await ethers.provider.getBlock("latest")).timestamp;
+        const setting = {
+          bookingId: 2,
+          checkIn: now + 1 * days,
+          checkOut: now + 2 * days,
+          expireAt: now + 3 * days,
+          bookingAmount: 65000,
+          paymentToken: trvl.address,
+          referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
+          policies: [
+            {
+              expireAt: now,
+              refundAmount: 48000,
+            },
+            {
+              expireAt: now + 1 * days,
+              refundAmount: 35000,
+            },
+          ],
+        };
+
+        const value = {
+          ...setting,
+          insuranceInfo: {
+            damageProtectionFee: 1,
+            feeReceiver: Wallet.createRandom().address,
+            kygStatus: 0,
+          },
+        };
+
+        // generate an invalid signature
+        const signature = await verifier._signTypedData(domain, types, value);
+
+        await expect(
+          property.connect(guest).book(setting, signature)
+        ).revertedWith("InvalidSignature");
+      });
+
       it("should revert if there's mismatch between signed message and params - policies", async () => {
         const guest = users[1];
         const now = (await ethers.provider.getBlock("latest")).timestamp;
@@ -987,6 +1145,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -1025,6 +1188,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -1082,6 +1250,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -1139,6 +1312,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -1196,6 +1374,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -1253,6 +1436,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -1310,6 +1498,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -1367,6 +1560,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -1423,6 +1621,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -1462,6 +1665,7 @@ describe("Property test", function () {
           paymentToken: setting.paymentToken,
           referrer: setting.referrer,
           property: setting.property,
+          insuranceInfo: setting.insuranceInfo,
           policies: setting.policies,
         };
 
@@ -1490,6 +1694,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -1528,8 +1737,70 @@ describe("Property test", function () {
           paymentToken: setting.paymentToken,
           referrer: setting.referrer,
           guest: setting.guest,
+          insuranceInfo: setting.insuranceInfo,
           policies: setting.policies,
         };
+
+        // generate an invalid signature
+        const signature = await verifier._signTypedData(
+          domain,
+          wrongTypes,
+          value
+        );
+
+        await expect(
+          property.connect(guest).book(setting, signature)
+        ).revertedWith("InvalidSignature");
+      });
+
+      it("should revert if signed message is missing params - insuranceInfo", async () => {
+        const guest = users[1];
+        const now = (await ethers.provider.getBlock("latest")).timestamp;
+        const setting = {
+          bookingId: 2,
+          checkIn: now + 1 * days,
+          checkOut: now + 2 * days,
+          expireAt: now + 3 * days,
+          bookingAmount: 65000,
+          paymentToken: trvl.address,
+          referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
+          policies: [
+            {
+              expireAt: now,
+              refundAmount: 48000,
+            },
+            {
+              expireAt: now + 1 * days,
+              refundAmount: 35000,
+            },
+          ],
+        };
+
+        const wrongTypes = {
+          Msg: [
+            { name: "bookingId", type: "uint256" },
+            { name: "checkIn", type: "uint256" },
+            { name: "checkOut", type: "uint256" },
+            { name: "expireAt", type: "uint256" },
+            { name: "bookingAmount", type: "uint256" },
+            { name: "guest", type: "address" },
+            { name: "property", type: "address" },
+            { name: "policies", type: "CancellationPolicy[]" },
+          ],
+          CancellationPolicy: [
+            { name: "expireAt", type: "uint256" },
+            { name: "refundAmount", type: "uint256" },
+          ],
+        };
+
+        const { insuranceInfo, ...value } = setting;
 
         // generate an invalid signature
         const signature = await verifier._signTypedData(
@@ -1556,6 +1827,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -1609,6 +1885,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -1653,6 +1934,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -1697,6 +1983,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -1741,6 +2032,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -1785,6 +2081,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -1820,6 +2121,11 @@ describe("Property test", function () {
           referrer: constants.AddressZero,
           guest: guest.address,
           property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
           policies: [
             {
               expireAt: now,
@@ -1970,6 +2276,11 @@ describe("Property test", function () {
         referrer: referrer.address,
         guest: guest.address,
         property: property.address,
+        insuranceInfo: {
+          damageProtectionFee: 0,
+          feeReceiver: constants.AddressZero,
+          kygStatus: 0,
+        },
         policies: [
           {
             expireAt: now + 2 * days,
@@ -2077,6 +2388,11 @@ describe("Property test", function () {
         referrer: constants.AddressZero,
         guest: guest.address,
         property: property.address,
+        insuranceInfo: {
+          damageProtectionFee: 0,
+          feeReceiver: constants.AddressZero,
+          kygStatus: 0,
+        },
         policies: [
           {
             expireAt: now + 2 * days,
@@ -2169,6 +2485,11 @@ describe("Property test", function () {
         referrer: referrer.address,
         guest: guest.address,
         property: property.address,
+        insuranceInfo: {
+          damageProtectionFee: 0,
+          feeReceiver: constants.AddressZero,
+          kygStatus: 0,
+        },
         policies: [
           {
             expireAt: now + 2 * days,
@@ -2297,6 +2618,11 @@ describe("Property test", function () {
         referrer: constants.AddressZero,
         guest: guest.address,
         property: property.address,
+        insuranceInfo: {
+          damageProtectionFee: 0,
+          feeReceiver: constants.AddressZero,
+          kygStatus: 0,
+        },
         policies: [
           {
             expireAt: now + 2 * days,
@@ -2410,6 +2736,11 @@ describe("Property test", function () {
         referrer: constants.AddressZero,
         guest: guest.address,
         property: property.address,
+        insuranceInfo: {
+          damageProtectionFee: 0,
+          feeReceiver: constants.AddressZero,
+          kygStatus: 0,
+        },
         policies: [
           {
             expireAt: now,
@@ -2463,6 +2794,11 @@ describe("Property test", function () {
         referrer: referrer.address,
         guest: guest.address,
         property: property.address,
+        insuranceInfo: {
+          damageProtectionFee: 0,
+          feeReceiver: constants.AddressZero,
+          kygStatus: 0,
+        },
         policies: [
           {
             expireAt: now + 2 * days,
@@ -2588,6 +2924,11 @@ describe("Property test", function () {
         referrer: constants.AddressZero,
         guest: guest.address,
         property: property.address,
+        insuranceInfo: {
+          damageProtectionFee: 0,
+          feeReceiver: constants.AddressZero,
+          kygStatus: 0,
+        },
         policies: [
           {
             expireAt: now + 2 * days,
@@ -2704,6 +3045,11 @@ describe("Property test", function () {
         referrer: constants.AddressZero,
         guest: guest.address,
         property: property.address,
+        insuranceInfo: {
+          damageProtectionFee: 0,
+          feeReceiver: constants.AddressZero,
+          kygStatus: 0,
+        },
         policies: [
           {
             expireAt: now + 2 * days,
@@ -2847,6 +3193,11 @@ describe("Property test", function () {
         referrer: constants.AddressZero,
         guest: guest.address,
         property: property.address,
+        insuranceInfo: {
+          damageProtectionFee: 0,
+          feeReceiver: constants.AddressZero,
+          kygStatus: 0,
+        },
         policies: [
           {
             expireAt: now + 2 * days,
@@ -2917,6 +3268,11 @@ describe("Property test", function () {
         referrer: constants.AddressZero,
         guest: guest.address,
         property: property.address,
+        insuranceInfo: {
+          damageProtectionFee: 0,
+          feeReceiver: constants.AddressZero,
+          kygStatus: 0,
+        },
         policies: [
           {
             expireAt: now + 2 * days,
@@ -3130,6 +3486,11 @@ describe("Property test", function () {
         referrer: constants.AddressZero,
         guest: guest1.address,
         property: property.address,
+        insuranceInfo: {
+          damageProtectionFee: 0,
+          feeReceiver: constants.AddressZero,
+          kygStatus: 0,
+        },
         policies: [
           {
             expireAt: now,
@@ -3173,6 +3534,11 @@ describe("Property test", function () {
         referrer: constants.AddressZero,
         guest: guest2.address,
         property: property.address,
+        insuranceInfo: {
+          damageProtectionFee: 0,
+          feeReceiver: constants.AddressZero,
+          kygStatus: 0,
+        },
         policies: [
           {
             expireAt: now,
@@ -3280,6 +3646,11 @@ describe("Property test", function () {
         referrer: constants.AddressZero,
         guest: guest.address,
         property: property.address,
+        insuranceInfo: {
+          damageProtectionFee: 0,
+          feeReceiver: constants.AddressZero,
+          kygStatus: 0,
+        },
         policies: [
           {
             expireAt: now + 2 * days,

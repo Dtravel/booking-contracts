@@ -39,6 +39,12 @@ contract PropertyV2 is
     // linked management instance
     IManagement public management;
 
+    // returns the insurance info for a given booking id
+    mapping(uint256 => InsuranceInfo) private insurance;
+
+    // mapping of bookings that have pending insurance fees
+    mapping(uint256 => bool) public isInsuranceFeePending;
+
     modifier AddressZero(address _addr) {
         require(_addr != address(0), "Property: Cannot be zero address");
         _;
@@ -164,6 +170,19 @@ contract PropertyV2 is
     {
         require(_id == 0, "getBookingById() upgraded!");
         return booking[_id];
+    }
+
+    /**
+        @notice Get insurance info of given booking ID
+        @param _id booking ID
+     */
+    function getInsuranceInfoById(uint256 _id)
+        external
+        view
+        returns (InsuranceInfo memory)
+    {
+        require(_id == 0, "getInsuranceInfoById() upgraded!");
+        return insurance[_id];
     }
 
     /**

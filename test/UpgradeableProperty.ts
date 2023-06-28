@@ -181,6 +181,11 @@ describe("Upgradeable property test", function () {
         referrer: constants.AddressZero,
         guest: guest.address,
         property: Wallet.createRandom().address,
+        insuranceInfo: {
+          damageProtectionFee: 0,
+          feeReceiver: constants.AddressZero,
+          kygStatus: 0,
+        },
         policies: [
           {
             expireAt: now,
@@ -237,6 +242,16 @@ describe("Upgradeable property test", function () {
 
       await expect(upgradedProperty2.getBookingById(1300)).revertedWith(
         "getBookingById() upgraded!"
+      );
+    });
+
+    it("should upgrade getInsuranceInfoById()", async () => {
+      await expect(upgradedProperty1.getInsuranceInfoById(100)).revertedWith(
+        "getInsuranceInfoById() upgraded!"
+      );
+
+      await expect(upgradedProperty2.getInsuranceInfoById(1300)).revertedWith(
+        "getInsuranceInfoById() upgraded!"
       );
     });
 

@@ -7,6 +7,12 @@ interface IProperty {
         uint256 refundAmount;
     }
 
+    struct InsuranceInfo {
+        uint256 damageProtectionFee;
+        address feeReceiver;
+        KygStatus kygStatus;
+    }
+
     struct BookingInfo {
         uint256 checkIn;
         uint256 checkOut;
@@ -26,7 +32,14 @@ interface IProperty {
         PARTIAL_PAID,
         FULLY_PAID,
         GUEST_CANCELLED,
-        HOST_CANCELLED
+        HOST_CANCELLED,
+        PENDING_INSURANCE_FEE
+    }
+
+    enum KygStatus {
+        IN_PROGRESS,
+        PASSED,
+        FAILED
     }
 
     struct BookingSetting {
@@ -39,6 +52,7 @@ interface IProperty {
         address referrer;
         address guest;
         address property;
+        InsuranceInfo insuranceInfo;
         CancellationPolicy[] policies;
     }
 
@@ -67,6 +81,10 @@ interface IProperty {
     function cancelByHost(uint256 _bookingId) external;
 
     function getBookingById(uint256 _id) external returns (BookingInfo memory);
+
+    function getInsuranceInfoById(uint256 _id)
+        external
+        returns (InsuranceInfo memory);
 
     function totalBookings() external view returns (uint256);
 
@@ -105,6 +123,13 @@ interface IProperty {
         uint256 treasuryAmount,
         uint256 referrerAmount,
         BookingStatus status
+    );
+
+    event InsuranceFeeCollected(
+        address indexed receiver,
+        uint256 indexed bookingId,
+        uint256 collectAt,
+        uint256 feeAmount
     );
 
     event GrantAuthorized(address indexed addr);
