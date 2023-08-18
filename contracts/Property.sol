@@ -251,6 +251,13 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
             "InvalidPayment"
         );
 
+        if (_setting.paymentToken == address(0)) {
+            require(
+                msg.value >= _setting.bookingAmount,
+                "InvalidTransactionValue"
+            );
+        }
+
         // validate insurance fee
         require(
             _setting.insuranceInfo.damageProtectionFee <
