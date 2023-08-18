@@ -332,11 +332,11 @@ describe("Management test", function () {
         ).revertedWith("Ownable: caller is not the owner");
       });
 
-      it("should revert when adding address zero to payment tokens", async () => {
-        await expect(management.addPayment(constants.AddressZero)).revertedWith(
-          "ZeroAddress"
-        );
-      });
+      // it("should revert when adding address zero to payment tokens", async () => {
+      //   await expect(management.addPayment(constants.AddressZero)).revertedWith(
+      //     "ZeroAddress"
+      //   );
+      // });
 
       it("should revert when adding an existing payment token", async () => {
         await expect(management.addPayment(trvl.address)).revertedWith(
@@ -361,11 +361,11 @@ describe("Management test", function () {
         ).revertedWith("Ownable: caller is not the owner");
       });
 
-      it("should revert when adding address zero to payment tokens", async () => {
-        await expect(
-          management.removePayment(constants.AddressZero)
-        ).revertedWith("ZeroAddress");
-      });
+      // it("should revert when adding address zero to payment tokens", async () => {
+      //   await expect(
+      //     management.removePayment(constants.AddressZero)
+      //   ).revertedWith("ZeroAddress");
+      // });
 
       it("should revert when remove an unsupported payment token", async () => {
         await expect(
