@@ -163,6 +163,7 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
      */
     function book(BookingSetting calldata _setting, bytes calldata _signature)
         external
+        payable
         nonReentrant
     {
         _validateSetting(_setting);
@@ -552,4 +553,7 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     {
         return insurance[_id];
     }
+
+    // solhint-disable-next-line
+    receive() external payable {}
 }
