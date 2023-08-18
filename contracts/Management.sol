@@ -183,10 +183,9 @@ contract Management is IManagement, Ownable {
     /**
        @notice add a new token/native coin to list of payment tokens
        @dev    Caller must be ADMIN
-       @param _token new token address
+       @param _token new token address, use ZERO_ADDRESS for native coin
      */
     function addPayment(address _token) external onlyOwner {
-        require(_token != address(0), "ZeroAddress");
         require(!paymentToken[_token], "PaymentExisted");
 
         paymentToken[_token] = true;
@@ -197,10 +196,9 @@ contract Management is IManagement, Ownable {
     /**
        @notice Remove a token/native coin from list of payment tokens
        @dev    Caller must be ADMIN
-       @param _token token address to remove
+       @param _token token address to remove, use ZERO_ADDRESS for native coin
      */
     function removePayment(address _token) external onlyOwner {
-        require(_token != address(0), "ZeroAddress");
         require(paymentToken[_token], "PaymentNotFound");
 
         paymentToken[_token] = false;
