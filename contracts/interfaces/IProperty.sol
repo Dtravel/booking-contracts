@@ -72,7 +72,8 @@ interface IProperty {
     function updatePaymentReceiver(address _addr) external;
 
     function book(BookingSetting calldata _setting, bytes calldata _signature)
-        external payable;
+        external
+        payable;
 
     function cancel(uint256 _bookingId) external;
 

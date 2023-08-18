@@ -173,7 +173,8 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
 
         // contract charges booking payment
         address sender = _msgSender();
-        IERC20Upgradeable(_setting.paymentToken).safeTransferFrom(
+        _payment(
+            _setting.paymentToken,
             sender,
             address(this),
             _setting.bookingAmount
@@ -307,12 +308,21 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         uint256 hostRevenue = remainingAmount - fee - referralFee;
 
         // transfer payment and charge fee
-        IERC20Upgradeable paymentToken = IERC20Upgradeable(info.paymentToken);
-        paymentToken.safeTransfer(info.guest, refundAmount);
-        paymentToken.safeTransfer(info.paymentReceiver, hostRevenue);
-        paymentToken.safeTransfer(management.treasury(), fee);
+        _payment(info.paymentToken, address(this), info.guest, refundAmount);
+        _payment(
+            info.paymentToken,
+            address(this),
+            info.paymentReceiver,
+            hostRevenue
+        );
+        _payment(info.paymentToken, address(this), management.treasury(), fee);
         if (info.referrer != address(0)) {
-            paymentToken.safeTransfer(info.referrer, referralFee);
+            _payment(
+                info.paymentToken,
+                address(this),
+                info.referrer,
+                referralFee
+            );
         }
 
         // update booking storage
@@ -413,8 +423,6 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
             referralFee;
         uint256 hostRevenue = toBePaid - fee - referralFee;
 
-        IERC20Upgradeable paymentToken = IERC20Upgradeable(info.paymentToken);
-
         // check logic to collect insurance fee in the final payout
         if (isInsuranceFeeActive && remain == 0) {
             // deduct insurance fee from host revenue
@@ -433,7 +441,9 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
                 booking[_bookingId].status = status;
             } else {
                 // collect insurance fee
-                paymentToken.safeTransfer(
+                _payment(
+                    info.paymentToken,
+                    address(this),
                     insuranceInfo.feeReceiver,
                     insuranceInfo.damageProtectionFee
                 );
@@ -447,10 +457,20 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         }
 
         // transfer payment and charge booking fee
-        paymentToken.safeTransfer(info.paymentReceiver, hostRevenue);
-        paymentToken.safeTransfer(management.treasury(), fee);
+        _payment(
+            info.paymentToken,
+            address(this),
+            info.paymentReceiver,
+            hostRevenue
+        );
+        _payment(info.paymentToken, address(this), management.treasury(), fee);
         if (info.referrer != address(0)) {
-            paymentToken.safeTransfer(info.referrer, referralFee);
+            _payment(
+                info.paymentToken,
+                address(this),
+                info.referrer,
+                referralFee
+            );
         }
 
         emit PayOut(
@@ -474,15 +494,21 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         isInsuranceFeePending[_bookingId] = false;
 
         InsuranceInfo memory insuranceInfo = insurance[_bookingId];
-        IERC20Upgradeable paymentToken = IERC20Upgradeable(info.paymentToken);
         uint256 refundAmount;
         if (insuranceInfo.kygStatus == KygStatus.FAILED) {
             refundAmount = insuranceInfo.damageProtectionFee;
             // refund insurance fee to host
-            paymentToken.safeTransfer(info.paymentReceiver, refundAmount);
+            _payment(
+                info.paymentToken,
+                address(this),
+                info.paymentReceiver,
+                refundAmount
+            );
         } else {
             // collect pending insurance fee
-            paymentToken.safeTransfer(
+            _payment(
+                info.paymentToken,
+                address(this),
                 insuranceInfo.feeReceiver,
                 insuranceInfo.damageProtectionFee
             );
@@ -504,6 +530,27 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         );
     }
 
+    function _payment(
+        address _paymentToken,
+        address _from,
+        address _to,
+        uint256 _amount
+    ) private {
+        if (_paymentToken == address(0)) {
+            // solhint-disable-next-line avoid-low-level-calls
+            (bool sent, ) = payable(_to).call{value: _amount}("");
+            require(sent, "TransferFailed");
+        } else if (_from != address(this)) {
+            IERC20Upgradeable(_paymentToken).safeTransferFrom(
+                _from,
+                _to,
+                _amount
+            );
+        } else {
+            IERC20Upgradeable(_paymentToken).safeTransfer(_to, _amount);
+        }
+    }
+
     /**
         @notice Cancel the booking
         @dev    Caller must be the host or authorized addresses
@@ -518,10 +565,7 @@ contract Property is IProperty, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         require(info.balance > 0, "PaidOrCancelledAlready");
 
         // refund to the guest
-        IERC20Upgradeable(info.paymentToken).safeTransfer(
-            info.guest,
-            info.balance
-        );
+        _payment(info.paymentToken, address(this), info.guest, info.balance);
 
         // update booking storage
         booking[_bookingId].status = BookingStatus.HOST_CANCELLED;
