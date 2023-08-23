@@ -21,7 +21,7 @@ async function decreaseTime(duration: number): Promise<void> {
   ethers.provider.send("evm_mine", []);
 }
 
-describe("Delegate test", function () {
+describe("Insurance test", function () {
   let management: Management;
   let busd: ERC20Test;
   let factory: Factory;
@@ -158,182 +158,367 @@ describe("Delegate test", function () {
   });
 
   describe("Make a booking", async () => {
-    it("should revert if insurance fee is invalid", async () => {
-      const guest = users[1];
-      const now = (await ethers.provider.getBlock("latest")).timestamp;
-      const setting = {
-        bookingId: 1,
-        checkIn: now + 1 * days,
-        checkOut: now + 2 * days,
-        expireAt: now + 3 * days,
-        bookingAmount: 65000,
-        paymentToken: busd.address,
-        referrer: constants.AddressZero,
-        guest: guest.address,
-        property: property.address,
-        insuranceInfo: {
-          damageProtectionFee: 58500, // = 65000 * 90%
-          feeReceiver: feeHolder.address,
-          kygStatus: 0,
-        },
-        policies: [
-          {
-            expireAt: now,
-            refundAmount: 48000,
+    context("use ERC20 token", () => {
+      it("should revert if insurance fee is invalid", async () => {
+        const guest = users[1];
+        const now = (await ethers.provider.getBlock("latest")).timestamp;
+        const setting = {
+          bookingId: 1,
+          checkIn: now + 1 * days,
+          checkOut: now + 2 * days,
+          expireAt: now + 3 * days,
+          bookingAmount: 65000,
+          paymentToken: busd.address,
+          referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 58500, // = 65000 * 90%
+            feeReceiver: feeHolder.address,
+            kygStatus: 0,
           },
-          {
-            expireAt: now + 1 * days,
-            refundAmount: 35000,
+          policies: [
+            {
+              expireAt: now,
+              refundAmount: 48000,
+            },
+            {
+              expireAt: now + 1 * days,
+              refundAmount: 35000,
+            },
+          ],
+        };
+
+        // generate signature
+        const signature = await verifier._signTypedData(domain, types, setting);
+
+        await expect(
+          property.connect(guest).book(setting, signature)
+        ).revertedWith("InvalidInsuranceFee");
+      });
+
+      it("should revert if fee receiver is zero address but dmg protection fee is valid", async () => {
+        const guest = users[1];
+        const now = (await ethers.provider.getBlock("latest")).timestamp;
+        const setting = {
+          bookingId: 1,
+          checkIn: now + 1 * days,
+          checkOut: now + 2 * days,
+          expireAt: now + 3 * days,
+          bookingAmount: 65000,
+          paymentToken: busd.address,
+          referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 5500,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
           },
-        ],
-      };
+          policies: [
+            {
+              expireAt: now,
+              refundAmount: 48000,
+            },
+            {
+              expireAt: now + 1 * days,
+              refundAmount: 35000,
+            },
+          ],
+        };
 
-      // generate signature
-      const signature = await verifier._signTypedData(domain, types, setting);
+        // generate signature
+        const signature = await verifier._signTypedData(domain, types, setting);
 
-      await expect(
-        property.connect(guest).book(setting, signature)
-      ).revertedWith("InvalidInsuranceFee");
+        await expect(
+          property.connect(guest).book(setting, signature)
+        ).revertedWith("InvalidInsuranceFeeReceiver");
+      });
+
+      it("should book without insurance", async () => {
+        const guest = users[1];
+        const now = (await ethers.provider.getBlock("latest")).timestamp;
+        const setting = {
+          bookingId: 1,
+          checkIn: now + 1 * days,
+          checkOut: now + 2 * days,
+          expireAt: now + 3 * days,
+          bookingAmount: 65000,
+          paymentToken: busd.address,
+          referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
+          policies: [
+            {
+              expireAt: now,
+              refundAmount: 48000,
+            },
+            {
+              expireAt: now + 1 * days,
+              refundAmount: 35000,
+            },
+          ],
+        };
+
+        // generate signature
+        const signature = await verifier._signTypedData(domain, types, setting);
+
+        await expect(property.connect(guest).book(setting, signature)).emit(
+          property,
+          "NewBooking"
+        );
+
+        // check states in storage
+        const res = await property.getInsuranceInfoById(setting.bookingId);
+        expect(res.damageProtectionFee).deep.equal(
+          setting.insuranceInfo.damageProtectionFee
+        );
+        expect(res.feeReceiver).deep.equal(setting.insuranceInfo.feeReceiver);
+        expect(res.kygStatus).deep.equal(setting.insuranceInfo.kygStatus);
+      });
+
+      it("should book with valid insurance setting", async () => {
+        const guest = users[1];
+        const now = (await ethers.provider.getBlock("latest")).timestamp;
+        const setting = {
+          bookingId: 2,
+          checkIn: now + 1 * days,
+          checkOut: now + 2 * days,
+          expireAt: now + 3 * days,
+          bookingAmount: 100000,
+          paymentToken: busd.address,
+          referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 12000,
+            feeReceiver: feeHolder.address,
+            kygStatus: 0,
+          },
+          policies: [
+            {
+              expireAt: now,
+              refundAmount: 48000,
+            },
+            {
+              expireAt: now + 1 * days,
+              refundAmount: 35000,
+            },
+          ],
+        };
+
+        // generate signature
+        const signature = await verifier._signTypedData(domain, types, setting);
+
+        await expect(property.connect(guest).book(setting, signature)).emit(
+          property,
+          "NewBooking"
+        );
+
+        // check states in storage
+        const res = await property.getInsuranceInfoById(setting.bookingId);
+        expect(res.damageProtectionFee).deep.equal(
+          setting.insuranceInfo.damageProtectionFee
+        );
+        expect(res.feeReceiver).deep.equal(setting.insuranceInfo.feeReceiver);
+        expect(res.kygStatus).deep.equal(setting.insuranceInfo.kygStatus);
+      });
+
+      it("should get insurance info by booking id", async () => {
+        const { damageProtectionFee, feeReceiver, kygStatus } =
+          await property.getInsuranceInfoById(2);
+        expect(damageProtectionFee).deep.equal(12000);
+        expect(feeReceiver).deep.equal(feeHolder.address);
+        expect(kygStatus).deep.equal(0);
+      });
     });
 
-    it("should revert if fee receiver is zero address but dmg protection fee is valid", async () => {
-      const guest = users[1];
-      const now = (await ethers.provider.getBlock("latest")).timestamp;
-      const setting = {
-        bookingId: 1,
-        checkIn: now + 1 * days,
-        checkOut: now + 2 * days,
-        expireAt: now + 3 * days,
-        bookingAmount: 65000,
-        paymentToken: busd.address,
-        referrer: constants.AddressZero,
-        guest: guest.address,
-        property: property.address,
-        insuranceInfo: {
-          damageProtectionFee: 5500,
-          feeReceiver: constants.AddressZero,
-          kygStatus: 0,
-        },
-        policies: [
-          {
-            expireAt: now,
-            refundAmount: 48000,
+    context("use native coin", () => {
+      before(async () => {
+        // enable native coin payment
+        await management.addPayment(constants.AddressZero);
+      });
+
+      it("should revert if insurance fee is invalid", async () => {
+        const guest = users[1];
+        const now = (await ethers.provider.getBlock("latest")).timestamp;
+        const setting = {
+          bookingId: 10,
+          checkIn: now + 1 * days,
+          checkOut: now + 2 * days,
+          expireAt: now + 3 * days,
+          bookingAmount: 65000,
+          paymentToken: constants.AddressZero,
+          referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 58500, // = 65000 * 90%
+            feeReceiver: feeHolder.address,
+            kygStatus: 0,
           },
-          {
-            expireAt: now + 1 * days,
-            refundAmount: 35000,
+          policies: [
+            {
+              expireAt: now,
+              refundAmount: 48000,
+            },
+            {
+              expireAt: now + 1 * days,
+              refundAmount: 35000,
+            },
+          ],
+        };
+
+        // generate signature
+        const signature = await verifier._signTypedData(domain, types, setting);
+
+        await expect(
+          property.connect(guest).book(setting, signature, { value: 65000 })
+        ).revertedWith("InvalidInsuranceFee");
+      });
+
+      it("should revert if fee receiver is zero address but dmg protection fee is valid", async () => {
+        const guest = users[1];
+        const now = (await ethers.provider.getBlock("latest")).timestamp;
+        const setting = {
+          bookingId: 10,
+          checkIn: now + 1 * days,
+          checkOut: now + 2 * days,
+          expireAt: now + 3 * days,
+          bookingAmount: 65000,
+          paymentToken: constants.AddressZero,
+          referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 5500,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
           },
-        ],
-      };
+          policies: [
+            {
+              expireAt: now,
+              refundAmount: 48000,
+            },
+            {
+              expireAt: now + 1 * days,
+              refundAmount: 35000,
+            },
+          ],
+        };
 
-      // generate signature
-      const signature = await verifier._signTypedData(domain, types, setting);
+        // generate signature
+        const signature = await verifier._signTypedData(domain, types, setting);
 
-      await expect(
-        property.connect(guest).book(setting, signature)
-      ).revertedWith("InvalidInsuranceFeeReceiver");
-    });
+        await expect(
+          property.connect(guest).book(setting, signature, { value: 65000 })
+        ).revertedWith("InvalidInsuranceFeeReceiver");
+      });
 
-    it("should book without insurance", async () => {
-      const guest = users[1];
-      const now = (await ethers.provider.getBlock("latest")).timestamp;
-      const setting = {
-        bookingId: 1,
-        checkIn: now + 1 * days,
-        checkOut: now + 2 * days,
-        expireAt: now + 3 * days,
-        bookingAmount: 65000,
-        paymentToken: busd.address,
-        referrer: constants.AddressZero,
-        guest: guest.address,
-        property: property.address,
-        insuranceInfo: {
-          damageProtectionFee: 0,
-          feeReceiver: constants.AddressZero,
-          kygStatus: 0,
-        },
-        policies: [
-          {
-            expireAt: now,
-            refundAmount: 48000,
+      it("should book without insurance", async () => {
+        const guest = users[1];
+        const now = (await ethers.provider.getBlock("latest")).timestamp;
+        const setting = {
+          bookingId: 10,
+          checkIn: now + 1 * days,
+          checkOut: now + 2 * days,
+          expireAt: now + 3 * days,
+          bookingAmount: 65000,
+          paymentToken: constants.AddressZero,
+          referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
           },
-          {
-            expireAt: now + 1 * days,
-            refundAmount: 35000,
+          policies: [
+            {
+              expireAt: now,
+              refundAmount: 48000,
+            },
+            {
+              expireAt: now + 1 * days,
+              refundAmount: 35000,
+            },
+          ],
+        };
+
+        // generate signature
+        const signature = await verifier._signTypedData(domain, types, setting);
+
+        await expect(
+          property.connect(guest).book(setting, signature, { value: 65000 })
+        ).emit(property, "NewBooking");
+
+        // check states in storage
+        const res = await property.getInsuranceInfoById(setting.bookingId);
+        expect(res.damageProtectionFee).deep.equal(
+          setting.insuranceInfo.damageProtectionFee
+        );
+        expect(res.feeReceiver).deep.equal(setting.insuranceInfo.feeReceiver);
+        expect(res.kygStatus).deep.equal(setting.insuranceInfo.kygStatus);
+      });
+
+      it("should book with valid insurance setting", async () => {
+        const guest = users[1];
+        const now = (await ethers.provider.getBlock("latest")).timestamp;
+        const setting = {
+          bookingId: 11,
+          checkIn: now + 1 * days,
+          checkOut: now + 2 * days,
+          expireAt: now + 3 * days,
+          bookingAmount: 100000,
+          paymentToken: constants.AddressZero,
+          referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 12000,
+            feeReceiver: feeHolder.address,
+            kygStatus: 0,
           },
-        ],
-      };
+          policies: [
+            {
+              expireAt: now,
+              refundAmount: 48000,
+            },
+            {
+              expireAt: now + 1 * days,
+              refundAmount: 35000,
+            },
+          ],
+        };
 
-      // generate signature
-      const signature = await verifier._signTypedData(domain, types, setting);
+        // generate signature
+        const signature = await verifier._signTypedData(domain, types, setting);
 
-      await expect(property.connect(guest).book(setting, signature)).emit(
-        property,
-        "NewBooking"
-      );
+        await expect(
+          property.connect(guest).book(setting, signature, { value: 100000 })
+        ).emit(property, "NewBooking");
 
-      // check states in storage
-      const res = await property.getInsuranceInfoById(setting.bookingId);
-      expect(res.damageProtectionFee).deep.equal(
-        setting.insuranceInfo.damageProtectionFee
-      );
-      expect(res.feeReceiver).deep.equal(setting.insuranceInfo.feeReceiver);
-      expect(res.kygStatus).deep.equal(setting.insuranceInfo.kygStatus);
-    });
+        // check states in storage
+        const res = await property.getInsuranceInfoById(setting.bookingId);
+        expect(res.damageProtectionFee).deep.equal(
+          setting.insuranceInfo.damageProtectionFee
+        );
+        expect(res.feeReceiver).deep.equal(setting.insuranceInfo.feeReceiver);
+        expect(res.kygStatus).deep.equal(setting.insuranceInfo.kygStatus);
+      });
 
-    it("should book with valid insurance setting", async () => {
-      const guest = users[1];
-      const now = (await ethers.provider.getBlock("latest")).timestamp;
-      const setting = {
-        bookingId: 2,
-        checkIn: now + 1 * days,
-        checkOut: now + 2 * days,
-        expireAt: now + 3 * days,
-        bookingAmount: 100000,
-        paymentToken: busd.address,
-        referrer: constants.AddressZero,
-        guest: guest.address,
-        property: property.address,
-        insuranceInfo: {
-          damageProtectionFee: 12000,
-          feeReceiver: feeHolder.address,
-          kygStatus: 0,
-        },
-        policies: [
-          {
-            expireAt: now,
-            refundAmount: 48000,
-          },
-          {
-            expireAt: now + 1 * days,
-            refundAmount: 35000,
-          },
-        ],
-      };
-
-      // generate signature
-      const signature = await verifier._signTypedData(domain, types, setting);
-
-      await expect(property.connect(guest).book(setting, signature)).emit(
-        property,
-        "NewBooking"
-      );
-
-      // check states in storage
-      const res = await property.getInsuranceInfoById(setting.bookingId);
-      expect(res.damageProtectionFee).deep.equal(
-        setting.insuranceInfo.damageProtectionFee
-      );
-      expect(res.feeReceiver).deep.equal(setting.insuranceInfo.feeReceiver);
-      expect(res.kygStatus).deep.equal(setting.insuranceInfo.kygStatus);
-    });
-
-    it("should get insurance info by booking id", async () => {
-      const { damageProtectionFee, feeReceiver, kygStatus } =
-        await property.getInsuranceInfoById(2);
-      expect(damageProtectionFee).deep.equal(12000);
-      expect(feeReceiver).deep.equal(feeHolder.address);
-      expect(kygStatus).deep.equal(0);
+      it("should get insurance info by booking id", async () => {
+        const { damageProtectionFee, feeReceiver, kygStatus } =
+          await property.getInsuranceInfoById(11);
+        expect(damageProtectionFee).deep.equal(12000);
+        expect(feeReceiver).deep.equal(feeHolder.address);
+        expect(kygStatus).deep.equal(0);
+      });
     });
   });
 
@@ -448,756 +633,1747 @@ describe("Delegate test", function () {
 
   describe("Payout", async () => {
     describe("KYG status is PASSED and remaining balance > damage protection fee", async () => {
-      it("should charge a partial payment ", async () => {
-        const bookingId = 3;
-        const guest = users[2];
+      context("use ERC20 token", () => {
+        it("should charge a partial payment ", async () => {
+          const bookingId = 3;
+          const guest = users[2];
 
-        // get balance before executing tx
-        const guestBalanceBefore = await busd.balanceOf(guest.address);
-        const hostBalanceBefore = await busd.balanceOf(host.address);
-        const treasuryBalanceBefore = await busd.balanceOf(treasury.address);
-        const contractBalanceBefore = await busd.balanceOf(property.address);
-        const feeReceiverBalanceBefore = await busd.balanceOf(
-          feeHolder.address
-        );
+          // get balance before executing tx
+          const guestBalanceBefore = await busd.balanceOf(guest.address);
+          const hostBalanceBefore = await busd.balanceOf(host.address);
+          const treasuryBalanceBefore = await busd.balanceOf(treasury.address);
+          const contractBalanceBefore = await busd.balanceOf(property.address);
+          const feeReceiverBalanceBefore = await busd.balanceOf(
+            feeHolder.address
+          );
 
-        // calculate fees and related amounts
-        let bookingInfo = await property.getBookingById(bookingId);
-        const toBePaid = BigNumber.from(
-          bookingInfo.balance.sub(bookingInfo.policies[0].refundAmount)
-        );
-        const feeRatio = await management.feeNumerator();
-        const feeDenominator = await management.FEE_DENOMINATOR();
-        const fee = toBePaid.mul(feeRatio).div(feeDenominator);
-        const hostRevenue = toBePaid.sub(fee);
-        const remain = bookingInfo.balance.sub(toBePaid);
+          // calculate fees and related amounts
+          let bookingInfo = await property.getBookingById(bookingId);
+          const toBePaid = BigNumber.from(
+            bookingInfo.balance.sub(bookingInfo.policies[0].refundAmount)
+          );
+          const feeRatio = await management.feeNumerator();
+          const feeDenominator = await management.FEE_DENOMINATOR();
+          const fee = toBePaid.mul(feeRatio).div(feeDenominator);
+          const hostRevenue = toBePaid.sub(fee);
+          const remain = bookingInfo.balance.sub(toBePaid);
 
-        await increaseTime(0.5 * days);
+          await increaseTime(0.5 * days);
 
-        const now = (await ethers.provider.getBlock("latest")).timestamp;
-        const txExecutionTime = now + 1;
-        await expect(property.connect(guest).payout(bookingId))
-          .emit(property, "PayOut")
-          .withArgs(
-            guest.address,
-            bookingId,
-            txExecutionTime,
-            hostRevenue,
-            fee,
-            0,
-            1
-          ); // 1 = BookingStatus.PARTIAL_PAID;
+          const now = (await ethers.provider.getBlock("latest")).timestamp;
+          const txExecutionTime = now + 1;
+          await expect(property.connect(guest).payout(bookingId))
+            .emit(property, "PayOut")
+            .withArgs(
+              guest.address,
+              bookingId,
+              txExecutionTime,
+              hostRevenue,
+              fee,
+              0,
+              1
+            ); // 1 = BookingStatus.PARTIAL_PAID;
 
-        // check balance after payout
-        const guestBalance = await busd.balanceOf(guest.address);
-        const hostBalance = await busd.balanceOf(host.address);
-        const treasuryBalance = await busd.balanceOf(treasury.address);
-        const contractBalance = await busd.balanceOf(property.address);
-        const feeReceiverBalance = await busd.balanceOf(feeHolder.address);
+          // check balance after payout
+          const guestBalance = await busd.balanceOf(guest.address);
+          const hostBalance = await busd.balanceOf(host.address);
+          const treasuryBalance = await busd.balanceOf(treasury.address);
+          const contractBalance = await busd.balanceOf(property.address);
+          const feeReceiverBalance = await busd.balanceOf(feeHolder.address);
 
-        expect(guestBalance).deep.equal(guestBalanceBefore);
-        expect(hostBalance).deep.equal(hostBalanceBefore.add(hostRevenue));
-        expect(treasuryBalance).deep.equal(treasuryBalanceBefore.add(fee));
-        expect(contractBalance).deep.equal(contractBalanceBefore.sub(toBePaid));
-        expect(feeReceiverBalance).deep.equal(feeReceiverBalanceBefore);
+          expect(guestBalance).deep.equal(guestBalanceBefore);
+          expect(hostBalance).deep.equal(hostBalanceBefore.add(hostRevenue));
+          expect(treasuryBalance).deep.equal(treasuryBalanceBefore.add(fee));
+          expect(contractBalance).deep.equal(
+            contractBalanceBefore.sub(toBePaid)
+          );
+          expect(feeReceiverBalance).deep.equal(feeReceiverBalanceBefore);
 
-        // check on-chain states
-        bookingInfo = await property.getBookingById(bookingId);
-        expect(bookingInfo.balance).deep.equal(remain);
+          // check on-chain states
+          bookingInfo = await property.getBookingById(bookingId);
+          expect(bookingInfo.balance).deep.equal(remain);
 
-        const pendingStatus = await property.isInsuranceFeePending(bookingId);
-        expect(pendingStatus).deep.equal(false);
+          const pendingStatus = await property.isInsuranceFeePending(bookingId);
+          expect(pendingStatus).deep.equal(false);
+        });
+
+        it("should make a final payout and collect damage protection fee", async () => {
+          const bookingId = 3;
+          const guest = users[2];
+          const insuranceInfo = await property.getInsuranceInfoById(bookingId);
+          await increaseTime(2 * days);
+
+          // get balance before executing tx
+          const guestBalanceBefore = await busd.balanceOf(guest.address);
+          const hostBalanceBefore = await busd.balanceOf(host.address);
+          const treasuryBalanceBefore = await busd.balanceOf(treasury.address);
+          const contractBalanceBefore = await busd.balanceOf(property.address);
+          const feeReceiverBalanceBefore = await busd.balanceOf(
+            feeHolder.address
+          );
+
+          // calculate fees and related amounts
+          let bookingInfo = await property.getBookingById(bookingId);
+          const toBePaid = bookingInfo.balance;
+          const feeRatio = await management.feeNumerator();
+          const feeDenominator = await management.FEE_DENOMINATOR();
+          const fee = toBePaid.mul(feeRatio).div(feeDenominator);
+          const hostRevenue = toBePaid
+            .sub(fee)
+            .sub(insuranceInfo.damageProtectionFee);
+
+          const now = (await ethers.provider.getBlock("latest")).timestamp;
+          const txExecutionTime = now + 1;
+          const tx = await property.connect(guest).payout(bookingId);
+          const receipt = await tx.wait();
+          let events: any = await property.queryFilter(
+            property.filters.InsuranceFeeCollected(),
+            receipt.blockHash
+          );
+
+          let res = events.find(
+            (e: any) => e.event === "InsuranceFeeCollected"
+          );
+          expect(res!.args.receiver).deep.equal(feeHolder.address);
+          expect(res!.args.bookingId).deep.equal(bookingId);
+          expect(res!.args.collectAt).deep.equal(txExecutionTime);
+          expect(res!.args.feeAmount).deep.equal(
+            insuranceInfo.damageProtectionFee
+          );
+
+          events = await property.queryFilter(
+            property.filters.PayOut(),
+            receipt.blockHash
+          );
+
+          res = events.find((e: any) => e.event === "PayOut");
+          expect(res!.args.guest).deep.equal(guest.address);
+          expect(res!.args.bookingId).deep.equal(bookingId);
+          expect(res!.args.payAt).deep.equal(txExecutionTime);
+          expect(res!.args.hostAmount).deep.equal(hostRevenue);
+          expect(res!.args.treasuryAmount).deep.equal(fee);
+          expect(res!.args.referrerAmount).deep.equal(0);
+          expect(res!.args.status).deep.equal(2); // 2 = BookingStatus.FULLY_PAID
+
+          // check balance after payout
+          const guestBalance = await busd.balanceOf(guest.address);
+          const hostBalance = await busd.balanceOf(host.address);
+          const treasuryBalance = await busd.balanceOf(treasury.address);
+          const contractBalance = await busd.balanceOf(property.address);
+          const feeReceiverBalance = await busd.balanceOf(feeHolder.address);
+
+          expect(guestBalance).deep.equal(guestBalanceBefore);
+          expect(hostBalance).deep.equal(hostBalanceBefore.add(hostRevenue));
+          expect(treasuryBalance).deep.equal(treasuryBalanceBefore.add(fee));
+          expect(contractBalance).deep.equal(
+            contractBalanceBefore.sub(toBePaid)
+          );
+          expect(feeReceiverBalance).deep.equal(
+            feeReceiverBalanceBefore.add(insuranceInfo.damageProtectionFee)
+          );
+
+          // check on-chain states
+          bookingInfo = await property.getBookingById(bookingId);
+          expect(bookingInfo.balance).deep.equal(0);
+
+          const pendingStatus = await property.isInsuranceFeePending(bookingId);
+          expect(pendingStatus).deep.equal(false);
+        });
       });
 
-      it("should make a final payout and collect damage protection fee", async () => {
-        const bookingId = 3;
-        const guest = users[2];
-        const insuranceInfo = await property.getInsuranceInfoById(bookingId);
-        await increaseTime(2 * days);
+      context("use native coin", () => {
+        before(async () => {
+          const guest = users[2];
+          const now = (await ethers.provider.getBlock("latest")).timestamp;
+          const setting = {
+            bookingId: 12,
+            checkIn: now + 1 * days,
+            checkOut: now + 2 * days,
+            expireAt: now + 3 * days,
+            bookingAmount: 90000,
+            paymentToken: constants.AddressZero,
+            referrer: constants.AddressZero,
+            guest: guest.address,
+            property: property.address,
+            insuranceInfo: {
+              damageProtectionFee: 12000,
+              feeReceiver: feeHolder.address,
+              kygStatus: 0,
+            },
+            policies: [
+              {
+                expireAt: now,
+                refundAmount: 48000,
+              },
+              {
+                expireAt: now + 1 * days,
+                refundAmount: 30000,
+              },
+            ],
+          };
 
-        // get balance before executing tx
-        const guestBalanceBefore = await busd.balanceOf(guest.address);
-        const hostBalanceBefore = await busd.balanceOf(host.address);
-        const treasuryBalanceBefore = await busd.balanceOf(treasury.address);
-        const contractBalanceBefore = await busd.balanceOf(property.address);
-        const feeReceiverBalanceBefore = await busd.balanceOf(
-          feeHolder.address
-        );
+          // generate signature
+          const signature = await verifier._signTypedData(
+            domain,
+            types,
+            setting
+          );
 
-        // calculate fees and related amounts
-        let bookingInfo = await property.getBookingById(bookingId);
-        const toBePaid = bookingInfo.balance;
-        const feeRatio = await management.feeNumerator();
-        const feeDenominator = await management.FEE_DENOMINATOR();
-        const fee = toBePaid.mul(feeRatio).div(feeDenominator);
-        const hostRevenue = toBePaid
-          .sub(fee)
-          .sub(insuranceInfo.damageProtectionFee);
+          await property
+            .connect(guest)
+            .book(setting, signature, { value: 90000 });
+          await property
+            .connect(operator)
+            .updateKygStatusById(setting.bookingId, 1);
+        });
 
-        const now = (await ethers.provider.getBlock("latest")).timestamp;
-        const txExecutionTime = now + 1;
-        const tx = await property.connect(guest).payout(bookingId);
-        const receipt = await tx.wait();
-        let events: any = await property.queryFilter(
-          property.filters.InsuranceFeeCollected(),
-          receipt.blockHash
-        );
+        it("should charge a partial payment ", async () => {
+          const bookingId = 12;
+          const guest = users[2];
 
-        let res = events.find((e: any) => e.event === "InsuranceFeeCollected");
-        expect(res!.args.receiver).deep.equal(feeHolder.address);
-        expect(res!.args.bookingId).deep.equal(bookingId);
-        expect(res!.args.collectAt).deep.equal(txExecutionTime);
-        expect(res!.args.feeAmount).deep.equal(
-          insuranceInfo.damageProtectionFee
-        );
+          // get balance before executing tx
+          const guestBalanceBefore = await ethers.provider.getBalance(
+            guest.address
+          );
+          const hostBalanceBefore = await ethers.provider.getBalance(
+            host.address
+          );
+          const treasuryBalanceBefore = await ethers.provider.getBalance(
+            treasury.address
+          );
+          const contractBalanceBefore = await ethers.provider.getBalance(
+            property.address
+          );
+          const feeReceiverBalanceBefore = await ethers.provider.getBalance(
+            feeHolder.address
+          );
 
-        events = await property.queryFilter(
-          property.filters.PayOut(),
-          receipt.blockHash
-        );
+          // calculate fees and related amounts
+          let bookingInfo = await property.getBookingById(bookingId);
+          const toBePaid = BigNumber.from(
+            bookingInfo.balance.sub(bookingInfo.policies[0].refundAmount)
+          );
+          const feeRatio = await management.feeNumerator();
+          const feeDenominator = await management.FEE_DENOMINATOR();
+          const fee = toBePaid.mul(feeRatio).div(feeDenominator);
+          const hostRevenue = toBePaid.sub(fee);
+          const remain = bookingInfo.balance.sub(toBePaid);
 
-        res = events.find((e: any) => e.event === "PayOut");
-        expect(res!.args.guest).deep.equal(guest.address);
-        expect(res!.args.bookingId).deep.equal(bookingId);
-        expect(res!.args.payAt).deep.equal(txExecutionTime);
-        expect(res!.args.hostAmount).deep.equal(hostRevenue);
-        expect(res!.args.treasuryAmount).deep.equal(fee);
-        expect(res!.args.referrerAmount).deep.equal(0);
-        expect(res!.args.status).deep.equal(2); // 2 = BookingStatus.FULLY_PAID
+          await increaseTime(0.5 * days);
 
-        // check balance after payout
-        const guestBalance = await busd.balanceOf(guest.address);
-        const hostBalance = await busd.balanceOf(host.address);
-        const treasuryBalance = await busd.balanceOf(treasury.address);
-        const contractBalance = await busd.balanceOf(property.address);
-        const feeReceiverBalance = await busd.balanceOf(feeHolder.address);
+          const now = (await ethers.provider.getBlock("latest")).timestamp;
+          const txExecutionTime = now + 1;
+          const caller = users[5];
+          await expect(property.connect(caller).payout(bookingId))
+            .emit(property, "PayOut")
+            .withArgs(
+              guest.address,
+              bookingId,
+              txExecutionTime,
+              hostRevenue,
+              fee,
+              0,
+              1
+            ); // 1 = BookingStatus.PARTIAL_PAID;
 
-        expect(guestBalance).deep.equal(guestBalanceBefore);
-        expect(hostBalance).deep.equal(hostBalanceBefore.add(hostRevenue));
-        expect(treasuryBalance).deep.equal(treasuryBalanceBefore.add(fee));
-        expect(contractBalance).deep.equal(contractBalanceBefore.sub(toBePaid));
-        expect(feeReceiverBalance).deep.equal(
-          feeReceiverBalanceBefore.add(insuranceInfo.damageProtectionFee)
-        );
+          // check balance after payout
+          const guestBalance = await ethers.provider.getBalance(guest.address);
+          const hostBalance = await ethers.provider.getBalance(host.address);
+          const treasuryBalance = await ethers.provider.getBalance(
+            treasury.address
+          );
+          const contractBalance = await ethers.provider.getBalance(
+            property.address
+          );
+          const feeReceiverBalance = await ethers.provider.getBalance(
+            feeHolder.address
+          );
 
-        // check on-chain states
-        bookingInfo = await property.getBookingById(bookingId);
-        expect(bookingInfo.balance).deep.equal(0);
+          expect(guestBalance).deep.equal(guestBalanceBefore);
+          expect(hostBalance).deep.equal(hostBalanceBefore.add(hostRevenue));
+          expect(treasuryBalance).deep.equal(treasuryBalanceBefore.add(fee));
+          expect(contractBalance).deep.equal(
+            contractBalanceBefore.sub(toBePaid)
+          );
+          expect(feeReceiverBalance).deep.equal(feeReceiverBalanceBefore);
 
-        const pendingStatus = await property.isInsuranceFeePending(bookingId);
-        expect(pendingStatus).deep.equal(false);
+          // check on-chain states
+          bookingInfo = await property.getBookingById(bookingId);
+          expect(bookingInfo.balance).deep.equal(remain);
+
+          const pendingStatus = await property.isInsuranceFeePending(bookingId);
+          expect(pendingStatus).deep.equal(false);
+        });
+
+        it("should make a final payout and collect damage protection fee", async () => {
+          const bookingId = 12;
+          const guest = users[2];
+          const insuranceInfo = await property.getInsuranceInfoById(bookingId);
+          await increaseTime(2 * days);
+
+          // get balance before executing tx
+          const guestBalanceBefore = await ethers.provider.getBalance(
+            guest.address
+          );
+          const hostBalanceBefore = await ethers.provider.getBalance(
+            host.address
+          );
+          const treasuryBalanceBefore = await ethers.provider.getBalance(
+            treasury.address
+          );
+          const contractBalanceBefore = await ethers.provider.getBalance(
+            property.address
+          );
+          const feeReceiverBalanceBefore = await ethers.provider.getBalance(
+            feeHolder.address
+          );
+
+          // calculate fees and related amounts
+          let bookingInfo = await property.getBookingById(bookingId);
+          const toBePaid = bookingInfo.balance;
+          const feeRatio = await management.feeNumerator();
+          const feeDenominator = await management.FEE_DENOMINATOR();
+          const fee = toBePaid.mul(feeRatio).div(feeDenominator);
+          const hostRevenue = toBePaid
+            .sub(fee)
+            .sub(insuranceInfo.damageProtectionFee);
+
+          const now = (await ethers.provider.getBlock("latest")).timestamp;
+          const txExecutionTime = now + 1;
+          const caller = users[5];
+          const tx = await property.connect(caller).payout(bookingId);
+          const receipt = await tx.wait();
+          let events: any = await property.queryFilter(
+            property.filters.InsuranceFeeCollected(),
+            receipt.blockHash
+          );
+
+          let res = events.find(
+            (e: any) => e.event === "InsuranceFeeCollected"
+          );
+          expect(res!.args.receiver).deep.equal(feeHolder.address);
+          expect(res!.args.bookingId).deep.equal(bookingId);
+          expect(res!.args.collectAt).deep.equal(txExecutionTime);
+          expect(res!.args.feeAmount).deep.equal(
+            insuranceInfo.damageProtectionFee
+          );
+
+          events = await property.queryFilter(
+            property.filters.PayOut(),
+            receipt.blockHash
+          );
+
+          res = events.find((e: any) => e.event === "PayOut");
+          expect(res!.args.guest).deep.equal(guest.address);
+          expect(res!.args.bookingId).deep.equal(bookingId);
+          expect(res!.args.payAt).deep.equal(txExecutionTime);
+          expect(res!.args.hostAmount).deep.equal(hostRevenue);
+          expect(res!.args.treasuryAmount).deep.equal(fee);
+          expect(res!.args.referrerAmount).deep.equal(0);
+          expect(res!.args.status).deep.equal(2); // 2 = BookingStatus.FULLY_PAID
+
+          // check balance after payout
+          const guestBalance = await ethers.provider.getBalance(guest.address);
+          const hostBalance = await ethers.provider.getBalance(host.address);
+          const treasuryBalance = await ethers.provider.getBalance(
+            treasury.address
+          );
+          const contractBalance = await ethers.provider.getBalance(
+            property.address
+          );
+          const feeReceiverBalance = await ethers.provider.getBalance(
+            feeHolder.address
+          );
+
+          expect(guestBalance).deep.equal(guestBalanceBefore);
+          expect(hostBalance).deep.equal(hostBalanceBefore.add(hostRevenue));
+          expect(treasuryBalance).deep.equal(treasuryBalanceBefore.add(fee));
+          expect(contractBalance).deep.equal(
+            contractBalanceBefore.sub(toBePaid)
+          );
+          expect(feeReceiverBalance).deep.equal(
+            feeReceiverBalanceBefore.add(insuranceInfo.damageProtectionFee)
+          );
+
+          // check on-chain states
+          bookingInfo = await property.getBookingById(bookingId);
+          expect(bookingInfo.balance).deep.equal(0);
+
+          const pendingStatus = await property.isInsuranceFeePending(bookingId);
+          expect(pendingStatus).deep.equal(false);
+        });
       });
     });
 
     describe("KYG status is PASSED but remaining balance < damage protection fee", async () => {
-      it("should charge a partial payment ", async () => {
-        const guest = users[2];
-        const bookingId = 4;
+      context("use ERC20 token", () => {
+        it("should charge a partial payment ", async () => {
+          const guest = users[2];
+          const bookingId = 4;
 
-        let now = (await ethers.provider.getBlock("latest")).timestamp;
-        const setting = {
-          bookingId: 4,
-          checkIn: now + 1 * days,
-          checkOut: now + 4 * days,
-          expireAt: now + 7 * days,
-          bookingAmount: 70000,
-          paymentToken: busd.address,
-          referrer: constants.AddressZero,
-          guest: guest.address,
-          property: property.address,
-          insuranceInfo: {
-            damageProtectionFee: 10000,
-            feeReceiver: feeHolder.address,
-            kygStatus: 0,
-          },
-          policies: [
-            {
-              expireAt: now + 2,
-              refundAmount: 30000,
+          let now = (await ethers.provider.getBlock("latest")).timestamp;
+          const setting = {
+            bookingId: 4,
+            checkIn: now + 1 * days,
+            checkOut: now + 4 * days,
+            expireAt: now + 7 * days,
+            bookingAmount: 70000,
+            paymentToken: busd.address,
+            referrer: constants.AddressZero,
+            guest: guest.address,
+            property: property.address,
+            insuranceInfo: {
+              damageProtectionFee: 10000,
+              feeReceiver: feeHolder.address,
+              kygStatus: 0,
             },
-            {
-              expireAt: now + 3 * days,
-              refundAmount: 11000,
-            },
-          ],
-        };
+            policies: [
+              {
+                expireAt: now + 2,
+                refundAmount: 30000,
+              },
+              {
+                expireAt: now + 3 * days,
+                refundAmount: 11000,
+              },
+            ],
+          };
 
-        // generate signature
-        const signature = await verifier._signTypedData(domain, types, setting);
+          // generate signature
+          const signature = await verifier._signTypedData(
+            domain,
+            types,
+            setting
+          );
 
-        await expect(property.connect(guest).book(setting, signature)).emit(
-          property,
-          "NewBooking"
-        );
+          await expect(property.connect(guest).book(setting, signature)).emit(
+            property,
+            "NewBooking"
+          );
 
-        // get balance before executing tx
-        const guestBalanceBefore = await busd.balanceOf(guest.address);
-        const hostBalanceBefore = await busd.balanceOf(host.address);
-        const treasuryBalanceBefore = await busd.balanceOf(treasury.address);
-        const contractBalanceBefore = await busd.balanceOf(property.address);
-        const feeReceiverBalanceBefore = await busd.balanceOf(
-          feeHolder.address
-        );
+          // get balance before executing tx
+          const guestBalanceBefore = await busd.balanceOf(guest.address);
+          const hostBalanceBefore = await busd.balanceOf(host.address);
+          const treasuryBalanceBefore = await busd.balanceOf(treasury.address);
+          const contractBalanceBefore = await busd.balanceOf(property.address);
+          const feeReceiverBalanceBefore = await busd.balanceOf(
+            feeHolder.address
+          );
 
-        // calculate fees and related amounts
-        let bookingInfo = await property.getBookingById(bookingId);
-        const toBePaid = BigNumber.from(
-          bookingInfo.balance.sub(bookingInfo.policies[0].refundAmount)
-        );
-        const feeRatio = await management.feeNumerator();
-        const feeDenominator = await management.FEE_DENOMINATOR();
-        const fee = toBePaid.mul(feeRatio).div(feeDenominator);
-        const hostRevenue = toBePaid.sub(fee);
-        const remain = bookingInfo.balance.sub(toBePaid);
+          // calculate fees and related amounts
+          let bookingInfo = await property.getBookingById(bookingId);
+          const toBePaid = BigNumber.from(
+            bookingInfo.balance.sub(bookingInfo.policies[0].refundAmount)
+          );
+          const feeRatio = await management.feeNumerator();
+          const feeDenominator = await management.FEE_DENOMINATOR();
+          const fee = toBePaid.mul(feeRatio).div(feeDenominator);
+          const hostRevenue = toBePaid.sub(fee);
+          const remain = bookingInfo.balance.sub(toBePaid);
 
-        // Update KYG status
-        await property
-          .connect(operator)
-          .updateKygStatusById(setting.bookingId, 1);
+          // Update KYG status
+          await property
+            .connect(operator)
+            .updateKygStatusById(setting.bookingId, 1);
 
-        await increaseTime(0.5 * days);
+          await increaseTime(0.5 * days);
 
-        now = (await ethers.provider.getBlock("latest")).timestamp;
-        const txExecutionTime = now + 1;
-        await expect(property.connect(guest).payout(bookingId))
-          .emit(property, "PayOut")
-          .withArgs(
-            guest.address,
-            bookingId,
-            txExecutionTime,
-            hostRevenue,
-            fee,
-            0,
-            1
-          ); // 1 = BookingStatus.PARTIAL_PAID;
+          now = (await ethers.provider.getBlock("latest")).timestamp;
+          const txExecutionTime = now + 1;
+          await expect(property.connect(guest).payout(bookingId))
+            .emit(property, "PayOut")
+            .withArgs(
+              guest.address,
+              bookingId,
+              txExecutionTime,
+              hostRevenue,
+              fee,
+              0,
+              1
+            ); // 1 = BookingStatus.PARTIAL_PAID;
 
-        // check balance after payout
-        const guestBalance = await busd.balanceOf(guest.address);
-        const hostBalance = await busd.balanceOf(host.address);
-        const treasuryBalance = await busd.balanceOf(treasury.address);
-        const contractBalance = await busd.balanceOf(property.address);
-        const feeReceiverBalance = await busd.balanceOf(feeHolder.address);
+          // check balance after payout
+          const guestBalance = await busd.balanceOf(guest.address);
+          const hostBalance = await busd.balanceOf(host.address);
+          const treasuryBalance = await busd.balanceOf(treasury.address);
+          const contractBalance = await busd.balanceOf(property.address);
+          const feeReceiverBalance = await busd.balanceOf(feeHolder.address);
 
-        expect(guestBalance).deep.equal(guestBalanceBefore);
-        expect(hostBalance).deep.equal(hostBalanceBefore.add(hostRevenue));
-        expect(treasuryBalance).deep.equal(treasuryBalanceBefore.add(fee));
-        expect(contractBalance).deep.equal(contractBalanceBefore.sub(toBePaid));
-        expect(feeReceiverBalance).deep.equal(feeReceiverBalanceBefore);
+          expect(guestBalance).deep.equal(guestBalanceBefore);
+          expect(hostBalance).deep.equal(hostBalanceBefore.add(hostRevenue));
+          expect(treasuryBalance).deep.equal(treasuryBalanceBefore.add(fee));
+          expect(contractBalance).deep.equal(
+            contractBalanceBefore.sub(toBePaid)
+          );
+          expect(feeReceiverBalance).deep.equal(feeReceiverBalanceBefore);
 
-        // check on-chain states
-        bookingInfo = await property.getBookingById(bookingId);
-        expect(bookingInfo.balance).deep.equal(remain);
+          // check on-chain states
+          bookingInfo = await property.getBookingById(bookingId);
+          expect(bookingInfo.balance).deep.equal(remain);
 
-        const pendingStatus = await property.isInsuranceFeePending(bookingId);
-        expect(pendingStatus).deep.equal(false);
+          const pendingStatus = await property.isInsuranceFeePending(bookingId);
+          expect(pendingStatus).deep.equal(false);
+        });
+
+        it("should suspend payment if booking balance is insufficient to charge insurance fee", async () => {
+          const guest = users[2];
+          const bookingId = 4;
+
+          // get balance before executing tx
+          const guestBalanceBefore = await busd.balanceOf(guest.address);
+          const hostBalanceBefore = await busd.balanceOf(host.address);
+          const treasuryBalanceBefore = await busd.balanceOf(treasury.address);
+          const contractBalanceBefore = await busd.balanceOf(property.address);
+          const feeReceiverBalanceBefore = await busd.balanceOf(
+            feeHolder.address
+          );
+
+          // calculate fees and related amounts
+          let bookingInfo = await property.getBookingById(bookingId);
+
+          // remaining balanace is insufficient to charge damage protection fee
+          const fee = 0;
+          const hostRevenue = 0;
+          const remain = bookingInfo.balance;
+
+          await increaseTime(2 * days);
+
+          const now = (await ethers.provider.getBlock("latest")).timestamp;
+          const txExecutionTime = now + 1;
+          await expect(property.connect(guest).payout(bookingId))
+            .emit(property, "PayOut")
+            .withArgs(
+              guest.address,
+              bookingId,
+              txExecutionTime,
+              hostRevenue,
+              fee,
+              0,
+              1
+            ); // 1 = BookingStatus.PARTIAL_PAID;
+
+          // check balance after payout
+          const guestBalance = await busd.balanceOf(guest.address);
+          const hostBalance = await busd.balanceOf(host.address);
+          const treasuryBalance = await busd.balanceOf(treasury.address);
+          const contractBalance = await busd.balanceOf(property.address);
+          const feeReceiverBalance = await busd.balanceOf(feeHolder.address);
+
+          expect(guestBalance).deep.equal(guestBalanceBefore);
+          expect(hostBalance).deep.equal(hostBalanceBefore);
+          expect(treasuryBalance).deep.equal(treasuryBalanceBefore);
+          expect(contractBalance).deep.equal(contractBalanceBefore);
+          expect(feeReceiverBalance).deep.equal(feeReceiverBalanceBefore);
+
+          // check on-chain states
+          bookingInfo = await property.getBookingById(bookingId);
+          expect(bookingInfo.balance).deep.equal(remain);
+
+          const pendingStatus = await property.isInsuranceFeePending(bookingId);
+          expect(pendingStatus).deep.equal(false);
+        });
+
+        it("should make a final payout and collect damage protection fee", async () => {
+          const guest = users[2];
+          const bookingId = 4;
+          const insuranceInfo = await property.getInsuranceInfoById(bookingId);
+          await increaseTime(2 * days);
+
+          // get balance before executing tx
+          const guestBalanceBefore = await busd.balanceOf(guest.address);
+          const hostBalanceBefore = await busd.balanceOf(host.address);
+          const treasuryBalanceBefore = await busd.balanceOf(treasury.address);
+          const contractBalanceBefore = await busd.balanceOf(property.address);
+          const feeReceiverBalanceBefore = await busd.balanceOf(
+            feeHolder.address
+          );
+
+          // calculate fees and related amounts
+          let bookingInfo = await property.getBookingById(bookingId);
+          const toBePaid = bookingInfo.balance;
+          const feeRatio = await management.feeNumerator();
+          const feeDenominator = await management.FEE_DENOMINATOR();
+          const fee = toBePaid.mul(feeRatio).div(feeDenominator);
+          const hostRevenue = toBePaid
+            .sub(fee)
+            .sub(insuranceInfo.damageProtectionFee);
+
+          const now = (await ethers.provider.getBlock("latest")).timestamp;
+          const txExecutionTime = now + 1;
+          const tx = await property.connect(guest).payout(bookingId);
+          const receipt = await tx.wait();
+          let events: any = await property.queryFilter(
+            property.filters.InsuranceFeeCollected(),
+            receipt.blockHash
+          );
+
+          let res = events.find(
+            (e: any) => e.event === "InsuranceFeeCollected"
+          );
+          expect(res!.args.receiver).deep.equal(feeHolder.address);
+          expect(res!.args.bookingId).deep.equal(bookingId);
+          expect(res!.args.collectAt).deep.equal(txExecutionTime);
+          expect(res!.args.feeAmount).deep.equal(
+            insuranceInfo.damageProtectionFee
+          );
+
+          events = await property.queryFilter(
+            property.filters.PayOut(),
+            receipt.blockHash
+          );
+
+          res = events.find((e: any) => e.event === "PayOut");
+          expect(res!.args.guest).deep.equal(guest.address);
+          expect(res!.args.bookingId).deep.equal(bookingId);
+          expect(res!.args.payAt).deep.equal(txExecutionTime);
+          expect(res!.args.hostAmount).deep.equal(hostRevenue);
+          expect(res!.args.treasuryAmount).deep.equal(fee);
+          expect(res!.args.referrerAmount).deep.equal(0);
+          expect(res!.args.status).deep.equal(2); // 2 = BookingStatus.FULLY_PAID
+
+          // check balance after payout
+          const guestBalance = await busd.balanceOf(guest.address);
+          const hostBalance = await busd.balanceOf(host.address);
+          const treasuryBalance = await busd.balanceOf(treasury.address);
+          const contractBalance = await busd.balanceOf(property.address);
+          const feeReceiverBalance = await busd.balanceOf(feeHolder.address);
+
+          expect(guestBalance).deep.equal(guestBalanceBefore);
+          expect(hostBalance).deep.equal(hostBalanceBefore.add(hostRevenue));
+          expect(treasuryBalance).deep.equal(treasuryBalanceBefore.add(fee));
+          expect(contractBalance).deep.equal(
+            contractBalanceBefore.sub(toBePaid)
+          );
+          expect(feeReceiverBalance).deep.equal(
+            feeReceiverBalanceBefore.add(insuranceInfo.damageProtectionFee)
+          );
+
+          // check on-chain states
+          bookingInfo = await property.getBookingById(bookingId);
+          expect(bookingInfo.balance).deep.equal(0);
+
+          const pendingStatus = await property.isInsuranceFeePending(bookingId);
+          expect(pendingStatus).deep.equal(false);
+        });
       });
 
-      it("should suspend payment if booking balance is insufficient to charge insurance fee", async () => {
-        const guest = users[2];
-        const bookingId = 4;
+      context("use native token", () => {
+        it("should charge a partial payment ", async () => {
+          const guest = users[2];
+          const bookingId = 13;
 
-        // get balance before executing tx
-        const guestBalanceBefore = await busd.balanceOf(guest.address);
-        const hostBalanceBefore = await busd.balanceOf(host.address);
-        const treasuryBalanceBefore = await busd.balanceOf(treasury.address);
-        const contractBalanceBefore = await busd.balanceOf(property.address);
-        const feeReceiverBalanceBefore = await busd.balanceOf(
-          feeHolder.address
-        );
+          let now = (await ethers.provider.getBlock("latest")).timestamp;
+          const setting = {
+            bookingId: 13,
+            checkIn: now + 1 * days,
+            checkOut: now + 4 * days,
+            expireAt: now + 7 * days,
+            bookingAmount: 70000,
+            paymentToken: constants.AddressZero,
+            referrer: constants.AddressZero,
+            guest: guest.address,
+            property: property.address,
+            insuranceInfo: {
+              damageProtectionFee: 10000,
+              feeReceiver: feeHolder.address,
+              kygStatus: 0,
+            },
+            policies: [
+              {
+                expireAt: now + 2,
+                refundAmount: 30000,
+              },
+              {
+                expireAt: now + 3 * days,
+                refundAmount: 11000,
+              },
+            ],
+          };
 
-        // calculate fees and related amounts
-        let bookingInfo = await property.getBookingById(bookingId);
+          // generate signature
+          const signature = await verifier._signTypedData(
+            domain,
+            types,
+            setting
+          );
 
-        // remaining balanace is insufficient to charge damage protection fee
-        const fee = 0;
-        const hostRevenue = 0;
-        const remain = bookingInfo.balance;
+          await expect(
+            property.connect(guest).book(setting, signature, { value: 70000 })
+          ).emit(property, "NewBooking");
 
-        await increaseTime(2 * days);
+          // get balance before executing tx
+          const guestBalanceBefore = await ethers.provider.getBalance(
+            guest.address
+          );
+          const hostBalanceBefore = await ethers.provider.getBalance(
+            host.address
+          );
+          const treasuryBalanceBefore = await ethers.provider.getBalance(
+            treasury.address
+          );
+          const contractBalanceBefore = await ethers.provider.getBalance(
+            property.address
+          );
+          const feeReceiverBalanceBefore = await ethers.provider.getBalance(
+            feeHolder.address
+          );
 
-        const now = (await ethers.provider.getBlock("latest")).timestamp;
-        const txExecutionTime = now + 1;
-        await expect(property.connect(guest).payout(bookingId))
-          .emit(property, "PayOut")
-          .withArgs(
-            guest.address,
-            bookingId,
-            txExecutionTime,
-            hostRevenue,
-            fee,
-            0,
-            1
-          ); // 1 = BookingStatus.PARTIAL_PAID;
+          // calculate fees and related amounts
+          let bookingInfo = await property.getBookingById(bookingId);
+          const toBePaid = BigNumber.from(
+            bookingInfo.balance.sub(bookingInfo.policies[0].refundAmount)
+          );
+          const feeRatio = await management.feeNumerator();
+          const feeDenominator = await management.FEE_DENOMINATOR();
+          const fee = toBePaid.mul(feeRatio).div(feeDenominator);
+          const hostRevenue = toBePaid.sub(fee);
+          const remain = bookingInfo.balance.sub(toBePaid);
 
-        // check balance after payout
-        const guestBalance = await busd.balanceOf(guest.address);
-        const hostBalance = await busd.balanceOf(host.address);
-        const treasuryBalance = await busd.balanceOf(treasury.address);
-        const contractBalance = await busd.balanceOf(property.address);
-        const feeReceiverBalance = await busd.balanceOf(feeHolder.address);
+          // Update KYG status
+          await property
+            .connect(operator)
+            .updateKygStatusById(setting.bookingId, 1);
 
-        expect(guestBalance).deep.equal(guestBalanceBefore);
-        expect(hostBalance).deep.equal(hostBalanceBefore);
-        expect(treasuryBalance).deep.equal(treasuryBalanceBefore);
-        expect(contractBalance).deep.equal(contractBalanceBefore);
-        expect(feeReceiverBalance).deep.equal(feeReceiverBalanceBefore);
+          await increaseTime(0.5 * days);
 
-        // check on-chain states
-        bookingInfo = await property.getBookingById(bookingId);
-        expect(bookingInfo.balance).deep.equal(remain);
+          now = (await ethers.provider.getBlock("latest")).timestamp;
+          const txExecutionTime = now + 1;
+          const caller = users[5];
+          await expect(property.connect(caller).payout(bookingId))
+            .emit(property, "PayOut")
+            .withArgs(
+              guest.address,
+              bookingId,
+              txExecutionTime,
+              hostRevenue,
+              fee,
+              0,
+              1
+            ); // 1 = BookingStatus.PARTIAL_PAID;
 
-        const pendingStatus = await property.isInsuranceFeePending(bookingId);
-        expect(pendingStatus).deep.equal(false);
-      });
+          // check balance after payout
+          const guestBalance = await ethers.provider.getBalance(guest.address);
+          const hostBalance = await ethers.provider.getBalance(host.address);
+          const treasuryBalance = await ethers.provider.getBalance(
+            treasury.address
+          );
+          const contractBalance = await ethers.provider.getBalance(
+            property.address
+          );
+          const feeReceiverBalance = await ethers.provider.getBalance(
+            feeHolder.address
+          );
 
-      it("should make a final payout and collect damage protection fee", async () => {
-        const guest = users[2];
-        const bookingId = 4;
-        const insuranceInfo = await property.getInsuranceInfoById(bookingId);
-        await increaseTime(2 * days);
+          expect(guestBalance).deep.equal(guestBalanceBefore);
+          expect(hostBalance).deep.equal(hostBalanceBefore.add(hostRevenue));
+          expect(treasuryBalance).deep.equal(treasuryBalanceBefore.add(fee));
+          expect(contractBalance).deep.equal(
+            contractBalanceBefore.sub(toBePaid)
+          );
+          expect(feeReceiverBalance).deep.equal(feeReceiverBalanceBefore);
 
-        // get balance before executing tx
-        const guestBalanceBefore = await busd.balanceOf(guest.address);
-        const hostBalanceBefore = await busd.balanceOf(host.address);
-        const treasuryBalanceBefore = await busd.balanceOf(treasury.address);
-        const contractBalanceBefore = await busd.balanceOf(property.address);
-        const feeReceiverBalanceBefore = await busd.balanceOf(
-          feeHolder.address
-        );
+          // check on-chain states
+          bookingInfo = await property.getBookingById(bookingId);
+          expect(bookingInfo.balance).deep.equal(remain);
 
-        // calculate fees and related amounts
-        let bookingInfo = await property.getBookingById(bookingId);
-        const toBePaid = bookingInfo.balance;
-        const feeRatio = await management.feeNumerator();
-        const feeDenominator = await management.FEE_DENOMINATOR();
-        const fee = toBePaid.mul(feeRatio).div(feeDenominator);
-        const hostRevenue = toBePaid
-          .sub(fee)
-          .sub(insuranceInfo.damageProtectionFee);
+          const pendingStatus = await property.isInsuranceFeePending(bookingId);
+          expect(pendingStatus).deep.equal(false);
+        });
 
-        const now = (await ethers.provider.getBlock("latest")).timestamp;
-        const txExecutionTime = now + 1;
-        const tx = await property.connect(guest).payout(bookingId);
-        const receipt = await tx.wait();
-        let events: any = await property.queryFilter(
-          property.filters.InsuranceFeeCollected(),
-          receipt.blockHash
-        );
+        it("should suspend payment if booking balance is insufficient to charge insurance fee", async () => {
+          const guest = users[2];
+          const bookingId = 13;
 
-        let res = events.find((e: any) => e.event === "InsuranceFeeCollected");
-        expect(res!.args.receiver).deep.equal(feeHolder.address);
-        expect(res!.args.bookingId).deep.equal(bookingId);
-        expect(res!.args.collectAt).deep.equal(txExecutionTime);
-        expect(res!.args.feeAmount).deep.equal(
-          insuranceInfo.damageProtectionFee
-        );
+          // get balance before executing tx
+          const guestBalanceBefore = await ethers.provider.getBalance(
+            guest.address
+          );
+          const hostBalanceBefore = await ethers.provider.getBalance(
+            host.address
+          );
+          const treasuryBalanceBefore = await ethers.provider.getBalance(
+            treasury.address
+          );
+          const contractBalanceBefore = await ethers.provider.getBalance(
+            property.address
+          );
+          const feeReceiverBalanceBefore = await ethers.provider.getBalance(
+            feeHolder.address
+          );
 
-        events = await property.queryFilter(
-          property.filters.PayOut(),
-          receipt.blockHash
-        );
+          // calculate fees and related amounts
+          let bookingInfo = await property.getBookingById(bookingId);
 
-        res = events.find((e: any) => e.event === "PayOut");
-        expect(res!.args.guest).deep.equal(guest.address);
-        expect(res!.args.bookingId).deep.equal(bookingId);
-        expect(res!.args.payAt).deep.equal(txExecutionTime);
-        expect(res!.args.hostAmount).deep.equal(hostRevenue);
-        expect(res!.args.treasuryAmount).deep.equal(fee);
-        expect(res!.args.referrerAmount).deep.equal(0);
-        expect(res!.args.status).deep.equal(2); // 2 = BookingStatus.FULLY_PAID
+          // remaining balanace is insufficient to charge damage protection fee
+          const fee = 0;
+          const hostRevenue = 0;
+          const remain = bookingInfo.balance;
 
-        // check balance after payout
-        const guestBalance = await busd.balanceOf(guest.address);
-        const hostBalance = await busd.balanceOf(host.address);
-        const treasuryBalance = await busd.balanceOf(treasury.address);
-        const contractBalance = await busd.balanceOf(property.address);
-        const feeReceiverBalance = await busd.balanceOf(feeHolder.address);
+          await increaseTime(2 * days);
 
-        expect(guestBalance).deep.equal(guestBalanceBefore);
-        expect(hostBalance).deep.equal(hostBalanceBefore.add(hostRevenue));
-        expect(treasuryBalance).deep.equal(treasuryBalanceBefore.add(fee));
-        expect(contractBalance).deep.equal(contractBalanceBefore.sub(toBePaid));
-        expect(feeReceiverBalance).deep.equal(
-          feeReceiverBalanceBefore.add(insuranceInfo.damageProtectionFee)
-        );
+          const now = (await ethers.provider.getBlock("latest")).timestamp;
+          const txExecutionTime = now + 1;
+          const caller = users[5];
+          await expect(property.connect(caller).payout(bookingId))
+            .emit(property, "PayOut")
+            .withArgs(
+              guest.address,
+              bookingId,
+              txExecutionTime,
+              hostRevenue,
+              fee,
+              0,
+              1
+            ); // 1 = BookingStatus.PARTIAL_PAID;
 
-        // check on-chain states
-        bookingInfo = await property.getBookingById(bookingId);
-        expect(bookingInfo.balance).deep.equal(0);
+          // check balance after payout
+          const guestBalance = await ethers.provider.getBalance(guest.address);
+          const hostBalance = await ethers.provider.getBalance(host.address);
+          const treasuryBalance = await ethers.provider.getBalance(
+            treasury.address
+          );
+          const contractBalance = await ethers.provider.getBalance(
+            property.address
+          );
+          const feeReceiverBalance = await ethers.provider.getBalance(
+            feeHolder.address
+          );
 
-        const pendingStatus = await property.isInsuranceFeePending(bookingId);
-        expect(pendingStatus).deep.equal(false);
+          expect(guestBalance).deep.equal(guestBalanceBefore);
+          expect(hostBalance).deep.equal(hostBalanceBefore);
+          expect(treasuryBalance).deep.equal(treasuryBalanceBefore);
+          expect(contractBalance).deep.equal(contractBalanceBefore);
+          expect(feeReceiverBalance).deep.equal(feeReceiverBalanceBefore);
+
+          // check on-chain states
+          bookingInfo = await property.getBookingById(bookingId);
+          expect(bookingInfo.balance).deep.equal(remain);
+
+          const pendingStatus = await property.isInsuranceFeePending(bookingId);
+          expect(pendingStatus).deep.equal(false);
+        });
+
+        it("should make a final payout and collect damage protection fee", async () => {
+          const guest = users[2];
+          const bookingId = 13;
+          const insuranceInfo = await property.getInsuranceInfoById(bookingId);
+          await increaseTime(2 * days);
+
+          // get balance before executing tx
+          const guestBalanceBefore = await ethers.provider.getBalance(
+            guest.address
+          );
+          const hostBalanceBefore = await ethers.provider.getBalance(
+            host.address
+          );
+          const treasuryBalanceBefore = await ethers.provider.getBalance(
+            treasury.address
+          );
+          const contractBalanceBefore = await ethers.provider.getBalance(
+            property.address
+          );
+          const feeReceiverBalanceBefore = await ethers.provider.getBalance(
+            feeHolder.address
+          );
+
+          // calculate fees and related amounts
+          let bookingInfo = await property.getBookingById(bookingId);
+          const toBePaid = bookingInfo.balance;
+          const feeRatio = await management.feeNumerator();
+          const feeDenominator = await management.FEE_DENOMINATOR();
+          const fee = toBePaid.mul(feeRatio).div(feeDenominator);
+          const hostRevenue = toBePaid
+            .sub(fee)
+            .sub(insuranceInfo.damageProtectionFee);
+
+          const now = (await ethers.provider.getBlock("latest")).timestamp;
+          const txExecutionTime = now + 1;
+          const caller = users[5];
+          const tx = await property.connect(caller).payout(bookingId);
+          const receipt = await tx.wait();
+          let events: any = await property.queryFilter(
+            property.filters.InsuranceFeeCollected(),
+            receipt.blockHash
+          );
+
+          let res = events.find(
+            (e: any) => e.event === "InsuranceFeeCollected"
+          );
+          expect(res!.args.receiver).deep.equal(feeHolder.address);
+          expect(res!.args.bookingId).deep.equal(bookingId);
+          expect(res!.args.collectAt).deep.equal(txExecutionTime);
+          expect(res!.args.feeAmount).deep.equal(
+            insuranceInfo.damageProtectionFee
+          );
+
+          events = await property.queryFilter(
+            property.filters.PayOut(),
+            receipt.blockHash
+          );
+
+          res = events.find((e: any) => e.event === "PayOut");
+          expect(res!.args.guest).deep.equal(guest.address);
+          expect(res!.args.bookingId).deep.equal(bookingId);
+          expect(res!.args.payAt).deep.equal(txExecutionTime);
+          expect(res!.args.hostAmount).deep.equal(hostRevenue);
+          expect(res!.args.treasuryAmount).deep.equal(fee);
+          expect(res!.args.referrerAmount).deep.equal(0);
+          expect(res!.args.status).deep.equal(2); // 2 = BookingStatus.FULLY_PAID
+
+          // check balance after payout
+          const guestBalance = await ethers.provider.getBalance(guest.address);
+          const hostBalance = await ethers.provider.getBalance(host.address);
+          const treasuryBalance = await ethers.provider.getBalance(
+            treasury.address
+          );
+          const contractBalance = await ethers.provider.getBalance(
+            property.address
+          );
+          const feeReceiverBalance = await ethers.provider.getBalance(
+            feeHolder.address
+          );
+
+          expect(guestBalance).deep.equal(guestBalanceBefore);
+          expect(hostBalance).deep.equal(hostBalanceBefore.add(hostRevenue));
+          expect(treasuryBalance).deep.equal(treasuryBalanceBefore.add(fee));
+          expect(contractBalance).deep.equal(
+            contractBalanceBefore.sub(toBePaid)
+          );
+          expect(feeReceiverBalance).deep.equal(
+            feeReceiverBalanceBefore.add(insuranceInfo.damageProtectionFee)
+          );
+
+          // check on-chain states
+          bookingInfo = await property.getBookingById(bookingId);
+          expect(bookingInfo.balance).deep.equal(0);
+
+          const pendingStatus = await property.isInsuranceFeePending(bookingId);
+          expect(pendingStatus).deep.equal(false);
+        });
       });
     });
 
     describe("KYG status is IN PROGRESS and make a payout before check in", async () => {
-      it("should charge a partial payment and update pending insurance fee", async () => {
-        const guest = users[3];
-        const bookingId = 5;
+      context("use ERC20 token", () => {
+        it("should charge a partial payment and update pending insurance fee", async () => {
+          const guest = users[3];
+          const bookingId = 5;
 
-        let now = (await ethers.provider.getBlock("latest")).timestamp;
-        const setting = {
-          bookingId: 5,
-          checkIn: now + 10 * days,
-          checkOut: now + 11 * days,
-          expireAt: now + 15 * days,
-          bookingAmount: 80000,
-          paymentToken: busd.address,
-          referrer: constants.AddressZero,
-          guest: guest.address,
-          property: property.address,
-          insuranceInfo: {
-            damageProtectionFee: 10000,
-            feeReceiver: feeHolder.address,
-            kygStatus: 0,
-          },
-          policies: [
-            {
-              expireAt: now + 2,
-              refundAmount: 30000,
+          let now = (await ethers.provider.getBlock("latest")).timestamp;
+          const setting = {
+            bookingId: 5,
+            checkIn: now + 10 * days,
+            checkOut: now + 11 * days,
+            expireAt: now + 15 * days,
+            bookingAmount: 80000,
+            paymentToken: busd.address,
+            referrer: constants.AddressZero,
+            guest: guest.address,
+            property: property.address,
+            insuranceInfo: {
+              damageProtectionFee: 10000,
+              feeReceiver: feeHolder.address,
+              kygStatus: 0,
             },
-            {
-              expireAt: now + 3 * days,
-              refundAmount: 20000,
+            policies: [
+              {
+                expireAt: now + 2,
+                refundAmount: 30000,
+              },
+              {
+                expireAt: now + 3 * days,
+                refundAmount: 20000,
+              },
+            ],
+          };
+
+          // generate signature
+          const signature = await verifier._signTypedData(
+            domain,
+            types,
+            setting
+          );
+
+          await expect(property.connect(guest).book(setting, signature)).emit(
+            property,
+            "NewBooking"
+          );
+
+          // get balance before executing tx
+          const guestBalanceBefore = await busd.balanceOf(guest.address);
+          const hostBalanceBefore = await busd.balanceOf(host.address);
+          const treasuryBalanceBefore = await busd.balanceOf(treasury.address);
+          const contractBalanceBefore = await busd.balanceOf(property.address);
+          const feeReceiverBalanceBefore = await busd.balanceOf(
+            feeHolder.address
+          );
+
+          // calculate fees and related amounts
+          const insuranceInfo = await property.getInsuranceInfoById(bookingId);
+          let bookingInfo = await property.getBookingById(bookingId);
+          const toBePaid = bookingInfo.balance;
+          const feeRatio = await management.feeNumerator();
+          const feeDenominator = await management.FEE_DENOMINATOR();
+          const fee = toBePaid.mul(feeRatio).div(feeDenominator);
+          const hostRevenue = toBePaid
+            .sub(fee)
+            .sub(insuranceInfo.damageProtectionFee);
+
+          await increaseTime(5 * days);
+
+          now = (await ethers.provider.getBlock("latest")).timestamp;
+          const txExecutionTime = now + 1;
+          await expect(property.connect(guest).payout(bookingId))
+            .emit(property, "PayOut")
+            .withArgs(
+              guest.address,
+              bookingId,
+              txExecutionTime,
+              hostRevenue,
+              fee,
+              0,
+              5
+            ); // 5 = BookingStatus.PENDING_INSURANCE_FEE;
+
+          // check balance after payout
+          const guestBalance = await busd.balanceOf(guest.address);
+          const hostBalance = await busd.balanceOf(host.address);
+          const treasuryBalance = await busd.balanceOf(treasury.address);
+          const contractBalance = await busd.balanceOf(property.address);
+          const feeReceiverBalance = await busd.balanceOf(feeHolder.address);
+
+          expect(guestBalance).deep.equal(guestBalanceBefore);
+          expect(hostBalance).deep.equal(hostBalanceBefore.add(hostRevenue));
+          expect(treasuryBalance).deep.equal(treasuryBalanceBefore.add(fee));
+          expect(contractBalance).deep.equal(
+            contractBalanceBefore.sub(hostRevenue).sub(fee)
+          );
+          expect(feeReceiverBalance).deep.equal(feeReceiverBalanceBefore);
+
+          // check on-chain states
+          bookingInfo = await property.getBookingById(bookingId);
+          expect(bookingInfo.balance).deep.equal(0);
+
+          const pendingStatus = await property.isInsuranceFeePending(bookingId);
+          expect(pendingStatus).deep.equal(true);
+        });
+
+        it("should revert when unlocking pending insurance fee - make a payout before check in", async () => {
+          const guest = users[3];
+          const bookingId = 5;
+          await expect(property.connect(guest).payout(bookingId)).revertedWith(
+            "CannotChargeInsuranceFee"
+          );
+        });
+
+        it("should revert when canceling booking in status of pending insurance fee", async () => {
+          const guest = users[3];
+          const bookingId = 5;
+          await expect(property.connect(guest).cancel(bookingId)).revertedWith(
+            "PaidOrCancelledAlready"
+          );
+          await expect(
+            property.connect(host).cancelByHost(bookingId)
+          ).revertedWith("PaidOrCancelledAlready");
+        });
+
+        it("should unlock pending insurance fee - make a payout after check in", async () => {
+          const guest = users[3];
+          const bookingId = 5;
+          const insuranceInfo = await property.getInsuranceInfoById(bookingId);
+
+          // get balance before executing tx
+          const guestBalanceBefore = await busd.balanceOf(guest.address);
+          const hostBalanceBefore = await busd.balanceOf(host.address);
+          const treasuryBalanceBefore = await busd.balanceOf(treasury.address);
+          const contractBalanceBefore = await busd.balanceOf(property.address);
+          const feeReceiverBalanceBefore = await busd.balanceOf(
+            feeHolder.address
+          );
+
+          await increaseTime(5 * days);
+
+          const now = (await ethers.provider.getBlock("latest")).timestamp;
+          const txExecutionTime = now + 1;
+          const tx = await property.connect(guest).payout(bookingId);
+          const receipt = await tx.wait();
+          let events: any = await property.queryFilter(
+            property.filters.InsuranceFeeCollected(),
+            receipt.blockHash
+          );
+
+          let res = events.find(
+            (e: any) => e.event === "InsuranceFeeCollected"
+          );
+          expect(res!.args.receiver).deep.equal(feeHolder.address);
+          expect(res!.args.bookingId).deep.equal(bookingId);
+          expect(res!.args.collectAt).deep.equal(txExecutionTime);
+          expect(res!.args.feeAmount).deep.equal(
+            insuranceInfo.damageProtectionFee
+          );
+
+          events = await property.queryFilter(
+            property.filters.PayOut(),
+            receipt.blockHash
+          );
+
+          res = events.find((e: any) => e.event === "PayOut");
+          expect(res!.args.guest).deep.equal(guest.address);
+          expect(res!.args.bookingId).deep.equal(bookingId);
+          expect(res!.args.payAt).deep.equal(txExecutionTime);
+          expect(res!.args.hostAmount).deep.equal(0);
+          expect(res!.args.treasuryAmount).deep.equal(0);
+          expect(res!.args.referrerAmount).deep.equal(0);
+          expect(res!.args.status).deep.equal(2); // 2 = BookingStatus.FULLY_PAID
+
+          // check balance after payout
+          const guestBalance = await busd.balanceOf(guest.address);
+          const hostBalance = await busd.balanceOf(host.address);
+          const treasuryBalance = await busd.balanceOf(treasury.address);
+          const contractBalance = await busd.balanceOf(property.address);
+          const feeReceiverBalance = await busd.balanceOf(feeHolder.address);
+
+          expect(guestBalance).deep.equal(guestBalanceBefore);
+          expect(hostBalance).deep.equal(hostBalanceBefore);
+          expect(treasuryBalance).deep.equal(treasuryBalanceBefore);
+          expect(contractBalance).deep.equal(
+            contractBalanceBefore.sub(insuranceInfo.damageProtectionFee)
+          );
+          expect(feeReceiverBalance).deep.equal(
+            feeReceiverBalanceBefore.add(insuranceInfo.damageProtectionFee)
+          );
+
+          // check on-chain states
+          const bookingInfo = await property.getBookingById(bookingId);
+          expect(bookingInfo.balance).deep.equal(0);
+          expect(bookingInfo.status).deep.equal(2); // 2 = BookingStatus.FULLY_PAID
+
+          const pendingStatus = await property.isInsuranceFeePending(bookingId);
+          expect(pendingStatus).deep.equal(false);
+        });
+      });
+
+      context("use native coin", () => {
+        it("should charge a partial payment and update pending insurance fee", async () => {
+          const guest = users[3];
+          const bookingId = 14;
+
+          let now = (await ethers.provider.getBlock("latest")).timestamp;
+          const setting = {
+            bookingId: 14,
+            checkIn: now + 10 * days,
+            checkOut: now + 11 * days,
+            expireAt: now + 15 * days,
+            bookingAmount: 80000,
+            paymentToken: constants.AddressZero,
+            referrer: constants.AddressZero,
+            guest: guest.address,
+            property: property.address,
+            insuranceInfo: {
+              damageProtectionFee: 10000,
+              feeReceiver: feeHolder.address,
+              kygStatus: 0,
             },
-          ],
-        };
+            policies: [
+              {
+                expireAt: now + 2,
+                refundAmount: 30000,
+              },
+              {
+                expireAt: now + 3 * days,
+                refundAmount: 20000,
+              },
+            ],
+          };
 
-        // generate signature
-        const signature = await verifier._signTypedData(domain, types, setting);
+          // generate signature
+          const signature = await verifier._signTypedData(
+            domain,
+            types,
+            setting
+          );
 
-        await expect(property.connect(guest).book(setting, signature)).emit(
-          property,
-          "NewBooking"
-        );
+          await expect(
+            property.connect(guest).book(setting, signature, { value: 80000 })
+          ).emit(property, "NewBooking");
 
-        // get balance before executing tx
-        const guestBalanceBefore = await busd.balanceOf(guest.address);
-        const hostBalanceBefore = await busd.balanceOf(host.address);
-        const treasuryBalanceBefore = await busd.balanceOf(treasury.address);
-        const contractBalanceBefore = await busd.balanceOf(property.address);
-        const feeReceiverBalanceBefore = await busd.balanceOf(
-          feeHolder.address
-        );
+          // get balance before executing tx
+          const guestBalanceBefore = await ethers.provider.getBalance(
+            guest.address
+          );
+          const hostBalanceBefore = await ethers.provider.getBalance(
+            host.address
+          );
+          const treasuryBalanceBefore = await ethers.provider.getBalance(
+            treasury.address
+          );
+          const contractBalanceBefore = await ethers.provider.getBalance(
+            property.address
+          );
+          const feeReceiverBalanceBefore = await ethers.provider.getBalance(
+            feeHolder.address
+          );
 
-        // calculate fees and related amounts
-        const insuranceInfo = await property.getInsuranceInfoById(bookingId);
-        let bookingInfo = await property.getBookingById(bookingId);
-        const toBePaid = bookingInfo.balance;
-        const feeRatio = await management.feeNumerator();
-        const feeDenominator = await management.FEE_DENOMINATOR();
-        const fee = toBePaid.mul(feeRatio).div(feeDenominator);
-        const hostRevenue = toBePaid
-          .sub(fee)
-          .sub(insuranceInfo.damageProtectionFee);
+          // calculate fees and related amounts
+          const insuranceInfo = await property.getInsuranceInfoById(bookingId);
+          let bookingInfo = await property.getBookingById(bookingId);
+          const toBePaid = bookingInfo.balance;
+          const feeRatio = await management.feeNumerator();
+          const feeDenominator = await management.FEE_DENOMINATOR();
+          const fee = toBePaid.mul(feeRatio).div(feeDenominator);
+          const hostRevenue = toBePaid
+            .sub(fee)
+            .sub(insuranceInfo.damageProtectionFee);
 
-        await increaseTime(5 * days);
+          await increaseTime(5 * days);
 
-        now = (await ethers.provider.getBlock("latest")).timestamp;
-        const txExecutionTime = now + 1;
-        await expect(property.connect(guest).payout(bookingId))
-          .emit(property, "PayOut")
-          .withArgs(
-            guest.address,
-            bookingId,
-            txExecutionTime,
-            hostRevenue,
-            fee,
-            0,
-            5
-          ); // 5 = BookingStatus.PENDING_INSURANCE_FEE;
+          now = (await ethers.provider.getBlock("latest")).timestamp;
+          const txExecutionTime = now + 1;
+          const caller = users[5];
+          await expect(property.connect(caller).payout(bookingId))
+            .emit(property, "PayOut")
+            .withArgs(
+              guest.address,
+              bookingId,
+              txExecutionTime,
+              hostRevenue,
+              fee,
+              0,
+              5
+            ); // 5 = BookingStatus.PENDING_INSURANCE_FEE;
 
-        // check balance after payout
-        const guestBalance = await busd.balanceOf(guest.address);
-        const hostBalance = await busd.balanceOf(host.address);
-        const treasuryBalance = await busd.balanceOf(treasury.address);
-        const contractBalance = await busd.balanceOf(property.address);
-        const feeReceiverBalance = await busd.balanceOf(feeHolder.address);
+          // check balance after payout
+          const guestBalance = await ethers.provider.getBalance(guest.address);
+          const hostBalance = await ethers.provider.getBalance(host.address);
+          const treasuryBalance = await ethers.provider.getBalance(
+            treasury.address
+          );
+          const contractBalance = await ethers.provider.getBalance(
+            property.address
+          );
+          const feeReceiverBalance = await ethers.provider.getBalance(
+            feeHolder.address
+          );
 
-        expect(guestBalance).deep.equal(guestBalanceBefore);
-        expect(hostBalance).deep.equal(hostBalanceBefore.add(hostRevenue));
-        expect(treasuryBalance).deep.equal(treasuryBalanceBefore.add(fee));
-        expect(contractBalance).deep.equal(
-          contractBalanceBefore.sub(hostRevenue).sub(fee)
-        );
-        expect(feeReceiverBalance).deep.equal(feeReceiverBalanceBefore);
+          expect(guestBalance).deep.equal(guestBalanceBefore);
+          expect(hostBalance).deep.equal(hostBalanceBefore.add(hostRevenue));
+          expect(treasuryBalance).deep.equal(treasuryBalanceBefore.add(fee));
+          expect(contractBalance).deep.equal(
+            contractBalanceBefore.sub(hostRevenue).sub(fee)
+          );
+          expect(feeReceiverBalance).deep.equal(feeReceiverBalanceBefore);
 
-        // check on-chain states
-        bookingInfo = await property.getBookingById(bookingId);
-        expect(bookingInfo.balance).deep.equal(0);
+          // check on-chain states
+          bookingInfo = await property.getBookingById(bookingId);
+          expect(bookingInfo.balance).deep.equal(0);
 
-        const pendingStatus = await property.isInsuranceFeePending(bookingId);
-        expect(pendingStatus).deep.equal(true);
-      });
+          const pendingStatus = await property.isInsuranceFeePending(bookingId);
+          expect(pendingStatus).deep.equal(true);
+        });
 
-      it("should revert when unlocking pending insurance fee - make a payout before check in", async () => {
-        const guest = users[3];
-        const bookingId = 5;
-        await expect(property.connect(guest).payout(bookingId)).revertedWith(
-          "CannotChargeInsuranceFee"
-        );
-      });
+        it("should revert when unlocking pending insurance fee - make a payout before check in", async () => {
+          const guest = users[3];
+          const bookingId = 14;
+          await expect(property.connect(guest).payout(bookingId)).revertedWith(
+            "CannotChargeInsuranceFee"
+          );
+        });
 
-      it("should revert when canceling booking in status of pending insurance fee", async () => {
-        const guest = users[3];
-        const bookingId = 5;
-        await expect(property.connect(guest).cancel(bookingId)).revertedWith(
-          "PaidOrCancelledAlready"
-        );
-        await expect(
-          property.connect(host).cancelByHost(bookingId)
-        ).revertedWith("PaidOrCancelledAlready");
-      });
+        it("should revert when canceling booking in status of pending insurance fee", async () => {
+          const guest = users[3];
+          const bookingId = 14;
+          await expect(property.connect(guest).cancel(bookingId)).revertedWith(
+            "PaidOrCancelledAlready"
+          );
+          await expect(
+            property.connect(host).cancelByHost(bookingId)
+          ).revertedWith("PaidOrCancelledAlready");
+        });
 
-      it("should unlock pending insurance fee - make a payout after check in", async () => {
-        const guest = users[3];
-        const bookingId = 5;
-        const insuranceInfo = await property.getInsuranceInfoById(bookingId);
+        it("should unlock pending insurance fee - make a payout after check in", async () => {
+          const guest = users[3];
+          const bookingId = 14;
+          const insuranceInfo = await property.getInsuranceInfoById(bookingId);
 
-        // get balance before executing tx
-        const guestBalanceBefore = await busd.balanceOf(guest.address);
-        const hostBalanceBefore = await busd.balanceOf(host.address);
-        const treasuryBalanceBefore = await busd.balanceOf(treasury.address);
-        const contractBalanceBefore = await busd.balanceOf(property.address);
-        const feeReceiverBalanceBefore = await busd.balanceOf(
-          feeHolder.address
-        );
+          // get balance before executing tx
+          const guestBalanceBefore = await ethers.provider.getBalance(
+            guest.address
+          );
+          const hostBalanceBefore = await ethers.provider.getBalance(
+            host.address
+          );
+          const treasuryBalanceBefore = await ethers.provider.getBalance(
+            treasury.address
+          );
+          const contractBalanceBefore = await ethers.provider.getBalance(
+            property.address
+          );
+          const feeReceiverBalanceBefore = await ethers.provider.getBalance(
+            feeHolder.address
+          );
 
-        await increaseTime(5 * days);
+          await increaseTime(5 * days);
 
-        const now = (await ethers.provider.getBlock("latest")).timestamp;
-        const txExecutionTime = now + 1;
-        const tx = await property.connect(guest).payout(bookingId);
-        const receipt = await tx.wait();
-        let events: any = await property.queryFilter(
-          property.filters.InsuranceFeeCollected(),
-          receipt.blockHash
-        );
+          const now = (await ethers.provider.getBlock("latest")).timestamp;
+          const txExecutionTime = now + 1;
+          const caller = users[5];
+          const tx = await property.connect(caller).payout(bookingId);
+          const receipt = await tx.wait();
+          let events: any = await property.queryFilter(
+            property.filters.InsuranceFeeCollected(),
+            receipt.blockHash
+          );
 
-        let res = events.find((e: any) => e.event === "InsuranceFeeCollected");
-        expect(res!.args.receiver).deep.equal(feeHolder.address);
-        expect(res!.args.bookingId).deep.equal(bookingId);
-        expect(res!.args.collectAt).deep.equal(txExecutionTime);
-        expect(res!.args.feeAmount).deep.equal(
-          insuranceInfo.damageProtectionFee
-        );
+          let res = events.find(
+            (e: any) => e.event === "InsuranceFeeCollected"
+          );
+          expect(res!.args.receiver).deep.equal(feeHolder.address);
+          expect(res!.args.bookingId).deep.equal(bookingId);
+          expect(res!.args.collectAt).deep.equal(txExecutionTime);
+          expect(res!.args.feeAmount).deep.equal(
+            insuranceInfo.damageProtectionFee
+          );
 
-        events = await property.queryFilter(
-          property.filters.PayOut(),
-          receipt.blockHash
-        );
+          events = await property.queryFilter(
+            property.filters.PayOut(),
+            receipt.blockHash
+          );
 
-        res = events.find((e: any) => e.event === "PayOut");
-        expect(res!.args.guest).deep.equal(guest.address);
-        expect(res!.args.bookingId).deep.equal(bookingId);
-        expect(res!.args.payAt).deep.equal(txExecutionTime);
-        expect(res!.args.hostAmount).deep.equal(0);
-        expect(res!.args.treasuryAmount).deep.equal(0);
-        expect(res!.args.referrerAmount).deep.equal(0);
-        expect(res!.args.status).deep.equal(2); // 2 = BookingStatus.FULLY_PAID
+          res = events.find((e: any) => e.event === "PayOut");
+          expect(res!.args.guest).deep.equal(guest.address);
+          expect(res!.args.bookingId).deep.equal(bookingId);
+          expect(res!.args.payAt).deep.equal(txExecutionTime);
+          expect(res!.args.hostAmount).deep.equal(0);
+          expect(res!.args.treasuryAmount).deep.equal(0);
+          expect(res!.args.referrerAmount).deep.equal(0);
+          expect(res!.args.status).deep.equal(2); // 2 = BookingStatus.FULLY_PAID
 
-        // check balance after payout
-        const guestBalance = await busd.balanceOf(guest.address);
-        const hostBalance = await busd.balanceOf(host.address);
-        const treasuryBalance = await busd.balanceOf(treasury.address);
-        const contractBalance = await busd.balanceOf(property.address);
-        const feeReceiverBalance = await busd.balanceOf(feeHolder.address);
+          // check balance after payout
+          const guestBalance = await ethers.provider.getBalance(guest.address);
+          const hostBalance = await ethers.provider.getBalance(host.address);
+          const treasuryBalance = await ethers.provider.getBalance(
+            treasury.address
+          );
+          const contractBalance = await ethers.provider.getBalance(
+            property.address
+          );
+          const feeReceiverBalance = await ethers.provider.getBalance(
+            feeHolder.address
+          );
 
-        expect(guestBalance).deep.equal(guestBalanceBefore);
-        expect(hostBalance).deep.equal(hostBalanceBefore);
-        expect(treasuryBalance).deep.equal(treasuryBalanceBefore);
-        expect(contractBalance).deep.equal(
-          contractBalanceBefore.sub(insuranceInfo.damageProtectionFee)
-        );
-        expect(feeReceiverBalance).deep.equal(
-          feeReceiverBalanceBefore.add(insuranceInfo.damageProtectionFee)
-        );
+          expect(guestBalance).deep.equal(guestBalanceBefore);
+          expect(hostBalance).deep.equal(hostBalanceBefore);
+          expect(treasuryBalance).deep.equal(treasuryBalanceBefore);
+          expect(contractBalance).deep.equal(
+            contractBalanceBefore.sub(insuranceInfo.damageProtectionFee)
+          );
+          expect(feeReceiverBalance).deep.equal(
+            feeReceiverBalanceBefore.add(insuranceInfo.damageProtectionFee)
+          );
 
-        // check on-chain states
-        const bookingInfo = await property.getBookingById(bookingId);
-        expect(bookingInfo.balance).deep.equal(0);
-        expect(bookingInfo.status).deep.equal(2); // 2 = BookingStatus.FULLY_PAID
+          // check on-chain states
+          const bookingInfo = await property.getBookingById(bookingId);
+          expect(bookingInfo.balance).deep.equal(0);
+          expect(bookingInfo.status).deep.equal(2); // 2 = BookingStatus.FULLY_PAID
 
-        const pendingStatus = await property.isInsuranceFeePending(bookingId);
-        expect(pendingStatus).deep.equal(false);
+          const pendingStatus = await property.isInsuranceFeePending(bookingId);
+          expect(pendingStatus).deep.equal(false);
+        });
       });
     });
 
     describe("KYG status is FAILED and make a payout before check in", async () => {
-      it("should charge a partial payment and update pending insurance fee", async () => {
-        const guest = users[4];
-        const bookingId = 6;
+      context("use ERC20 token", () => {
+        it("should charge a partial payment and update pending insurance fee", async () => {
+          const guest = users[4];
+          const bookingId = 6;
 
-        let now = (await ethers.provider.getBlock("latest")).timestamp;
-        const setting = {
-          bookingId: 6,
-          checkIn: now + 10 * days,
-          checkOut: now + 11 * days,
-          expireAt: now + 15 * days,
-          bookingAmount: 80000,
-          paymentToken: busd.address,
-          referrer: constants.AddressZero,
-          guest: guest.address,
-          property: property.address,
-          insuranceInfo: {
-            damageProtectionFee: 10000,
-            feeReceiver: feeHolder.address,
-            kygStatus: 0,
-          },
-          policies: [
-            {
-              expireAt: now + 2,
-              refundAmount: 30000,
+          let now = (await ethers.provider.getBlock("latest")).timestamp;
+          const setting = {
+            bookingId: 6,
+            checkIn: now + 10 * days,
+            checkOut: now + 11 * days,
+            expireAt: now + 15 * days,
+            bookingAmount: 80000,
+            paymentToken: busd.address,
+            referrer: constants.AddressZero,
+            guest: guest.address,
+            property: property.address,
+            insuranceInfo: {
+              damageProtectionFee: 10000,
+              feeReceiver: feeHolder.address,
+              kygStatus: 0,
             },
-            {
-              expireAt: now + 3 * days,
-              refundAmount: 20000,
-            },
-          ],
-        };
+            policies: [
+              {
+                expireAt: now + 2,
+                refundAmount: 30000,
+              },
+              {
+                expireAt: now + 3 * days,
+                refundAmount: 20000,
+              },
+            ],
+          };
 
-        // generate signature
-        const signature = await verifier._signTypedData(domain, types, setting);
-
-        await expect(property.connect(guest).book(setting, signature)).emit(
-          property,
-          "NewBooking"
-        );
-
-        // get balance before executing tx
-        const guestBalanceBefore = await busd.balanceOf(guest.address);
-        const hostBalanceBefore = await busd.balanceOf(host.address);
-        const treasuryBalanceBefore = await busd.balanceOf(treasury.address);
-        const contractBalanceBefore = await busd.balanceOf(property.address);
-        const feeReceiverBalanceBefore = await busd.balanceOf(
-          feeHolder.address
-        );
-
-        // calculate fees and related amounts
-        const insuranceInfo = await property.getInsuranceInfoById(bookingId);
-        let bookingInfo = await property.getBookingById(bookingId);
-        const toBePaid = bookingInfo.balance;
-        const feeRatio = await management.feeNumerator();
-        const feeDenominator = await management.FEE_DENOMINATOR();
-        const fee = toBePaid.mul(feeRatio).div(feeDenominator);
-        const hostRevenue = toBePaid
-          .sub(fee)
-          .sub(insuranceInfo.damageProtectionFee);
-
-        await increaseTime(5 * days);
-
-        now = (await ethers.provider.getBlock("latest")).timestamp;
-        const txExecutionTime = now + 1;
-        await expect(property.connect(guest).payout(bookingId))
-          .emit(property, "PayOut")
-          .withArgs(
-            guest.address,
-            bookingId,
-            txExecutionTime,
-            hostRevenue,
-            fee,
-            0,
-            5
-          ); // 5 = BookingStatus.PENDING_INSURANCE_FEE;
-
-        // check balance after payout
-        const guestBalance = await busd.balanceOf(guest.address);
-        const hostBalance = await busd.balanceOf(host.address);
-        const treasuryBalance = await busd.balanceOf(treasury.address);
-        const contractBalance = await busd.balanceOf(property.address);
-        const feeReceiverBalance = await busd.balanceOf(feeHolder.address);
-
-        expect(guestBalance).deep.equal(guestBalanceBefore);
-        expect(hostBalance).deep.equal(hostBalanceBefore.add(hostRevenue));
-        expect(treasuryBalance).deep.equal(treasuryBalanceBefore.add(fee));
-        expect(contractBalance).deep.equal(
-          contractBalanceBefore.sub(hostRevenue).sub(fee)
-        );
-        expect(feeReceiverBalance).deep.equal(feeReceiverBalanceBefore);
-
-        // check on-chain states
-        bookingInfo = await property.getBookingById(bookingId);
-        expect(bookingInfo.balance).deep.equal(0);
-
-        const pendingStatus = await property.isInsuranceFeePending(bookingId);
-        expect(pendingStatus).deep.equal(true);
-      });
-
-      it("should revert when refunding insurance fee to host - make a payout before check in", async () => {
-        const guest = users[4];
-        const bookingId = 6;
-
-        await property.connect(operator).updateKygStatusById(bookingId, 2); // KYG status = FAILED
-
-        await expect(property.connect(guest).payout(bookingId)).revertedWith(
-          "CannotChargeInsuranceFee"
-        );
-      });
-
-      it("should revert when canceling booking in status of pending insurance fee", async () => {
-        const guest = users[4];
-        const bookingId = 6;
-        await expect(property.connect(guest).cancel(bookingId)).revertedWith(
-          "PaidOrCancelledAlready"
-        );
-        await expect(
-          property.connect(host).cancelByHost(bookingId)
-        ).revertedWith("PaidOrCancelledAlready");
-      });
-
-      it("should refund insurance fee to host - make a payout after check in", async () => {
-        const guest = users[4];
-        const bookingId = 6;
-        const insuranceInfo = await property.getInsuranceInfoById(bookingId);
-
-        // get balance before executing tx
-        const guestBalanceBefore = await busd.balanceOf(guest.address);
-        const hostBalanceBefore = await busd.balanceOf(host.address);
-        const treasuryBalanceBefore = await busd.balanceOf(treasury.address);
-        const contractBalanceBefore = await busd.balanceOf(property.address);
-        const feeReceiverBalanceBefore = await busd.balanceOf(
-          feeHolder.address
-        );
-
-        await increaseTime(5 * days);
-        const now = (await ethers.provider.getBlock("latest")).timestamp;
-        const txExecutionTime = now + 1;
-        await expect(property.connect(guest).payout(bookingId))
-          .emit(property, "PayOut")
-          .withArgs(
-            guest.address,
-            bookingId,
-            txExecutionTime,
-            insuranceInfo.damageProtectionFee,
-            0,
-            0,
-            2 // 2 = BookingStatus.FULLY_PAID
+          // generate signature
+          const signature = await verifier._signTypedData(
+            domain,
+            types,
+            setting
           );
 
-        // check balance after payout
-        const guestBalance = await busd.balanceOf(guest.address);
-        const hostBalance = await busd.balanceOf(host.address);
-        const treasuryBalance = await busd.balanceOf(treasury.address);
-        const contractBalance = await busd.balanceOf(property.address);
-        const feeReceiverBalance = await busd.balanceOf(feeHolder.address);
+          await expect(property.connect(guest).book(setting, signature)).emit(
+            property,
+            "NewBooking"
+          );
 
-        expect(guestBalance).deep.equal(guestBalanceBefore);
-        expect(hostBalance).deep.equal(
-          hostBalanceBefore.add(insuranceInfo.damageProtectionFee)
-        );
-        expect(treasuryBalance).deep.equal(treasuryBalanceBefore);
-        expect(contractBalance).deep.equal(
-          contractBalanceBefore.sub(insuranceInfo.damageProtectionFee)
-        );
-        expect(feeReceiverBalance).deep.equal(feeReceiverBalanceBefore);
+          // get balance before executing tx
+          const guestBalanceBefore = await busd.balanceOf(guest.address);
+          const hostBalanceBefore = await busd.balanceOf(host.address);
+          const treasuryBalanceBefore = await busd.balanceOf(treasury.address);
+          const contractBalanceBefore = await busd.balanceOf(property.address);
+          const feeReceiverBalanceBefore = await busd.balanceOf(
+            feeHolder.address
+          );
 
-        // check on-chain states
-        const bookingInfo = await property.getBookingById(bookingId);
-        expect(bookingInfo.balance).deep.equal(0);
-        expect(bookingInfo.status).deep.equal(2); // 2 = BookingStatus.FULLY_PAID
+          // calculate fees and related amounts
+          const insuranceInfo = await property.getInsuranceInfoById(bookingId);
+          let bookingInfo = await property.getBookingById(bookingId);
+          const toBePaid = bookingInfo.balance;
+          const feeRatio = await management.feeNumerator();
+          const feeDenominator = await management.FEE_DENOMINATOR();
+          const fee = toBePaid.mul(feeRatio).div(feeDenominator);
+          const hostRevenue = toBePaid
+            .sub(fee)
+            .sub(insuranceInfo.damageProtectionFee);
 
-        const pendingStatus = await property.isInsuranceFeePending(bookingId);
-        expect(pendingStatus).deep.equal(false);
+          await increaseTime(5 * days);
+
+          now = (await ethers.provider.getBlock("latest")).timestamp;
+          const txExecutionTime = now + 1;
+          await expect(property.connect(guest).payout(bookingId))
+            .emit(property, "PayOut")
+            .withArgs(
+              guest.address,
+              bookingId,
+              txExecutionTime,
+              hostRevenue,
+              fee,
+              0,
+              5
+            ); // 5 = BookingStatus.PENDING_INSURANCE_FEE;
+
+          // check balance after payout
+          const guestBalance = await busd.balanceOf(guest.address);
+          const hostBalance = await busd.balanceOf(host.address);
+          const treasuryBalance = await busd.balanceOf(treasury.address);
+          const contractBalance = await busd.balanceOf(property.address);
+          const feeReceiverBalance = await busd.balanceOf(feeHolder.address);
+
+          expect(guestBalance).deep.equal(guestBalanceBefore);
+          expect(hostBalance).deep.equal(hostBalanceBefore.add(hostRevenue));
+          expect(treasuryBalance).deep.equal(treasuryBalanceBefore.add(fee));
+          expect(contractBalance).deep.equal(
+            contractBalanceBefore.sub(hostRevenue).sub(fee)
+          );
+          expect(feeReceiverBalance).deep.equal(feeReceiverBalanceBefore);
+
+          // check on-chain states
+          bookingInfo = await property.getBookingById(bookingId);
+          expect(bookingInfo.balance).deep.equal(0);
+
+          const pendingStatus = await property.isInsuranceFeePending(bookingId);
+          expect(pendingStatus).deep.equal(true);
+        });
+
+        it("should revert when refunding insurance fee to host - make a payout before check in", async () => {
+          const guest = users[4];
+          const bookingId = 6;
+
+          await property.connect(operator).updateKygStatusById(bookingId, 2); // KYG status = FAILED
+
+          await expect(property.connect(guest).payout(bookingId)).revertedWith(
+            "CannotChargeInsuranceFee"
+          );
+        });
+
+        it("should revert when canceling booking in status of pending insurance fee", async () => {
+          const guest = users[4];
+          const bookingId = 6;
+          await expect(property.connect(guest).cancel(bookingId)).revertedWith(
+            "PaidOrCancelledAlready"
+          );
+          await expect(
+            property.connect(host).cancelByHost(bookingId)
+          ).revertedWith("PaidOrCancelledAlready");
+        });
+
+        it("should refund insurance fee to host - make a payout after check in", async () => {
+          const guest = users[4];
+          const bookingId = 6;
+          const insuranceInfo = await property.getInsuranceInfoById(bookingId);
+
+          // get balance before executing tx
+          const guestBalanceBefore = await busd.balanceOf(guest.address);
+          const hostBalanceBefore = await busd.balanceOf(host.address);
+          const treasuryBalanceBefore = await busd.balanceOf(treasury.address);
+          const contractBalanceBefore = await busd.balanceOf(property.address);
+          const feeReceiverBalanceBefore = await busd.balanceOf(
+            feeHolder.address
+          );
+
+          await increaseTime(5 * days);
+          const now = (await ethers.provider.getBlock("latest")).timestamp;
+          const txExecutionTime = now + 1;
+          await expect(property.connect(guest).payout(bookingId))
+            .emit(property, "PayOut")
+            .withArgs(
+              guest.address,
+              bookingId,
+              txExecutionTime,
+              insuranceInfo.damageProtectionFee,
+              0,
+              0,
+              2 // 2 = BookingStatus.FULLY_PAID
+            );
+
+          // check balance after payout
+          const guestBalance = await busd.balanceOf(guest.address);
+          const hostBalance = await busd.balanceOf(host.address);
+          const treasuryBalance = await busd.balanceOf(treasury.address);
+          const contractBalance = await busd.balanceOf(property.address);
+          const feeReceiverBalance = await busd.balanceOf(feeHolder.address);
+
+          expect(guestBalance).deep.equal(guestBalanceBefore);
+          expect(hostBalance).deep.equal(
+            hostBalanceBefore.add(insuranceInfo.damageProtectionFee)
+          );
+          expect(treasuryBalance).deep.equal(treasuryBalanceBefore);
+          expect(contractBalance).deep.equal(
+            contractBalanceBefore.sub(insuranceInfo.damageProtectionFee)
+          );
+          expect(feeReceiverBalance).deep.equal(feeReceiverBalanceBefore);
+
+          // check on-chain states
+          const bookingInfo = await property.getBookingById(bookingId);
+          expect(bookingInfo.balance).deep.equal(0);
+          expect(bookingInfo.status).deep.equal(2); // 2 = BookingStatus.FULLY_PAID
+
+          const pendingStatus = await property.isInsuranceFeePending(bookingId);
+          expect(pendingStatus).deep.equal(false);
+        });
+      });
+
+      context("use native coin", () => {
+        it("should charge a partial payment and update pending insurance fee", async () => {
+          const guest = users[4];
+          const bookingId = 15;
+
+          let now = (await ethers.provider.getBlock("latest")).timestamp;
+          const setting = {
+            bookingId: 15,
+            checkIn: now + 10 * days,
+            checkOut: now + 11 * days,
+            expireAt: now + 15 * days,
+            bookingAmount: 80000,
+            paymentToken: constants.AddressZero,
+            referrer: constants.AddressZero,
+            guest: guest.address,
+            property: property.address,
+            insuranceInfo: {
+              damageProtectionFee: 10000,
+              feeReceiver: feeHolder.address,
+              kygStatus: 0,
+            },
+            policies: [
+              {
+                expireAt: now + 2,
+                refundAmount: 30000,
+              },
+              {
+                expireAt: now + 3 * days,
+                refundAmount: 20000,
+              },
+            ],
+          };
+
+          // generate signature
+          const signature = await verifier._signTypedData(
+            domain,
+            types,
+            setting
+          );
+
+          await expect(
+            property.connect(guest).book(setting, signature, { value: 80000 })
+          ).emit(property, "NewBooking");
+
+          // get balance before executing tx
+          const guestBalanceBefore = await ethers.provider.getBalance(
+            guest.address
+          );
+          const hostBalanceBefore = await ethers.provider.getBalance(
+            host.address
+          );
+          const treasuryBalanceBefore = await ethers.provider.getBalance(
+            treasury.address
+          );
+          const contractBalanceBefore = await ethers.provider.getBalance(
+            property.address
+          );
+          const feeReceiverBalanceBefore = await ethers.provider.getBalance(
+            feeHolder.address
+          );
+
+          // calculate fees and related amounts
+          const insuranceInfo = await property.getInsuranceInfoById(bookingId);
+          let bookingInfo = await property.getBookingById(bookingId);
+          const toBePaid = bookingInfo.balance;
+          const feeRatio = await management.feeNumerator();
+          const feeDenominator = await management.FEE_DENOMINATOR();
+          const fee = toBePaid.mul(feeRatio).div(feeDenominator);
+          const hostRevenue = toBePaid
+            .sub(fee)
+            .sub(insuranceInfo.damageProtectionFee);
+
+          await increaseTime(5 * days);
+
+          now = (await ethers.provider.getBlock("latest")).timestamp;
+          const txExecutionTime = now + 1;
+          const caller = users[5];
+          await expect(property.connect(caller).payout(bookingId))
+            .emit(property, "PayOut")
+            .withArgs(
+              guest.address,
+              bookingId,
+              txExecutionTime,
+              hostRevenue,
+              fee,
+              0,
+              5
+            ); // 5 = BookingStatus.PENDING_INSURANCE_FEE;
+
+          // check balance after payout
+          const guestBalance = await ethers.provider.getBalance(guest.address);
+          const hostBalance = await ethers.provider.getBalance(host.address);
+          const treasuryBalance = await ethers.provider.getBalance(
+            treasury.address
+          );
+          const contractBalance = await ethers.provider.getBalance(
+            property.address
+          );
+          const feeReceiverBalance = await ethers.provider.getBalance(
+            feeHolder.address
+          );
+
+          expect(guestBalance).deep.equal(guestBalanceBefore);
+          expect(hostBalance).deep.equal(hostBalanceBefore.add(hostRevenue));
+          expect(treasuryBalance).deep.equal(treasuryBalanceBefore.add(fee));
+          expect(contractBalance).deep.equal(
+            contractBalanceBefore.sub(hostRevenue).sub(fee)
+          );
+          expect(feeReceiverBalance).deep.equal(feeReceiverBalanceBefore);
+
+          // check on-chain states
+          bookingInfo = await property.getBookingById(bookingId);
+          expect(bookingInfo.balance).deep.equal(0);
+
+          const pendingStatus = await property.isInsuranceFeePending(bookingId);
+          expect(pendingStatus).deep.equal(true);
+        });
+
+        it("should revert when refunding insurance fee to host - make a payout before check in", async () => {
+          const guest = users[4];
+          const bookingId = 15;
+
+          await property.connect(operator).updateKygStatusById(bookingId, 2); // KYG status = FAILED
+
+          await expect(property.connect(guest).payout(bookingId)).revertedWith(
+            "CannotChargeInsuranceFee"
+          );
+        });
+
+        it("should revert when canceling booking in status of pending insurance fee", async () => {
+          const guest = users[4];
+          const bookingId = 15;
+          await expect(property.connect(guest).cancel(bookingId)).revertedWith(
+            "PaidOrCancelledAlready"
+          );
+          await expect(
+            property.connect(host).cancelByHost(bookingId)
+          ).revertedWith("PaidOrCancelledAlready");
+        });
+
+        it("should refund insurance fee to host - make a payout after check in", async () => {
+          const guest = users[4];
+          const bookingId = 15;
+          const insuranceInfo = await property.getInsuranceInfoById(bookingId);
+
+          // get balance before executing tx
+          const guestBalanceBefore = await ethers.provider.getBalance(
+            guest.address
+          );
+          const hostBalanceBefore = await ethers.provider.getBalance(
+            host.address
+          );
+          const treasuryBalanceBefore = await ethers.provider.getBalance(
+            treasury.address
+          );
+          const contractBalanceBefore = await ethers.provider.getBalance(
+            property.address
+          );
+          const feeReceiverBalanceBefore = await ethers.provider.getBalance(
+            feeHolder.address
+          );
+
+          await increaseTime(5 * days);
+          const now = (await ethers.provider.getBlock("latest")).timestamp;
+          const txExecutionTime = now + 1;
+          const caller = users[5];
+          await expect(property.connect(caller).payout(bookingId))
+            .emit(property, "PayOut")
+            .withArgs(
+              guest.address,
+              bookingId,
+              txExecutionTime,
+              insuranceInfo.damageProtectionFee,
+              0,
+              0,
+              2 // 2 = BookingStatus.FULLY_PAID
+            );
+
+          // check balance after payout
+          const guestBalance = await ethers.provider.getBalance(guest.address);
+          const hostBalance = await ethers.provider.getBalance(host.address);
+          const treasuryBalance = await ethers.provider.getBalance(
+            treasury.address
+          );
+          const contractBalance = await ethers.provider.getBalance(
+            property.address
+          );
+          const feeReceiverBalance = await ethers.provider.getBalance(
+            feeHolder.address
+          );
+
+          expect(guestBalance).deep.equal(guestBalanceBefore);
+          expect(hostBalance).deep.equal(
+            hostBalanceBefore.add(insuranceInfo.damageProtectionFee)
+          );
+          expect(treasuryBalance).deep.equal(treasuryBalanceBefore);
+          expect(contractBalance).deep.equal(
+            contractBalanceBefore.sub(insuranceInfo.damageProtectionFee)
+          );
+          expect(feeReceiverBalance).deep.equal(feeReceiverBalanceBefore);
+
+          // check on-chain states
+          const bookingInfo = await property.getBookingById(bookingId);
+          expect(bookingInfo.balance).deep.equal(0);
+          expect(bookingInfo.status).deep.equal(2); // 2 = BookingStatus.FULLY_PAID
+
+          const pendingStatus = await property.isInsuranceFeePending(bookingId);
+          expect(pendingStatus).deep.equal(false);
+        });
       });
     });
   });

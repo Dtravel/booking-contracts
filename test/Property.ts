@@ -2185,6 +2185,11 @@ describe("Property test", function () {
       });
 
       context("use native coin", () => {
+        before(async () => {
+          // enable native coin payment
+          await management.addPayment(constants.AddressZero);
+        });
+
         it("should book a property successfully", async () => {
           const guest = users[1];
           const now = (await ethers.provider.getBlock("latest")).timestamp;
@@ -2222,9 +2227,6 @@ describe("Property test", function () {
             types,
             setting
           );
-
-          // enable native coin payment
-          await management.addPayment(constants.AddressZero);
 
           const guestBalanceBefore = await ethers.provider.getBalance(
             guest.address
