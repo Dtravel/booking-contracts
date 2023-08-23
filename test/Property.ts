@@ -620,6 +620,60 @@ describe("Property test", function () {
           property.connect(guest).book(setting, signature)
         ).revertedWith("InvalidPayment");
       });
+
+      it("should revert if native coin value is insufficient", async () => {
+        const guest = users[1];
+        const now = (await ethers.provider.getBlock("latest")).timestamp;
+        const setting = {
+          bookingId: 2,
+          checkIn: now + 1 * days,
+          checkOut: now + 2 * days,
+          expireAt: now + 3 * days,
+          bookingAmount: 65000,
+          paymentToken: constants.AddressZero,
+          referrer: constants.AddressZero,
+          guest: guest.address,
+          property: property.address,
+          insuranceInfo: {
+            damageProtectionFee: 0,
+            feeReceiver: constants.AddressZero,
+            kygStatus: 0,
+          },
+          policies: [
+            {
+              expireAt: now,
+              refundAmount: 48000,
+            },
+            {
+              expireAt: now + 1 * days,
+              refundAmount: 35000,
+            },
+          ],
+        };
+
+        const signature1 = utils.randomBytes(65);
+
+        // enable native coin payment
+        await management.addPayment(constants.AddressZero);
+
+        await expect(
+          property.connect(guest).book(setting, signature1, { value: 60000 })
+        ).revertedWith("InvalidTransactionValue");
+
+        // generate a valid signature
+        const signature2 = await verifier._signTypedData(
+          domain,
+          types,
+          setting
+        );
+
+        await expect(
+          property.connect(guest).book(setting, signature2, { value: 66000 })
+        ).revertedWith("InsufficientPayment");
+
+        // disable native coin payment
+        await management.removePayment(constants.AddressZero);
+      });
     });
 
     describe("Verify EIP-712 data", async () => {
@@ -3188,9 +3242,32 @@ describe("Property test", function () {
         await expect(property.connect(guest).payout(bookingId)).revertedWith(
           "InsufficientBalance"
         );
+      });
+
+      it("should revert when recipient refuses to receive native coin", async () => {
+        const bookingId = 202;
+        const guest = users[1];
+
+        await increaseTime(3 * days);
+
+        // deploy mock recipient
+        const mockRecipientFactory = await ethers.getContractFactory(
+          "MockRecipient"
+        );
+        const mockRecipient = await mockRecipientFactory.deploy();
+
+        // change treasury to mock recipient
+        await management.setTreasury(mockRecipient.address);
+
+        await expect(property.connect(guest).payout(bookingId)).revertedWith(
+          "TransferFailed"
+        );
+
+        // restore treasury
+        await management.setTreasury(treasury.address);
 
         // restore EVM time
-        await decreaseTime(1 * days + 1 + 2.5 * days + 1); // previous test + this test evm time
+        await decreaseTime(1 * days + 1 + 2.5 * days + 1 + 3 * days + 1); // previous test + this test evm time
       });
     });
 
