@@ -122,7 +122,7 @@ contract PropertyV2 is
      */
     function book(BookingSetting calldata _setting, bytes calldata _signature)
         external
-        pure
+        payable
     {
         _setting;
         _signature;
