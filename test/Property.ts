@@ -651,14 +651,18 @@ describe("Property test", function () {
           ],
         };
 
-        const signature1 = utils.randomBytes(65);
+        const signature1 = await verifier._signTypedData(
+          domain,
+          types,
+          setting
+        );
 
         // enable native coin payment
         await management.addPayment(constants.AddressZero);
 
         await expect(
           property.connect(guest).book(setting, signature1, { value: 60000 })
-        ).revertedWith("InvalidTransactionValue");
+        ).revertedWith("InsufficientPayment");
 
         // generate a valid signature
         const signature2 = await verifier._signTypedData(
